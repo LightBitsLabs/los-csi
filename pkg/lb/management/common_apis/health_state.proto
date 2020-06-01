@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package lightbits.api;
+
+option go_package = "github.com/lightbitslabs/lightbits-api/gen/golang/common_apis;common_apis";
+
+import "google/protobuf/timestamp.proto";
+
+// an entity in health history
+message HealthHistoryEntry {
+    google.protobuf.Timestamp timestamp = 1;
+    uint64 state = 2;
+}
+
+// an entity representing health of a service
+message HealthState {
+    uint64 currentState = 1;
+    repeated HealthHistoryEntry healthHistory = 2;
+}

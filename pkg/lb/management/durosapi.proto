@@ -1,0 +1,594 @@
+syntax = "proto3";
+
+package lightbits.api.duros.v1;
+
+option go_package = "duros;durospb";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+import "common_apis/volume.proto";
+import "common_apis/cluster.proto";
+import "common_apis/nullable_types.proto";
+import "api-service/statisticsapi.proto";
+
+service DurosAPI {
+	// Get system version information.
+    rpc GetVersion(google.protobuf.Empty) returns (Version) {
+        option (google.api.http) = {
+            get: "/api/v1/version"
+        };
+    }
+    // Create volume.
+    //
+    // a volume has a user defined name, maximum capacity and an Access Control List (ACL).
+    // the user may also select if to  enable/disable or compression for all data stored on this volume.
+    rpc CreateVolume(CreateVolumeRequest) returns (Volume) {
+        option (google.api.http) = {
+            post: "/api/v1/volumes"
+            body: "*"
+        };
+    }
+
+    // Delete volume.
+    //
+    // In order to delete a volume you only need to give its UUID.
+    // Delete will probably take a while, and you can check volume state with GetVolume
+    rpc DeleteVolume(DeleteVolumeRequest) returns (google.protobuf.Empty) {
+        option (google.api.http) = {
+            delete: "/api/v1/volumes/{UUID}"
+        };
+    }
+    // Retrieve volume list with filtering option.
+    //
+    // A request to List Volumes  is exposed via this API.
+    // option to filter via Name is done by the following parameters:
+    // 1. UUID - e.g.  api/v1/volumes?UUID=<UUID>
+    // 2. FailureDomain - e.g. api/v1/volumes?FailureDomain=<FailureDomain>
+    rpc ListVolumes(ListVolumeRequest) returns (ListVolumesResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/volumes"
+        };
+    }
+    
+    rpc GetHost(GetHostRequest) returns (ConnectedHost) {
+        option (google.api.http) = {
+            get: "/api/v1/connectedHosts/{hostNQN}"
+        };
+    }
+    
+    rpc ListHosts(ListHostsRequest) returns (ListHostsResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/connectedHosts"
+        };
+    }
+
+    // Retrieve a specific Volume info based on UUID
+    //
+    // Request volume info identified by UUID
+    rpc GetVolume(GetVolumeRequest) returns (Volume) {
+        option (google.api.http) = {
+            get: "/api/v1/volumes/{UUID}"
+       };
+    }
+
+    // Retrieve Node List with filtering option.
+    //
+    // A request to List Nodes is exposed via this API.
+    // option to filter via Name is done by the following parameters:
+    // 1. Name - e.g.  api/v1/nodes?Name=<Name>
+    // 2. UUID - e.g.  api/v1/nodes?UUID=<UUID>
+    // 3. FailureDomain - e.g.  api/v1/nodes?FailureDomain=<FailureDomain>
+    rpc ListNodes(ListNodeRequest) returns (ListNodesResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/nodes"
+        };
+    }
+
+    // Retrieve a specific Node info based on UUID
+    //
+    // Request volume info identified by UUID
+    rpc GetNode(GetNodeRequest) returns (DurosNodeInfo) {
+        option (google.api.http) = {
+            get: "/api/v1/nodes/{UUID}"
+        };
+    }
+
+    // Retrieve list of nvme devices with filtering option.
+    //
+    // A request to list nvme devices is exposed via this API.
+    // The list of nvme devices can be filtered by the following parameters:
+    // 1. ServerUUID - e.g.  api/v1/nvmeDevices?ServerUUID=<UUID>
+    rpc ListNvmeDevices(ListNvmeDevicesRequest) returns (ListNvmeDevicesResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/nvmeDevices"
+        };
+    }
+
+    // Retrieve a specific nvme device with filtering option.
+    //
+    // Request nvme device info by serial
+    // Example usage:
+    // api/v1/nvmeDevices/15eb21c0-35ae-478d-b
+    rpc GetNvmeDevice(GetNvmeDeviceRequest) returns (UserNvmeDevicesResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/nvmeDevices/{Serial}"
+        };
+    }
+
+    // Retrieve cluster information.
+    //
+    // Cluster information, e.g. cluster UUID and SubsystemNQN is exposed via this API.
+	rpc GetCluster(google.protobuf.Empty) returns (ClusterInfo) {
+		option (google.api.http) = {
+			get: "/api/v1/cluster"
+		};
+	}
+
+    rpc AddNvmeDevice(AddNvmeDeviceRequest) returns (AddNvmeDeviceResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/nvmeDevices"
+            body: "*"
+        };
+    }
+    // Update volume.
+    //
+    // update volume enable the change of the following attributes:
+    // ACL list, IPACL list
+    rpc UpdateVolume(UpdateVolumeRequest) returns (UpdateVolumeResponse) {
+        option (google.api.http) = {
+            put: "/api/v1/volumes/{UUID}"
+            body: "*"
+        };
+    }
+
+
+    // Retrieve a specific server info based on UUID
+    //
+    // Request server info identified by UUID
+    rpc GetServer(GetServerRequest) returns (Server) {
+        option (google.api.http) = {
+            get: "/api/v1/servers/{UUID}"
+        };
+    }
+
+    // Retrieve servers list with filtering option.
+    //
+    // A request to list servers is exposed via this API.
+    // The results can be filtered by supplying the following filters:
+    // 1. Name - e.g.  /api/v1/servers?Name=<Name>
+    // 2. UUID - e.g.  /api/v1/servers?UUID=<UUID>
+    // 3. UpgradeablilityState - e.g.  /api/v1/servers?UpgradeablilityState=<UpgradeablilityState>
+    rpc ListServers(ListServersRequest) returns (ListServersResponse) {
+        option (google.api.http) = {
+            get: "/api/v1/servers"
+        };
+    }
+
+    rpc UpgradeServer(UpgradeServerRequest) returns (UpgradeServerResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/server/{UUID}/upgrade"
+            body: "*"
+        };
+    }
+
+    rpc UpgradeCluster(UpgradeClusterRequest) returns (UpgradeClusterResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/cluster/upgrade"
+            body: "*"
+        };
+    }
+
+    // Create Server.
+    //
+    // A request to create a new server.
+    // The requires paramaters in the body are:
+    // 1. serverEndpoints - url list of the new server ip addresses as well as etcd ports for peer communication
+    // e.g: http://10.0.0.1:2380
+    rpc CreateServer(CreateServerRequest) returns (Server) {
+        option (google.api.http) = {
+            post: "/api/v1/servers"
+            body: "*"
+        };
+    }
+
+    // Replace Node.
+    //
+    // A request to replace one node with a another. The request is identified by the UUID of the replaced node (referred as SrcNodeUUID)
+    // The required paramaters in the body are:
+    // 1. TargetNodeUUID - the UUID of the target node that replaces the src Node
+    rpc ReplaceNode(ReplaceNodeRequest) returns (ReplaceNodeResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/nodes/{SrcNodeUUID}/replace"
+            body: "*"
+       };
+    }
+
+    // Delete Server.
+    //
+    // A request to delete a server.
+    // The required paramaters in the body are:
+    // 1. UUID - UUID of the server to delete
+    rpc DeleteServer(DeleteServerRequest) returns (DeleteServerResponse) {
+        option (google.api.http) = {
+            delete: "/api/v1/servers/{UUID}"
+        };
+    }
+
+    // Add Server.
+    //
+    // A request to add a server.
+    // The required paramaters in the body are:
+    // 1. UUID - UUID of the server to add
+    rpc AddServer(AddServerRequest) returns (Server) {
+        option (google.api.http) = {
+            post: "/api/v1/servers/{UUID}/add"
+            body: "*"
+        };
+    }
+
+    // Remove Server.
+    //
+    // A request to remove a server.
+    // The required paramaters in the body are:
+    // 1. UUID - UUID of the server to remove
+    rpc RemoveServer(RemoveServerRequest) returns (RemoveServerResponse) {
+        option (google.api.http) = {
+            post: "/api/v1/servers/{UUID}/remove"
+            body: "*"
+        };
+    }
+}
+
+message CreateVolumeRequest {
+    string name = 1 [(grpc.gateway.protoc_gen_swagger.options.openapiv2_field) = {pattern: "^[a-zA-Z0-9-_\\.]{1,253}$"}];
+    string size = 2;
+    StringList acl = 3;
+    string compression = 4;
+    uint32 replicaCount = 5;
+    StringList IPAcl = 6;
+    uint32 minReplicas = 7;
+}
+
+message DeleteVolumeRequest {
+    string UUID = 1;
+    string name = 2;
+}
+
+message AddServerRequest {
+    string UUID = 1;
+}
+
+message RemoveServerRequest {
+    string UUID = 1;
+}
+
+message DeleteServerRequest {
+    string UUID = 1;
+}
+
+message ReplaceNodeRequest {
+    string SrcNodeUUID = 1;
+    string TargetNodeUUID = 2;
+}
+
+message CreateServerRequest {
+    repeated string serverEndpoints = 1;
+    string serverUUID = 2;
+    bool reuseIP = 3;
+}
+
+message UpdateVolumeRequest {
+    string UUID = 1;
+    StringList acl = 2;
+    StringList IPAcl = 3;
+    string size = 4;
+    string compression = 5;
+}
+
+message UpgradeServerRequest {
+    string UUID = 1;
+    string InstallPkgUri = 2;
+    bool ForceUpgrade = 3;
+}
+
+message UpgradeClusterRequest {
+    string InstallPkgUri = 1;
+    repeated string UUIDs = 2;
+}
+
+message AddNvmeDeviceRequest {
+    string serialNumber = 1;
+    string nodeUUID = 2;
+}
+
+message ListTasksRequest {
+    string UUID = 1;
+}
+
+message GetHostRequest {
+    string hostNQN = 1;
+}
+
+message ListHostsRequest {
+    string hostNQN = 1;
+    string volumeUUID = 2;
+}
+
+message ListHostsResponse {
+	repeated ConnectedHost connectedHosts = 1;
+}
+
+message ListNodeRequest {
+    string name = 1;
+    string UUID = 2;
+    string failureDomain = 3;
+}
+
+message GetVolumeRequest {
+    string UUID = 1;
+    string name = 2;
+}
+
+message GetNodeRequest {
+    string UUID = 1;
+}
+
+message ListVolumeRequest {
+    string UUID = 1;
+    string name = 2;
+    string failureDomain = 3;
+}
+
+message ListNvmeDevicesRequest {
+    string nodeUUID = 1;
+    string serverUUID = 2;
+}
+
+message GetNvmeDeviceRequest {
+    string Serial = 1;
+}
+
+message ListNvmeDevicesResponse {
+    repeated UserNvmeDevicesResponse NvmeDevices = 1;
+}
+
+message ConnectedHost {
+    string hostNQN = 1;
+    string iPAddress = 2;
+    string hostname = 3;
+    repeated string volumeUUIDs = 4;
+}
+
+message UserNvmeDevicesResponse {
+    enum StateEnum {
+        None = 0;
+        Healthy = 1;
+        Adding = 2;
+        Rebuilding = 3;
+        Failed = 4;
+    }
+
+        // Total capacity of the device in bytes
+        uint64 size = 1;
+        // The numa node ID this device is associated with
+        uint64 numaNodeID = 2;
+        // model
+        //
+        // Model string of the device, if exists
+        string model = 3;
+        // serial
+        //
+        // Serial of the block device, if exists
+        string serial = 4;
+        // server uuid
+        //
+        // The UUID of the server to which the block device is installed
+        string serverUUID = 5;
+        // device state
+        //
+        // Describes the state of the device, unmanaged device state will be None
+        StateEnum state = 6;
+            // device time of failure
+        //
+        // Timestamp that will be updated in case the device have failed
+        google.protobuf.Timestamp failureTime = 7;
+        // device rebuild completion time
+        //
+        // Timestamp that will be updated once gftl have completed
+        // to rebuild all the data that the device had, and we are safe
+        // for second failure
+        google.protobuf.Timestamp rebuildCompletionTime = 8;
+        // name
+        //
+        // Device name or address
+        string name = 9;
+        // node uuid that manages the device
+        //
+        // The UUID of the node that manages the device, empty string if the device is not managed
+        string nodeUUID = 12;
+
+        string ETag = 13;
+}
+
+message DurosNodeInfo {
+    enum ClusterManagerMode {
+        // node is is coming up
+        ActiveMode = 0;
+        // node is ready for serving data traffic
+        PassiveMode = 1;
+    }
+    enum State {
+        // reserved value, default should return error, rather than a true  state that is incorrect
+        Unknown = 0;
+        // node is completed join cluster flow
+        Active = 1;
+        // node is is the process of coming up (startign required services) and joining cluster
+        Activating = 2;
+        // node is is Inactive (this includes internal states Removing and failed)
+        Inactive = 3;
+        // node is not attched to cluster (none of cluster pgs contain this pg)
+        Unattached = 4;
+        // Attaching node to cluster ongoing (replacing old node in pgs with this node)
+        Attaching = 6;
+        // Detaching node from cluster ongoing (replacing this node in pgs with this a new node)
+        Detaching = 7;
+    }
+    string name = 1;
+    string UUID = 2;
+    State state = 3;
+    ClusterReportedNodeState.StatusEnum status = 4;
+    // peer <ip>:<port> service datapath IP
+    string nvmeEndpoint = 5;
+    repeated string failureDomains = 6;
+    string failureInfo = 7;
+    ClusterManagerMode clusterManagerMode = 8;
+    string hostname = 9;
+    bool inLocalRebuild = 10;
+    uint32 localRebuildProgress = 11;
+    int32 numManagedDevices = 12;
+    uint32 maxNvmeDevices = 13;
+    bool ec = 14;
+    NodeStatisticsApi statistics = 15;
+    string serverUUID = 16;
+    string ETag = 17;
+    bool readOnly = 18;
+}
+
+message ListNodesResponse {
+    repeated DurosNodeInfo nodes = 1;
+}
+
+message ListVolumesResponse {
+    repeated Volume volumes = 1;
+}
+
+message AddNvmeDeviceResponse {}
+
+message UpdateVolumeResponse {}
+
+message UpgradeServerResponse {}
+
+message UpgradeClusterResponse {}
+
+message ReplaceNodeResponse {}
+
+message DeleteServerResponse {}
+
+message RemoveServerResponse {}
+
+message ListServersRequest {
+    string UUID = 1;
+    string Name = 2;
+    lightbits.api.UpgradeabilityEnum.State UpgradeabilityState = 3;
+}
+
+message GetServerRequest {
+    string UUID = 1;
+}
+
+message ListServersResponse {
+    repeated Server servers = 1;
+}
+
+message Version {
+    // time of binary compilation.
+    string buildDate = 1;
+    // git commit short hash.
+    string commitHash = 2;
+    // semantic version of the binary.
+    string version = 3;
+    string apiVersion = 4;
+    // Internal hash calculated from all binary dependencies.
+    string lbVersion = 5;
+    // go runtime version used to compile this binary.
+    string goVersion = 6;
+}
+
+message ClusterInfo {
+    string UUID = 1;
+    string subsystemNQN = 2;
+    uint32 currentMaxReplicas = 3;
+    uint32 supportedMaxReplicas = 4;
+    ClusterStatisticsApi statistics = 5;
+    string ETag = 6;
+    ClusterHealth health = 7;
+    string MinVersionInCluster = 8;
+    string MinAllowedVersion = 9;
+    string MaxAllowedVersion = 10;
+}
+
+message ClusterHealth {
+    enum State {
+        None        = 0;
+        OK          = 1;
+        Warning     = 2;
+        Error       = 3;
+    }
+    State state = 1;
+    uint32 numDegradedVolumes = 2;
+    uint32 numReadOnlyVolumes = 3;
+    uint32 numNotAvailableVolumes = 4;
+    uint32 numInactiveNodes = 5;
+}
+
+enum ProtectionStateEnum {
+    Unknown = 0;
+    FullyProtected = 1;
+    Degraded = 2;
+    ReadOnly = 3;
+    NotAvailable = 4;
+}
+
+message Volume {
+    enum StateEnum {
+        Unknown = 0;
+        Creating = 1;
+        Available = 2;
+        Deleting = 3;
+        Deleted = 4;
+        Failed = 7;
+        Updating = 8;
+    }
+    enum ProtocolEnum {
+        ProtocolTCP = 0;
+    }
+
+    StateEnum state = 1;
+    ProtectionStateEnum protectionState = 2;
+    uint32 replicaCount = 3;
+    repeated string nodeList = 4;
+    string UUID = 5;
+    uint32 nsid = 6;
+    StringList acl = 7;
+    string compression = 8;
+    uint64 size = 9;
+    string name = 10;
+    string rebuildProgress = 11;
+    VolumeStatisticsApi statistics = 12;
+    StringList IPAcl = 13;
+    string ETag = 14;
+    repeated string connectedHosts = 15;
+}
+
+// an entity representing a physical server in duros cluster
+message Server {
+    enum UpgradeStatusEnum {
+        Unknown = 0;
+        None = 1;
+        Failed = 2;
+        Upgrading = 3;
+        Rebooting = 4;
+    }
+    string UUID = 2;
+    // server friendly name
+    string name = 3;
+    lightbits.api.UpgradeabilityEnum.State UpgradeabilityState = 4;
+    repeated string NodesUUIDs = 5;
+    lightbits.api.ServerStateEnum.State state = 6;
+    repeated string ServerEndpoints = 7;
+    string ETag = 8;
+    string LightOSVersion = 9;
+    UpgradeStatusEnum UpgradeStatus = 10;
+}

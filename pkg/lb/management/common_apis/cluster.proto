@@ -1,0 +1,270 @@
+syntax = "proto3";
+
+package lightbits.api;
+
+option go_package = "github.com/lightbitslabs/lightbits-api/gen/golang/common_apis;common_apis";
+
+import "common_apis/health_state.proto";
+import "common_apis/typemeta.proto";
+import "common_apis/events.proto";
+import "google/protobuf/timestamp.proto";
+
+message ServerStateEnum {
+    enum State {
+        Unknown   = 0;
+        Creating  = 1;
+        Enabled   = 2;
+        Deleting  = 3;
+        Failed    = 4;
+        Disabled  = 5;
+        Enabling  = 6;
+        Disabling = 7;
+    }
+}
+
+message ServerUpgradeStatus {
+    enum UpgradeStatusEnum {
+        Unknown = 0;
+        None = 1;
+        Failed = 2;
+        Upgrading = 3;
+        Rebooting = 4;
+    }
+    TypeMeta typeMeta = 1;
+    string serverUUID = 2;
+    string serverName = 3;
+    UpgradeStatusEnum UpgradeStatus = 4;
+}
+
+message UpgradeabilityEnum {
+    enum State {
+        None           = 0;
+        Upgradeable    = 1;
+        NonUpgradeable = 2;
+        Failed         = 3;
+    }
+}
+
+message ClusterInfo {
+    TypeMeta typeMeta = 1;
+    // a unique value for the entire cluster. should not change once it is added
+    string UUID = 2;
+    string subsystemNqn = 3;
+}
+
+message ClusterPeer {
+    TypeMeta typeMeta = 1;
+    string UUID = 2;
+    // friendly name of the node
+    string peerName = 3;
+}
+
+message ClusterPeerHeartbeat {
+    TypeMeta typeMeta = 1;
+    string UUID = 2;
+    // friendly name of the node
+    string peerName = 3;
+    google.protobuf.Timestamp heartbeat = 4;
+}
+
+message PeerCommand {
+    TypeMeta typeMeta = 1;
+
+    string UUID = 2;
+    repeated Event events = 3;
+    // friendly name of the node
+    string peerName = 4;
+}
+
+message ServiceStatus {
+    enum StateEnum {
+        Failed = 0;
+        Initializing = 1;
+        Disconnected = 2;
+        Connected = 3;
+    }
+    enum ModeEnum {
+        Passive = 0;
+        Deactivating = 1;
+        Active = 2;
+    }
+
+    TypeMeta typeMeta = 1;
+    string UUID = 2;
+    // friendly name of the server
+    string serverName = 3;
+    StateEnum state = 4;
+    string error = 5;
+    google.protobuf.Timestamp heartbeat = 6;
+    ModeEnum mode = 7;
+}
+
+message ClusterReportedNodeState {
+    enum StateEnum {
+        Unknown = 0;
+        // Deactivated node/ node not part of cluster
+        Inactive = 1;
+        // Node start up and joing cluster completed.
+        Active = 2;
+        //Joinging state part of join to cluster states
+        Joining = 3;
+        // node handlign request to deactivate (maintanence) node
+        InactiveRequest = 4;
+        // node experienced error in failed state
+        Failed = 5;
+    }
+
+    // machine readable internal state of the node we want to report to the cluster.
+    enum StatusEnum {
+        NoStatus = 0;
+        // reported during NodeStateEnum==Adding
+        ConnectivityOK = 1;
+        ConnectivityProblem = 2;
+        // reported during NodeStateEnum==Removing
+        IssuedDeletePeer = 3;
+    }
+
+    TypeMeta typeMeta = 1;
+    // service UUID
+    string UUID = 2;
+    StateEnum state = 3;
+    StatusEnum status = 4;
+    string error = 6;
+}
+
+message LightOSVersion {
+    TypeMeta typeMeta = 1;
+    string Version = 2;
+}
+
+// an entity representing a physical server in duros cluster
+message Server {
+    enum StateEnum {
+        Unknown = 0;
+        Active = 1;
+        Upgrading = 2;
+        Inactive = 3;
+    }
+
+    TypeMeta typeMeta = 1;
+    string UUID = 2;
+    // server friendly name
+    string name = 3;
+    UpgradeabilityEnum.State UpgradeabilityState = 4;
+    repeated string NodesUUIDs = 5;
+    ServerStateEnum.State ServerExternalState = 6;
+    repeated string ServerEndpoints = 7;
+    StateEnum state = 8;
+    string LightOSVersion = 9;
+    bool CreatePGs = 10;
+}
+
+message ServiceInfo {
+    enum Type {
+        ClusterManager = 0;
+        UpgradeManager = 1;
+    }
+
+    TypeMeta typeMeta = 1;
+    string UUID = 2;
+    string serverName = 3;
+    Type serviceType = 4;
+    string hostname = 5;
+}
+
+// an entity representing a logical node in server
+message DurosNode {
+    TypeMeta typeMeta = 1;
+    // service UUID
+    string UUID = 2;
+    // peer <ip>:<port> service datapath IP
+    string NvmeEndpoint = 3;
+    string ReplicationEndpoint = 4;
+    string GrpcEndpoint = 5;
+
+    repeated string failureDomain = 6;
+    // a set of physical capabilities like cores, numa-nodes, lightfield, interfaces, etc...
+    map<string, string> capabilities = 7;
+    uint32 ctrlId = 8;
+    bool firstTimeInit = 9;
+    string hostname = 10;
+    bool ec = 11;
+    uint32 maxSlots = 12;
+    // node friendly name
+    string name = 13;
+
+    HealthState healthState = 14;
+    string serverUUID = 15;
+}
+
+enum NodeStateEnum {
+    Inactive = 0;
+    // node is is coming up (BE recovery..)
+    Activating = 1;
+    // datapath backend and frontend is up and we are listening on nvme and replication.
+    //
+    // Ready to be called AddPeer on.
+    Joining = 2;
+    // Sync the datapath, rebuild process start, and polling for completed state.
+    Rebuilding = 3;
+    // Rebuild completed
+    RebuildDone = 4;
+    // Rebuild completed, node joined cluster
+    Active = 5;
+    Deactivating = 6;
+
+    // any failure in the FE, BE, other...
+    Failed = 7;
+}
+
+// machine readable internal state of the node we want to report to the cluster.
+enum NodeStatusEnum {
+    // reported during NodeStateEnum==Activating
+    PowerupDatapath = 0;
+    PowerupDatapathFailed = 1;
+    // reported during NodeStateEnum==Joining
+    SyncDatapath = 2;
+    RebuildStarted = 3;
+    RebuildFailed = 4;
+    RebuildCompleted = 5;
+    // reported during NodeStateEnum==Deactivating
+    TeardownDatapath = 6;
+    TeardownDatapathFailed = 7;
+    // reported during NodeStateEnum==Active
+    RejoinStarted = 8;
+    NodeJoined = 9;
+}
+
+message NodeState {
+    TypeMeta typeMeta = 1;
+    // service UUID
+    string UUID = 2;
+    string peerName = 3;
+    NodeStateEnum state = 4;
+    NodeStatusEnum status = 5;
+    int32 progress = 6;
+    string error = 7;
+    string replicationEndpoint = 8;
+    bool readOnly = 9;
+}
+
+message NodeReportedStatesOfOtherNodes {
+    TypeMeta typeMeta = 1;
+
+    string selfNodeUUID = 2;
+    map<string, bool> nodesStates = 3;
+}
+
+message PeerProtectionGroupVersion {
+    TypeMeta typeMeta = 1;
+    uint64 value = 2;
+}
+
+message ClusterConnectionsMap {
+    TypeMeta typeMeta = 1;
+
+    //map of hearbeat state for each nodeUUID as seen by cluster manager
+    map<string, bool> heartbeatStates = 2;
+    //map of connectivity decision as done by cluster manager
+    map<string, bool> connectivityStates = 3;
+}
