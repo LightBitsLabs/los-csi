@@ -2,3 +2,4 @@ deploy/lb-csi-plugin
 .cache
 deploy/k8s/lb-csi-plugin-*.yaml
 build/
+.vscode
