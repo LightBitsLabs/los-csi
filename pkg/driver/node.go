@@ -2,13 +2,11 @@ package driver
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/lightbitslabs/lb-csi/pkg/lb"
-	nvme "github.com/lightbitslabs/lb-csi/pkg/nvme-of/client"
 	"github.com/lightbitslabs/lb-csi/pkg/nvme-of/client/cli"
 	"github.com/lightbitslabs/lb-csi/pkg/util/wait"
 	"github.com/sirupsen/logrus"
@@ -83,29 +81,6 @@ func (d *Driver) queryLBforTargetEnv(
 }
 
 // CSI Node service: ---------------------------------------------------------
-
-func (d *Driver) connectToTarget(
-	nvme nvme.Client, // TODO: move to driver member?
-	subNQN string, target lb.Node,
-) error {
-	// TODO: make sure to return codes.NotFound, codes.AlreadyExists,
-	// and, possibly, codes.Aborted as per NodeStageVolume Errors table,
-	// instead of the below hodge-podge...
-	err := nvme.Connect(d.transport, subNQN,
-		target.DataEP.Host(), target.DataEP.PortString(), d.hostNQN)
-	prefix := fmt.Sprintf("failed to establish NVMe-oF connection to %s: ", target.DataEP)
-	switch err := err.(type) {
-	case *cli.BadArgError: // TODO: not all BadArgs come from volume_context!
-		return mkEinvalf(prefix+"volume_context",
-			"bad %s argument '%s': %s", err.Param, err.Arg, err.Reason)
-	case *cli.OsError:
-		return mkExternal(prefix+"OS error: %s (%d)", err.Error(), err.Errno)
-	default:
-		return mkExternal(prefix + "unexpected runtime error: " + err.Error())
-	case nil:
-		return nil
-	}
-}
 
 // NodeStageVolume obtains the necessary NVMe-oF target(s) endpoints from the
 // LB mgmt API server(s) specified in `NodeStageVolumeRequest.volume_id`, then
@@ -199,6 +174,15 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	////////////////////////////////////  Discovery-Client ////////////////////////////////
+	entries, err := createEntries(tgtEnv.cluster.DiscoveryEndpoints, d.hostNQN, tgtEnv.cluster.SubsysNQN, "tcp")
+	if err != nil {
+		return nil, d.mungeLBErr(log, err, "failed to get info from LB cluster")
+	}
+	if err := writeEntriesToFile(vid.uuid.String(), entries); err != nil {
+		return nil, d.mungeLBErr(log, err, "failed to create DC file")
+	}
+
 	// touching remote storage for the 1st time: - - - - - - - - - - - - -
 
 	client, err := cli.New(d.log) // TODO: make a member of d? otherwise cmd counting is busted!
@@ -206,35 +190,6 @@ func (d *Driver) NodeStageVolume(
 	if err != nil {
 		return nil, mkInternal("unable to gain control of NVMe-oF on the client "+
 			"(host/initiator) side: %s", err)
-	}
-
-	numTargets := len(tgtEnv.targets)
-
-	// TODO: connect to targets in parallel? or just wait for the discovery
-	// service to land and sort it out with `connect-all` equivalent?
-	for i, target := range tgtEnv.targets {
-		log := log.WithFields(logrus.Fields{
-			"tgt-name": target.Name,
-			"tgt-uuid": target.UUID,
-			"tgt-host": target.HostName,
-		})
-		log.Debugf("connecting to target %d of %d ...", i+1, numTargets)
-
-		err = d.connectToTarget(client, tgtEnv.cluster.SubsysNQN, *target)
-		if err != nil {
-			// TODO: handle M-out-of-N succeeded scenarios rather than
-			// outright bailing out! some consideration of the CURRENT
-			// primary succeeding or not is in order, as well as a plan
-			// for how to subsequently connect to those that were
-			// unreachable during the original connect event (spawn
-			// a goroutine to do this in the BG? but what if the whole
-			// plugin dies before it succeeds?)...
-
-			log.Debugf("connection FAIL: %s", err)
-			return nil, err
-		} else {
-			log.Debugf("connected OK")
-		}
 	}
 
 	// apparently it can take a little while between connecting (e.g.
@@ -342,6 +297,10 @@ func (d *Driver) NodeUnstageVolume(
 	//  so i foresee some GetDeviceNameFromMount() under lock (that func
 	//  and its ilk in k8s.io-land have odd notion of TOCTTOU) around here...
 
+	////////////////// DISCOVERY-CLIENT ///////////////////////////////////
+	if err := deleteDiscoveryEntriesFile(vid.uuid.String()); err != nil {
+		return nil, mkEExec("failed to delete DC file: %v", err)
+	}
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
