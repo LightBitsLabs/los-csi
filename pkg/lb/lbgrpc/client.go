@@ -9,14 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	guuid "github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	"github.com/lightbitslabs/lb-csi/pkg/grpcutil"
 	"github.com/lightbitslabs/lb-csi/pkg/lb"
 	mgmt "github.com/lightbitslabs/lb-csi/pkg/lb/management"
-	duros "github.com/lightbitslabs/lb-csi/pkg/lb/management/common_apis"
 	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
 	"github.com/lightbitslabs/lb-csi/pkg/util/strlist"
 	"github.com/lightbitslabs/lb-csi/pkg/util/wait"
@@ -354,7 +352,7 @@ func (c *Client) ID() string {
 }
 
 func (c *Client) RemoteOk(ctx context.Context) error {
-	ver, err := c.clnt.GetVersion(ctx, &empty.Empty{})
+	ver, err := c.clnt.GetVersion(ctx, &mgmt.GetVersionRequest{})
 	if err != nil {
 		return err
 	}
@@ -378,7 +376,7 @@ func (c *Client) RemoteOk(ctx context.Context) error {
 }
 
 func (c *Client) GetCluster(ctx context.Context) (*lb.Cluster, error) {
-	cluster, err := c.clnt.GetCluster(ctx, &empty.Empty{})
+	cluster, err := c.clnt.GetCluster(ctx, &mgmt.GetClusterRequest{})
 	if err != nil {
 		return nil, err
 	}
@@ -658,7 +656,7 @@ func (c *Client) CreateVolume(
 		&mgmt.CreateVolumeRequest{
 			Name:         name,
 			Size:         capStr,
-			Acl:          &duros.StringList{Values: acl},
+			Acl:          &mgmt.StringList{Values: acl},
 			Compression:  strconv.FormatBool(compress),
 			ReplicaCount: replicaCount,
 		},
@@ -914,7 +912,7 @@ func (c *Client) doUpdateVolume(
 	badError := func(op, prep string, err error) (*lb.Volume, error) {
 		log.WithFields(logrus.Fields{
 			"err-type": fmt.Sprintf("%T", err),
-			"err-msg": err.Error(),
+			"err-msg":  err.Error(),
 		}).Errorf("unexpected error on volume update: failed to %s volume", op)
 		return nil, status.Errorf(codes.Unknown,
 			"failed to %s volume %s %s LB: %s", op, uuid, prep, err)
@@ -993,7 +991,7 @@ func (c *Client) doUpdateVolume(
 	if update.ACL != nil {
 		required = true
 		acl := strlist.CopyUniqueSorted(update.ACL)
-		req.Acl = &duros.StringList{Values: acl}
+		req.Acl = &mgmt.StringList{Values: acl}
 		log = log.WithField("acl-src", fmt.Sprintf("%#q", lbVol.ACL))
 		log = log.WithField("acl-tgt", fmt.Sprintf("%#q", acl))
 	}
