@@ -153,10 +153,12 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 }
 
 type Cluster struct {
-	UUID            guuid.UUID
-	SubsysNQN       string
-	CurrMaxReplicas uint32
-	MaxReplicas     uint32
+	UUID               guuid.UUID
+	SubsysNQN          string
+	CurrMaxReplicas    uint32
+	MaxReplicas        uint32
+	DiscoveryEndpoints []string
+	ApiEndpoints       []string
 }
 
 type NodeState int32

@@ -397,10 +397,12 @@ func (c *Client) GetCluster(ctx context.Context) (*lb.Cluster, error) {
 	// of the cluster boot, but allegedly this is a transient condition...
 
 	return &lb.Cluster{
-		UUID:            uuid,
-		SubsysNQN:       cluster.SubsystemNQN,
-		CurrMaxReplicas: cluster.CurrentMaxReplicas,
-		MaxReplicas:     cluster.SupportedMaxReplicas,
+		UUID:               uuid,
+		SubsysNQN:          cluster.SubsystemNQN,
+		CurrMaxReplicas:    cluster.CurrentMaxReplicas,
+		MaxReplicas:        cluster.SupportedMaxReplicas,
+		DiscoveryEndpoints: cluster.DiscoveryEndpoints,
+		ApiEndpoints:       cluster.ApiEndpoints,
 	}, nil
 }
 
