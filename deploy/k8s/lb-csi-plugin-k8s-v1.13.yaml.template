@@ -370,6 +370,8 @@ spec:
               mountPropagation: "Bidirectional"
             - name: device-dir
               mountPath: /dev
+            - name: discovery-client-dir
+              mountPath: /etc/discovery-client/discovery.d
         - name: csi-node-driver-registrar
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
@@ -416,6 +418,10 @@ spec:
         - name: modules-dir
           hostPath:
             path: /lib/modules
+        - name: discovery-client-dir
+          hostPath:
+            path: /etc/discovery-client/discovery.d
+            type: Directory
       # to enable seamless access to secure private Docker registries (e.g. to
       # `lightbitslabs-docker-lb-docker.bintray.io`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
