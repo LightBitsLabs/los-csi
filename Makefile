@@ -38,6 +38,7 @@ LDFLAGS ?= \
     -X $(PKG_PREFIX)/pkg/driver.version=$(PLUGIN_VER) \
     -X $(PKG_PREFIX)/pkg/driver.versionGitCommit=$(GIT_VER) \
     $(and $(BUILD_HASH), -X $(PKG_PREFIX)/pkg/driver.versionBuildHash=$(BUILD_HASH)) \
+    $(and $(BUILD_ID), -X $(PKG_PREFIX)/pkg/driver.versionBuildID=$(BUILD_ID)) \
     -extldflags "-static"
 override GO_VARS := GOPROXY=off GO111MODULE=on GOFLAGS=-mod=vendor CGO_ENABLED=0
 
@@ -47,7 +48,8 @@ override LABELS := \
     $(and $(BUILD_HASH), --label version.lb-csi.hash="$(BUILD_HASH)") \
     $(and $(NVME_CLI_HASH), --label version.nvme-cli.hash="$(NVME_CLI_HASH)") \
     $(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
-    $(if $(BUILD_HASH),, --label version.lb-csi.build.time=$(BUILD_TIME))
+    $(if $(BUILD_HASH),, --label version.lb-csi.build.time=$(BUILD_TIME)) \
+    $(if $(BUILD_ID), --label version.lb-csi.build.id=$(BUILD_ID),)
 
 YAML_PATH := deploy/k8s
 

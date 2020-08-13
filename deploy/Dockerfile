@@ -7,7 +7,8 @@ LABEL maintainers="Lightbits Labs" \
       version.lb-csi.rel="UNKNOWN" \
       version.lb-csi.git="UNKNOWN" \
       version.lb-csi.build.host="UNKNOWN" \
-      version.lb-csi.build.time="UNKNOWN"
+      version.lb-csi.build.time="UNKNOWN" \
+      version.lb-csi.build.id="UNKNOWN"
 # official builds will also carry the following labels:
 #     version.lb-csi.hash
 #     version.nvme-cli.hash

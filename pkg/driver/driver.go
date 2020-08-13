@@ -39,6 +39,7 @@ var (
 	version          = "0.0.0"
 	versionGitCommit = ""
 	versionBuildHash = ""
+	versionBuildID   = ""
 
 	supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
@@ -54,6 +55,9 @@ func GetFullVersionStr() string {
 	ver := fmt.Sprintf("%s (GitCommit: %s", version, versionGitCommit)
 	if versionBuildHash != "" {
 		ver += fmt.Sprintf(", BuildHash: %s", versionBuildHash)
+	}
+	if versionBuildID != "" {
+		ver += fmt.Sprintf(", BuildID: %s", versionBuildID)
 	}
 	return ver + ")"
 }
@@ -206,11 +210,12 @@ func New(cfg Config) (*Driver, error) {
 	log := logger.WithFields(extraFields)
 
 	log.WithFields(logrus.Fields{
-		"driver-name":  driverName,
-		"config":       fmt.Sprintf("%+v", cfg),
-		"version-rel":  version,
-		"version-git":  versionGitCommit,
-		"version-hash": versionBuildHash,
+		"driver-name":       driverName,
+		"config":            fmt.Sprintf("%+v", cfg),
+		"version-rel":       version,
+		"version-git":       versionGitCommit,
+		"version-hash":      versionBuildHash,
+		"version-build-id":  versionBuildID,
 	}).Info("starting")
 
 	// ok, so this is a bit heavy-handed, but until K8s guys factor it out -
