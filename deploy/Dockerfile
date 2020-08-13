@@ -5,7 +5,9 @@ ARG NVME_CLI_RPM_BASENAME
 LABEL maintainers="Lightbits Labs" \
       description="LB CSI Plugin" \
       version.lb-csi.rel="UNKNOWN" \
-      version.lb-csi.git="UNKNOWN"
+      version.lb-csi.git="UNKNOWN" \
+      version.lb-csi.build.host="UNKNOWN" \
+      version.lb-csi.build.time="UNKNOWN"
 # official builds will also carry the following labels:
 #     version.lb-csi.hash
 #     version.nvme-cli.hash

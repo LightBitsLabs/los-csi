@@ -46,8 +46,8 @@ override LABELS := \
     --label version.lb-csi.git=$(GIT_VER) \
     $(and $(BUILD_HASH), --label version.lb-csi.hash="$(BUILD_HASH)") \
     $(and $(NVME_CLI_HASH), --label version.nvme-cli.hash="$(NVME_CLI_HASH)") \
-    $(if $(BUILD_HASH),, --label build.host="$(BUILD_HOST)") \
-    $(if $(BUILD_HASH),, --label build.time=$(BUILD_TIME))
+    $(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
+    $(if $(BUILD_HASH),, --label version.lb-csi.build.time=$(BUILD_TIME))
 
 YAML_PATH := deploy/k8s
 
