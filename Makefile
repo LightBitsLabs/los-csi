@@ -8,7 +8,8 @@ endif
 # $PLUGIN_NAME/$PLUGIN_VER for that instead:
 override BIN_NAME := lb-csi-plugin
 override DEFAULT_REL := 0.0.0
-override RELEASE := $(or $(shell cat VERSION 2>/dev/null),$(DEFAULT_REL))
+override VERSION_RELEASE := $(or $(shell cat VERSION 2>/dev/null),$(DEFAULT_REL))
+override RELEASE := $(if $(BUILD_ID),$(VERSION_RELEASE).$(BUILD_ID),$(VERSION_RELEASE))
 
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
