@@ -104,3 +104,9 @@ clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
 	@rm -f deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~
 	@git clean -f '*.orig'
+
+image_tag:
+	@echo $(DOCKER_TAG)
+
+full_image_tag:
+	@echo $(DOCKER_REGISTRY)$(DOCKER_TAG)
