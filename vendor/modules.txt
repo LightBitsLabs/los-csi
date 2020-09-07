@@ -9,7 +9,6 @@ github.com/golang/protobuf/protoc-gen-go/descriptor
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
-github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/struct
 github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/protobuf/ptypes/wrappers
@@ -102,5 +101,6 @@ k8s.io/kubernetes/pkg/util/file
 k8s.io/kubernetes/pkg/util/io
 k8s.io/kubernetes/pkg/util/mount
 k8s.io/kubernetes/pkg/util/nsenter
+k8s.io/kubernetes/pkg/util/resizefs
 # k8s.io/utils v0.0.0-20180726175726-66066c83e385
 k8s.io/utils/exec
