@@ -251,3 +251,19 @@ func (d *Driver) validateVolumeCapability(c *csi.VolumeCapability) error {
 
 	return nil
 }
+
+func (d *Driver) nodeExpansionRequired(c *csi.VolumeCapability) bool {
+	accessType := c.GetAccessType()
+	switch volCap := accessType.(type) {
+	case *csi.VolumeCapability_Mount:
+		mntCap := volCap.Mount
+		if mntCap.FsType == "ext4" {
+			return true
+		}
+		return false
+	case *csi.VolumeCapability_Block:
+	default:
+		return false
+	}
+	return false
+}
