@@ -274,7 +274,7 @@ spec:
         - name: init-nvme-tcp
           # if hosting the plugin in a different registry, e.g. a local private
           # Docker registry, modify the image identifier below accordingly:
-          image: __DOCKER_REGISTRY__busybox:1.30.1
+          image: __MISC_DOCKER_REGISTRY__busybox:1.30.1
           command:
           - /bin/sh
           - -c

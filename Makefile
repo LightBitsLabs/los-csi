@@ -92,6 +92,7 @@ package: build $(NVME_CLI_RPM_PATH)
 	        sed -e "s#__DOCKER_REGISTRY__#$(DOCKER_REGISTRY)#" \
 	            -e "s#__DOCKER_TAG__#$(DOCKER_TAG)#" \
 	            -e "s#__SIDECAR_DOCKER_REGISTRY__#$(SIDECAR_DOCKER_REGISTRY)#" \
+	            -e "s#__MISC_DOCKER_REGISTRY__#$(MISC_DOCKER_REGISTRY)#" \
 	            "$${YAML}" > "$${YAML%%.template}" ; \
 	    done ; \
 	else \
