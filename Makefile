@@ -110,3 +110,6 @@ image_tag:
 
 full_image_tag:
 	@echo $(DOCKER_REGISTRY)$(DOCKER_TAG)
+
+generate_bundle:
+	@tar -C deploy --exclude=*.template -czvf build/lb-csi-bundle-$(RELEASE).tar.gz k8s examples
