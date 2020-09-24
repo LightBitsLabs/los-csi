@@ -102,7 +102,7 @@ push: package
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
-	@rm -f deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~
+	@rm -f deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~ build/*
 	@git clean -f '*.orig'
 
 image_tag:
