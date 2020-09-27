@@ -322,15 +322,19 @@ func (d *Driver) NodePublishVolume(
 		"op": "NodePublishVolume",
 	}
 
-	if req.StagingTargetPath == "" {
-		return nil, mkEbadOp("ordering", "staging_target_path",
-			"volume must be staged before publishing")
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		return nil, mkEinval("volume_id", err.Error())
 	}
 	if req.TargetPath == "" {
 		return nil, mkEinvalMissing("target_path")
 	}
 	if err := d.validateVolumeCapability(req.VolumeCapability); err != nil {
 		return nil, err
+	}
+	if req.StagingTargetPath == "" {
+		return nil, mkEbadOp("ordering", "staging_target_path",
+			"volume must be staged before publishing")
 	}
 	if req.Readonly {
 		return nil, mkEinval("readonly", "read-only volumes are not supported")
@@ -346,11 +350,6 @@ func (d *Driver) NodePublishVolume(
 		if podUID, ok := req.VolumeContext["csi.storage.k8s.io/pod.uid"]; ok {
 			logFields["pod-uid"] = podUID
 		}
-	}
-
-	vid, err := ParseCSIVolumeID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
 	}
 
 	logFields["mgmt-ep"] = vid.mgmtEPs
