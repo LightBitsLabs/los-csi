@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -244,6 +245,13 @@ func (d *Driver) DeleteVolume(
 ) (*csi.DeleteVolumeResponse, error) {
 	vid, err := ParseCSIVolumeID(req.VolumeId)
 	if err != nil {
+		if errors.Is(err, ErrMalformed) {
+			d.log.WithFields(logrus.Fields{
+				"op":     "DeleteVolume",
+				"vol-id": req.VolumeId,
+			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		return nil, mkEinval("volume_id", err.Error())
 	}
 
