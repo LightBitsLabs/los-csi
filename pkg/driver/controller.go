@@ -507,9 +507,47 @@ func (d *Driver) ValidateVolumeCapabilities(
 		return nil, mkEinvalMissing("volume_capabilities")
 	}
 
-	// TODO: er... impl?
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		if errors.Is(err, ErrMalformed) {
+			d.log.WithFields(logrus.Fields{
+				"op":     "ValidateVolumeCapabilities",
+				"vol-id": req.VolumeId,
+			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
+			return nil, err
+		}
+		return nil, mkEinval("volume_id", err.Error())
+	}
 
-	return nil, status.Error(codes.Unimplemented, "")
+	log := d.log.WithFields(logrus.Fields{
+		"op":       "ValidateVolumeCapabilities",
+		"mgmt-ep":  vid.mgmtEPs,
+		"vol-uuid": vid.uuid,
+	})
+
+	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
+	if err != nil {
+		return nil, err
+	}
+	defer d.PutLBClient(clnt)
+
+	if _, err := clnt.GetVolume(ctx, vid.uuid); err != nil {
+		if isStatusNotFound(err) {
+			return nil, mkEnoent("volume '%s' doesn't exist", vid)
+		}
+		return nil, d.mungeLBErr(log, err, "failed to get volume '%s' from LB", vid)
+	}
+
+	if err = d.validateVolumeCapabilities(req.VolumeCapabilities); err != nil {
+		return nil, err
+	}
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeContext:      req.VolumeContext,
+			VolumeCapabilities: req.VolumeCapabilities,
+			Parameters:         req.Parameters,
+		},
+	}, nil
 }
 
 func (d *Driver) ListVolumes(
