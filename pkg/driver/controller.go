@@ -36,6 +36,7 @@ var (
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
+		csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 	}
 	capsCache []*csi.ControllerServiceCapability
 )
@@ -566,9 +567,31 @@ func (d *Driver) GetCapacity(
 	ctx context.Context, req *csi.GetCapacityRequest,
 ) (*csi.GetCapacityResponse, error) {
 
-	// TODO: er... impl?
+	if caps := req.GetVolumeCapabilities(); caps != nil {
+		if err := d.validateVolumeCapabilities(caps); err != nil {
+			return nil, err
+		}
+	}
 
-	return nil, status.Error(codes.Unimplemented, "")
+	params, err := ParseCSICreateVolumeParams(req.GetParameters())
+	if err != nil {
+		return nil, err
+	}
+
+	clnt, err := d.GetLBClient(ctx, params.mgmtEPs)
+	if err != nil {
+		return nil, err
+	}
+	defer d.PutLBClient(clnt)
+
+	cluster, err := clnt.GetCluster(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &csi.GetCapacityResponse{
+		AvailableCapacity: int64(cluster.Capacity),
+	}, nil
 }
 
 func (d *Driver) ControllerExpandVolume(
