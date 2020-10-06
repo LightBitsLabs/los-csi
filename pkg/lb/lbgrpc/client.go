@@ -406,6 +406,7 @@ func (c *Client) GetCluster(ctx context.Context) (*lb.Cluster, error) {
 		MaxReplicas:        cluster.SupportedMaxReplicas,
 		DiscoveryEndpoints: cluster.DiscoveryEndpoints,
 		ApiEndpoints:       cluster.ApiEndpoints,
+		Capacity:           cluster.Statistics.GetEstimatedFreeLogicalStorage(),
 	}, nil
 }
 

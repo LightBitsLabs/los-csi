@@ -162,6 +162,7 @@ type Cluster struct {
 	MaxReplicas        uint32
 	DiscoveryEndpoints []string
 	ApiEndpoints       []string
+	Capacity           uint64
 }
 
 type NodeState int32
