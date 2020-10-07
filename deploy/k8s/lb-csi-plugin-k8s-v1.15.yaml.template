@@ -233,7 +233,7 @@ spec:
         - name: socket-dir
           emptyDir: {}
       # to enable seamless access to secure private Docker registries (e.g. to
-      # `lightbitslabs-docker-lb-docker.bintray.io`), create a k8s secret with
+      # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
       # clause here, as an immediate descendant of `spec.template.spec`:
       #imagePullSecrets:
@@ -380,7 +380,7 @@ spec:
             path: /etc/discovery-client/discovery.d
             type: Directory
       # to enable seamless access to secure private Docker registries (e.g. to
-      # `lightbitslabs-docker-lb-docker.bintray.io`), create a k8s secret with
+      # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
       # clause here, as an immediate descendant of `spec.template.spec`:
       #imagePullSecrets:
