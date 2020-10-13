@@ -997,6 +997,12 @@ func (c *Client) doUpdateVolume(
 		log = log.WithField("acl-src", fmt.Sprintf("%#q", lbVol.ACL))
 		log = log.WithField("acl-tgt", fmt.Sprintf("%#q", acl))
 	}
+	if update.Capacity != 0 {
+		required = true
+		req.Size = fmt.Sprintf("%d", update.Capacity)
+		log = log.WithField("capacity-src", fmt.Sprintf("%d", lbVol.Capacity))
+		log = log.WithField("capacity-tgt", fmt.Sprintf("%d", update.Capacity))
+	}
 	if !required {
 		// bug, code not updated to match some newly added lb.VolumeUpdate
 		// field, or the caller goofed and passed an empty request.

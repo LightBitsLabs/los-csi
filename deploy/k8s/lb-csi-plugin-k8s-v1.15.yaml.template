@@ -99,6 +99,48 @@ roleRef:
 
 ---
 
+# RBAC: external-resizer -------------------------
+# Taken from: https://github.com/kubernetes-csi/external-resizer/blob/master/deploy/kubernetes/rbac.yaml
+
+# Resizer must be able to work with PVCs, PVs, SCs.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: external-resizer-runner
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["list", "watch", "create", "update", "patch"]
+
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-resizer-role
+subjects:
+  - kind: ServiceAccount
+    name: lb-csi-ctrl-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: external-resizer-runner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
@@ -175,11 +217,23 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
+        - name: csi-resizer
+          image: __SIDECAR_DOCKER_REGISTRY__/k8scsi/csi-resizer:v0.5.0
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "IfNotPresent"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
       volumes:
         - name: socket-dir
           emptyDir: {}
       # to enable seamless access to secure private Docker registries (e.g. to
-      # `lightbitslabs-docker-lb-docker.bintray.io`), create a k8s secret with
+      # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
       # clause here, as an immediate descendant of `spec.template.spec`:
       #imagePullSecrets:
@@ -326,7 +380,7 @@ spec:
             path: /etc/discovery-client/discovery.d
             type: Directory
       # to enable seamless access to secure private Docker registries (e.g. to
-      # `lightbitslabs-docker-lb-docker.bintray.io`), create a k8s secret with
+      # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
       # clause here, as an immediate descendant of `spec.template.spec`:
       #imagePullSecrets:

@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -8,6 +9,11 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
 	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
+)
+
+var (
+	ErrNotSpecifiedOrEmpty = errors.New("unspecified or empty")
+	ErrMalformed           = errors.New("malformed")
 )
 
 // this file holds the definitions of - and helper functions for handling of -
@@ -159,12 +165,12 @@ func ParseCSIVolumeID(id string) (lbVolumeID, error) {
 	vid := lbVolumeID{}
 
 	if id == "" {
-		return vid, fmt.Errorf("unspecified or empty")
+		return vid, ErrNotSpecifiedOrEmpty
 	}
 
 	idStr := volIDRegex.FindStringSubmatch(id)
 	if len(idStr) != 3 {
-		return vid, fmt.Errorf("'%s' is malformed", id)
+		return vid, fmt.Errorf("bad volume id: '%s', err: %w", id, ErrMalformed)
 	}
 	var err error
 	vid.mgmtEPs, err = endpoint.ParseCSV(idStr[1])
@@ -250,4 +256,20 @@ func (d *Driver) validateVolumeCapability(c *csi.VolumeCapability) error {
 	}
 
 	return nil
+}
+
+func (d *Driver) nodeExpansionRequired(c *csi.VolumeCapability) bool {
+	accessType := c.GetAccessType()
+	switch volCap := accessType.(type) {
+	case *csi.VolumeCapability_Mount:
+		mntCap := volCap.Mount
+		if mntCap.FsType == "ext4" {
+			return true
+		}
+		return false
+	case *csi.VolumeCapability_Block:
+	default:
+		return false
+	}
+	return false
 }

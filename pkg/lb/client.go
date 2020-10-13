@@ -220,8 +220,7 @@ type VolumeUpdate struct {
 	// to clear ACL.
 	ACL []string
 
-	// once we decide to support volume expansion, we can add:
-	// Capacity     uint64
+	Capacity uint64
 }
 
 // VolumeUpdateHook is passed to Client.UpdateVolume(). it will be invoked

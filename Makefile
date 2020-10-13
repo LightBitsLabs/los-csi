@@ -102,7 +102,7 @@ push: package
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
-	@rm -f deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~
+	@rm -f deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~ build/*
 	@git clean -f '*.orig'
 
 image_tag:
@@ -110,3 +110,6 @@ image_tag:
 
 full_image_tag:
 	@echo $(DOCKER_REGISTRY)$(DOCKER_TAG)
+
+generate_bundle:
+	@tar -C deploy --exclude=*.template -czvf build/lb-csi-bundle-$(RELEASE).tar.gz k8s examples

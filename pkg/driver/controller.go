@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -31,6 +32,7 @@ var (
 	controllerCaps = []csi.ControllerServiceCapability_RPC_Type{
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
+		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	}
 	capsCache []*csi.ControllerServiceCapability
 )
@@ -243,6 +245,13 @@ func (d *Driver) DeleteVolume(
 ) (*csi.DeleteVolumeResponse, error) {
 	vid, err := ParseCSIVolumeID(req.VolumeId)
 	if err != nil {
+		if errors.Is(err, ErrMalformed) {
+			d.log.WithFields(logrus.Fields{
+				"op":     "DeleteVolume",
+				"vol-id": req.VolumeId,
+			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
+			return &csi.DeleteVolumeResponse{}, nil
+		}
 		return nil, mkEinval("volume_id", err.Error())
 	}
 
@@ -498,9 +507,47 @@ func (d *Driver) ValidateVolumeCapabilities(
 		return nil, mkEinvalMissing("volume_capabilities")
 	}
 
-	// TODO: er... impl?
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		if errors.Is(err, ErrMalformed) {
+			d.log.WithFields(logrus.Fields{
+				"op":     "ValidateVolumeCapabilities",
+				"vol-id": req.VolumeId,
+			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
+			return nil, err
+		}
+		return nil, mkEinval("volume_id", err.Error())
+	}
 
-	return nil, status.Error(codes.Unimplemented, "")
+	log := d.log.WithFields(logrus.Fields{
+		"op":       "ValidateVolumeCapabilities",
+		"mgmt-ep":  vid.mgmtEPs,
+		"vol-uuid": vid.uuid,
+	})
+
+	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
+	if err != nil {
+		return nil, err
+	}
+	defer d.PutLBClient(clnt)
+
+	if _, err := clnt.GetVolume(ctx, vid.uuid); err != nil {
+		if isStatusNotFound(err) {
+			return nil, mkEnoent("volume '%s' doesn't exist", vid)
+		}
+		return nil, d.mungeLBErr(log, err, "failed to get volume '%s' from LB", vid)
+	}
+
+	if err = d.validateVolumeCapabilities(req.VolumeCapabilities); err != nil {
+		return nil, err
+	}
+	return &csi.ValidateVolumeCapabilitiesResponse{
+		Confirmed: &csi.ValidateVolumeCapabilitiesResponse_Confirmed{
+			VolumeContext:      req.VolumeContext,
+			VolumeCapabilities: req.VolumeCapabilities,
+			Parameters:         req.Parameters,
+		},
+	}, nil
 }
 
 func (d *Driver) ListVolumes(
@@ -525,9 +572,58 @@ func (d *Driver) ControllerExpandVolume(
 	ctx context.Context, req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
 
-	// TODO: er... impl?
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		return nil, mkEinval("volume_id", err.Error())
+	}
 
-	return nil, status.Error(codes.Unimplemented, "")
+	log := d.log.WithFields(logrus.Fields{
+		"op":       "ControllerExpandVolume",
+		"mgmt-ep":  vid.mgmtEPs,
+		"vol-uuid": vid.uuid,
+	})
+
+	requestedCapacity, err := getReqCapacity(req.CapacityRange)
+	if err != nil {
+		return nil, err
+	}
+
+	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
+	if err != nil {
+		return nil, err
+	}
+	defer d.PutLBClient(clnt)
+
+	expandVolumeHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+		log = log.WithFields(logrus.Fields{
+			"capacity-curr":      fmt.Sprintf("%d", vol.Capacity),
+			"capacity-requested": fmt.Sprintf("%d", requestedCapacity),
+		})
+		// If a volume corresponding to the specified volume ID
+		// is already larger than or equal to the target capacity of the expansion request,
+		// the plugin SHOULD reply 0 OK.
+		if requestedCapacity <= vol.Capacity {
+			log.Infof("no further volume expand required")
+			return nil, nil
+		}
+		return &lb.VolumeUpdate{Capacity: requestedCapacity}, nil
+	}
+
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, expandVolumeHook)
+	if err != nil {
+		return nil, err
+	}
+	if vol.Capacity < requestedCapacity {
+		log.WithFields(logrus.Fields{
+			"capacity-exp": fmt.Sprintf("%d", requestedCapacity),
+			"capacity-got": fmt.Sprintf("%d", vol.Capacity),
+		}).Errorf("clnt.UpdateVolume() succeeded, but resultant volume Capacity smaller then requested capacity")
+		return nil, mkEagain("failed to expand volume %q", vid.uuid)
+	}
+	return &csi.ControllerExpandVolumeResponse{
+		CapacityBytes:         int64(vol.Capacity),
+		NodeExpansionRequired: d.nodeExpansionRequired(req.VolumeCapability),
+	}, nil
 }
 
 // --------------------------------------------------------------------------

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/google/uuid"
 	"github.com/lightbitslabs/lb-csi/pkg/lb"
 	"github.com/lightbitslabs/lb-csi/pkg/nvme-of/client/cli"
 	"github.com/lightbitslabs/lb-csi/pkg/util/wait"
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
+	"k8s.io/kubernetes/pkg/util/resizefs"
 )
 
 // lbVolEligible() allows to rule out impossible scenarios early on. it
@@ -78,6 +80,30 @@ func (d *Driver) queryLBforTargetEnv(
 	}
 
 	return res, nil
+}
+
+func (d *Driver) getDevicePath(nguid uuid.UUID) (string, error) {
+
+	client, err := cli.New(d.log) // TODO: make a member of d? otherwise cmd counting is busted!
+	//                               BUT! then it's a failure on plugin startup -> no log to examine!
+	if err != nil {
+		return "", mkInternal("unable to gain control of NVMe-oF on the client "+
+			"(host/initiator) side: %s", err)
+	}
+
+	// apparently it can take a little while between connecting (e.g.
+	// 'nvme connect' successfully returning) and corresponding block
+	// devices actually showing up...
+	devPath := ""
+	err = wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
+		devPath, err = client.GetDevPathByNGUID(nguid)
+		return devPath != "", err
+	})
+	if err != nil || devPath == "" {
+		return "", mkEExec("no local block device for volume %s", nguid)
+	}
+	d.log.Debugf("block device representing volume is: '%s'", devPath)
+	return devPath, nil
 }
 
 // CSI Node service: ---------------------------------------------------------
@@ -183,27 +209,10 @@ func (d *Driver) NodeStageVolume(
 		return nil, d.mungeLBErr(log, err, "failed to create DC file")
 	}
 
-	// touching remote storage for the 1st time: - - - - - - - - - - - - -
-
-	client, err := cli.New(d.log) // TODO: make a member of d? otherwise cmd counting is busted!
-	//                               BUT! then it's a failure on plugin startup -> no log to examine!
+	devPath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
-		return nil, mkInternal("unable to gain control of NVMe-oF on the client "+
-			"(host/initiator) side: %s", err)
+		return nil, err
 	}
-
-	// apparently it can take a little while between connecting (e.g.
-	// 'nvme connect' successfully returning) and corresponding block
-	// devices actually showing up...
-	devPath := ""
-	err = wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
-		devPath, err = client.GetDevPathByNGUID(vid.uuid)
-		return devPath != "", err
-	})
-	if err != nil || devPath == "" {
-		return nil, mkEExec("no local block device for volume %s", vid.uuid)
-	}
-	log.Debugf("block device representing volume is: '%s'", devPath)
 
 	fsType, err := d.mounter.GetDiskFormat(devPath)
 	if err != nil {
@@ -313,15 +322,19 @@ func (d *Driver) NodePublishVolume(
 		"op": "NodePublishVolume",
 	}
 
-	if req.StagingTargetPath == "" {
-		return nil, mkEbadOp("ordering", "staging_target_path",
-			"volume must be staged before publishing")
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		return nil, mkEinval("volume_id", err.Error())
 	}
 	if req.TargetPath == "" {
 		return nil, mkEinvalMissing("target_path")
 	}
 	if err := d.validateVolumeCapability(req.VolumeCapability); err != nil {
 		return nil, err
+	}
+	if req.StagingTargetPath == "" {
+		return nil, mkEbadOp("ordering", "staging_target_path",
+			"volume must be staged before publishing")
 	}
 	if req.Readonly {
 		return nil, mkEinval("readonly", "read-only volumes are not supported")
@@ -337,11 +350,6 @@ func (d *Driver) NodePublishVolume(
 		if podUID, ok := req.VolumeContext["csi.storage.k8s.io/pod.uid"]; ok {
 			logFields["pod-uid"] = podUID
 		}
-	}
-
-	vid, err := ParseCSIVolumeID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
 	}
 
 	logFields["mgmt-ep"] = vid.mgmtEPs
@@ -434,19 +442,24 @@ func (d *Driver) NodeUnpublishVolume(
 func (d *Driver) NodeGetCapabilities(
 	ctx context.Context, req *csi.NodeGetCapabilitiesRequest,
 ) (*csi.NodeGetCapabilitiesResponse, error) {
-	nscap := &csi.NodeServiceCapability{
-		Type: &csi.NodeServiceCapability_Rpc{
-			Rpc: &csi.NodeServiceCapability_RPC{
-				Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+	capabilities := []*csi.NodeServiceCapability{
+		{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+				},
+			},
+		},
+		{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
+				},
 			},
 		},
 	}
 
-	return &csi.NodeGetCapabilitiesResponse{
-		Capabilities: []*csi.NodeServiceCapability{
-			nscap,
-		},
-	}, nil
+	return &csi.NodeGetCapabilitiesResponse{Capabilities: capabilities}, nil
 }
 
 func (d *Driver) NodeGetInfo(
@@ -466,5 +479,40 @@ func (d *Driver) NodeGetVolumeStats(
 func (d *Driver) NodeExpandVolume(
 	ctx context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		return nil, mkEinval("volume_id", err.Error())
+	}
+
+	log := d.log.WithFields(logrus.Fields{
+		"op":       "NodeExpandVolume",
+		"mgmt-ep":  vid.mgmtEPs,
+		"vol-uuid": vid.uuid,
+		"vol-path": req.VolumePath,
+	})
+
+	volumePath := req.GetVolumePath()
+	if len(volumePath) == 0 {
+		return nil, mkEinval("volumePath", "volume path must be provided")
+	}
+
+	reqBytes, err := getReqCapacity(req.CapacityRange)
+	if err != nil {
+		return nil, err
+	}
+
+	devicePath, err := d.getDevicePath(vid.uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	resizer := resizefs.NewResizeFs(d.mounter)
+	resizedOccurred, err := resizer.Resize(devicePath, volumePath)
+	if err != nil {
+		return nil, mkInternal("Could not resize volume %s (%s): %s", vid.uuid, devicePath, err)
+	}
+	log.Infof("resize occurred: %t. device: %q to size %v successfully",
+		resizedOccurred, devicePath, reqBytes)
+	return &csi.NodeExpandVolumeResponse{CapacityBytes: int64(reqBytes)}, nil
 }
