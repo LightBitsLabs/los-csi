@@ -673,18 +673,127 @@ func (d *Driver) ControllerExpandVolume(
 
 // --------------------------------------------------------------------------
 
-// graveyard: support for the below not planned...
+func mkSnapshotResponse(
+	mgmtEPs endpoint.Slice, vid string, snap *lb.Snapshot,
+	ready2use bool, mgmtScheme string,
+) *csi.CreateSnapshotResponse {
+	snapID := lbResourceID{
+		mgmtEPs:  mgmtEPs,
+		uuid:     snap.UUID,
+		projName: snap.ProjectName,
+		scheme:   mgmtScheme,
+	}
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SnapshotId:     snapID.String(),
+			SourceVolumeId: vid,
+			SizeBytes:      int64(snap.Capacity),
+			CreationTime:   snap.CreationTime,
+			ReadyToUse:     ready2use,
+		},
+	}
+}
 
 func (d *Driver) CreateSnapshot(
 	ctx context.Context, req *csi.CreateSnapshotRequest,
 ) (*csi.CreateSnapshotResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+	vid, err := ParseCSIResourceID(req.SourceVolumeId)
+	if err != nil {
+		return nil, mkEinval("SrcVolumeId", err.Error())
+	}
+
+	log := d.log.WithFields(logrus.Fields{
+		"op":            "CreateSnapshot",
+		"mgmt-ep":       vid.mgmtEPs,
+		"snapshot-name": req.Name,
+	})
+
+	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
+	if err != nil {
+		return nil, err
+	}
+	defer d.PutLBClient(clnt)
+
+	ready2use := false
+	// check if a matching snapshot already exists (likely a result of retry from CO):
+	snap, err := clnt.GetSnapshotByName(ctx, req.Name, vid.projName)
+	if err != nil && !isStatusNotFound(err) {
+		// something else went wrong...
+		return nil, err
+	}
+	if err == nil {
+		switch snap.State {
+		case lb.SnapshotAvailable:
+			ready2use = true
+		case lb.SnapshotCreating:
+			ready2use = false
+		default:
+			return nil, mkInternal("snapshot '%s' already exists but is in unexpected "+
+				"state '%s' (%d)", snap.Name, snap.State, snap.State)
+		}
+		log = log.WithField("snap-uuid", snap.UUID)
+	} else {
+		snap, err := clnt.CreateSnapshot(ctx, req.Name, vid.projName, vid.uuid, true)
+		if err != nil {
+			return nil, err // FIXME: assign ready2use = false ?
+		}
+		ready2use = true
+		log.WithField("snap-uuid", snap.UUID).Info("snapshot created")
+	}
+
+	return mkSnapshotResponse(vid.mgmtEPs, req.SourceVolumeId, snap, ready2use, vid.scheme), nil
 }
 
 func (d *Driver) DeleteSnapshot(
 	ctx context.Context, req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+	sid, err := ParseCSIResourceID(req.SnapshotId)
+	if err != nil {
+		return nil, mkEinval("SnapshotID", err.Error())
+	}
+
+	log := d.log.WithFields(logrus.Fields{
+		"op":          "DeleteSnapshot",
+		"mgmt-ep":     sid.mgmtEPs,
+		"snapshot-id": req.SnapshotId,
+	})
+
+	clnt, err := d.GetLBClient(ctx, sid.mgmtEPs, sid.scheme)
+	if err != nil {
+		return nil, err
+	}
+	defer d.PutLBClient(clnt)
+
+	snap, err := clnt.GetSnapshot(ctx, sid.uuid, sid.projName)
+	if err != nil {
+		if isStatusNotFound(err) {
+			log.Info("snapshot already gone")
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+		return nil, mkEagain("failed to get snapshot %s from LB", sid.uuid)
+	}
+
+	switch snap.State {
+	case lb.SnapshotAvailable:
+		// this is really the only one that can and should be deleted.
+	case lb.SnapshotDeleting,
+		lb.SnapshotFailed:
+		log.Info("snapshot effectively already gone")
+		return &csi.DeleteSnapshotResponse{}, nil
+	case lb.SnapshotCreating:
+		return nil, mkEagain("snapshot %s is still being created", snap.UUID)
+	default:
+		return nil, mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
+			snap.Name, snap.UUID.String(), snap.State, snap.State)
+	}
+
+	err = clnt.DeleteSnapshot(ctx, sid.uuid, sid.projName, true)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Info("snapshot deleted")
+	return &csi.DeleteSnapshotResponse{}, nil
 }
 
 func (d *Driver) ListSnapshots(
