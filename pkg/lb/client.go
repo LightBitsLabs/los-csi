@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/protobuf/ptypes/timestamp"
 	guuid "github.com/google/uuid"
 	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
 )
@@ -250,6 +251,49 @@ type VolumeUpdate struct {
 // the local/remote client/server errors and VolumeUpdateHook errors is a
 // consideration.
 type VolumeUpdateHook func(vol *Volume) (update *VolumeUpdate, err error)
+
+type SnapshotState int32
+
+const (
+	SnapshotStateUnknown SnapshotState = 0
+	SnapshotCreating     SnapshotState = 1
+	SnapshotAvailable    SnapshotState = 2
+	SnapshotDeleting     SnapshotState = 3
+	SnapshotDeleted      SnapshotState = 4
+	SnapshotFailed       SnapshotState = 7
+)
+
+func (s SnapshotState) String() string {
+	switch s {
+	case SnapshotCreating:
+		return "creating"
+	case SnapshotAvailable:
+		return "available"
+	case SnapshotDeleting:
+		return "deleting"
+	case SnapshotDeleted:
+		return "deleted"
+	case SnapshotFailed:
+		return "failed"
+	}
+	return "<UNKNOWN>"
+}
+
+type Snapshot struct {
+	// "core" snapshot properties.
+	Name               string
+	UUID               guuid.UUID
+	Capacity           uint64
+	State              SnapshotState
+	SrcVolUUID         guuid.UUID
+	SrcVolName         string
+	SrcVolReplicaCount uint32
+	SrcVolCompression  bool
+	CreationTime       *timestamp.Timestamp
+
+	ETag        string
+	ProjectName string
+}
 
 type Client interface {
 	Close()
