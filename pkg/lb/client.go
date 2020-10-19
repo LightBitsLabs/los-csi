@@ -314,6 +314,9 @@ type Client interface {
 	DeleteVolume(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*Volume, error)
 	GetVolumeByName(ctx context.Context, name string, projectName string) (*Volume, error)
-
 	UpdateVolume(ctx context.Context, uuid guuid.UUID, projectName string, hook VolumeUpdateHook) (*Volume, error)
+	CreateSnapshot(ctx context.Context, name string, projectName string, srcVolUUID guuid.UUID, blocking bool) (*Snapshot, error)
+	DeleteSnapshot(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
+	GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*Snapshot, error)
+	GetSnapshotByName(ctx context.Context, name string, projectName string) (*Snapshot, error) // TODO: allow name repetition for different source volumes
 }

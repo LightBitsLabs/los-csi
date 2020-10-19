@@ -1134,3 +1134,252 @@ func (c *Client) UpdateVolume(
 	}
 	return lbVol, nil
 }
+
+func (c *Client) getSnapshot(
+	ctx context.Context, name *string, uuid *guuid.UUID, projectName string,
+) (*lb.Snapshot, error) {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+
+	req := mgmt.GetSnapshotRequest{}
+	if name != nil {
+		req.Name = *name
+	}
+	if uuid != nil {
+		req.UUID = uuid.String()
+	}
+
+	// TODO add projectName for multi-tenancy support
+	snap, err := c.clnt.GetSnapshot(ctx, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.lbSnapshotFromGRPC(snap, name, uuid)
+}
+
+func (c *Client) GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Snapshot, error) {
+	return c.getSnapshot(ctx, nil, &uuid, projectName)
+}
+
+func (c *Client) GetSnapshotByName(ctx context.Context, name string, projectName string) (*lb.Snapshot, error) {
+	return c.getSnapshot(ctx, &name, nil, projectName)
+}
+
+func (c *Client) CreateSnapshot(
+	ctx context.Context, name string, projectName string,
+	srcVolUUID guuid.UUID, blocking bool,
+) (*lb.Snapshot, error) {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+
+	snap, err := c.clnt.CreateSnapshot(
+		ctx,
+		&mgmt.CreateSnapshotRequest{
+			Name:             name,
+			SourceVolumeUUID: srcVolUUID.String(),
+			Description:      "K8S Snapshot: Volume UUID: " + srcVolUUID.String(),
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	lbSnap, err := c.lbSnapshotFromGRPC(snap, &name, nil)
+	if err != nil {
+		return nil, err
+	}
+	uuid := lbSnap.UUID
+
+	log := c.log.WithFields(logrus.Fields{
+		"snap-name": lbSnap.Name,
+		"snap-uuid": lbSnap.UUID,
+	})
+
+	switch lbSnap.State {
+	case lb.SnapshotDeleting,
+		lb.SnapshotFailed:
+		log.Warnf("LB snapshot creation returned volume in unexpected state '%s' (%d)",
+			lbSnap.State, lbSnap.State)
+		return nil, status.Errorf(codes.Internal,
+			"LB created snapshot '%s' in inappropriate state '%s' (%d)",
+			name, lbSnap.State, lbSnap.State)
+	case lb.SnapshotCreating:
+		if blocking {
+			break
+		}
+		fallthrough
+	case lb.SnapshotAvailable:
+		return lbSnap, nil
+	default:
+		return nil, status.Errorf(codes.Internal, "LB created snapshot '%s' in unexpected "+
+			"state '%s' (%d) that's not handled by the client yet",
+			name, lbSnap.State, lbSnap.State)
+	}
+
+	// upon caller's request, wait for the snapshot to be fully created:
+	err = wait.WithExponentialBackoff(CreateRetryOpts, func() (bool, error) {
+		if err := ctx.Err(); err != nil {
+			return false, grpcutil.ErrFromCtxErr(err)
+		}
+
+		lbSnap, err = c.GetSnapshot(ctx, uuid, projectName)
+		if err != nil {
+			return false, err
+		}
+
+		if srcVolUUID != lbSnap.SrcVolUUID {
+			return false, status.Errorf(codes.Internal,
+				"LB snapshot source volume UUID mismatch (srcVolUUID=%s, snapshot.srcVolUUID=%s",
+				srcVolUUID, lbSnap.SrcVolUUID)
+		}
+
+		switch lbSnap.State {
+		case lb.SnapshotCreating:
+			// play it again, Sam...
+			return false, nil
+		case lb.SnapshotDeleting:
+			// FIXME: if we return ReadyToUse == false, this race is impossible?
+			return false, status.Errorf(codes.Aborted,
+				"snapshot appears to have been deleted in parallel")
+		case lb.SnapshotFailed:
+			log.Warnf("got bad snapshot from LB after create: '%s' is in state %s (%d)",
+				name, lbSnap.State, lbSnap.State)
+			return false, status.Errorf(codes.Unavailable,
+				"LB failed to create volume '%s', try again later", name)
+		case lb.SnapshotAvailable:
+			return true, nil
+		default:
+			return false, status.Errorf(codes.Internal,
+				"snapshot '%s' entered unexpected state while waiting for it "+
+					"to be created: %s (%d)", name, lbSnap.State, lbSnap.State)
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return lbSnap, nil
+}
+
+func (c *Client) DeleteSnapshot(
+	ctx context.Context, uuid guuid.UUID, projectName string, blocking bool,
+) error {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+
+	_, err := c.clnt.DeleteSnapshot(
+		ctx,
+		&mgmt.DeleteSnapshotRequest{
+			UUID: uuid.String(),
+		},
+	)
+	if err != nil || !blocking {
+		return err
+	}
+
+	err = wait.WithExponentialBackoff(DeleteRetryOpts, func() (bool, error) {
+		if err := ctx.Err(); err != nil {
+			return false, grpcutil.ErrFromCtxErr(err)
+		}
+
+		lbSnap, err := c.GetSnapshot(ctx, uuid, projectName)
+		if err != nil {
+			if isStatusNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+
+		log := c.log.WithFields(logrus.Fields{
+			"snap-name": lbSnap.Name,
+			"snap-uuid": lbSnap.UUID,
+		})
+
+		switch lbSnap.State {
+		case lb.SnapshotAvailable:
+			return false, nil
+		case lb.SnapshotCreating:
+			log.Warnf("got snapshot in unexpected state from LB after delete: %s (%d)",
+				lbSnap.State, lbSnap.State)
+			return false, status.Errorf(codes.Unavailable,
+				"LB failed to delete snapshot '%s', try again later", lbSnap.Name)
+		case lb.SnapshotFailed:
+			log.Warnf("got snapshot in unexpected state from LB after delete: %s (%d)",
+				lbSnap.State, lbSnap.State)
+			fallthrough
+		case lb.SnapshotDeleting:
+			return true, nil
+		default:
+			return false, status.Errorf(codes.Internal,
+				"snapshot '%s' entered unexpected state while waiting for it to be "+
+					"deleted: %s (%d)", lbSnap.Name, lbSnap.State, lbSnap.State)
+		}
+	})
+	return err
+}
+
+func lbSnapshotStateFromGRPC(c mgmt.Snapshot_StateEnum) lb.SnapshotState {
+	return lb.SnapshotState(c)
+}
+
+// lbSnapshotFromGRPC converted from lbVolumeFromGRPC.
+func (c *Client) lbSnapshotFromGRPC(
+	snap *mgmt.Snapshot, name *string, uuid *guuid.UUID,
+) (*lb.Snapshot, error) {
+	if snap == nil {
+		return nil, status.Errorf(codes.Internal,
+			"got <nil> snap from LB with no error")
+	}
+	if snap.Name == "" {
+		return nil, status.Errorf(codes.Internal,
+			"got bad snapshot from LB: it has invalid empty name")
+	}
+	if name != nil && snap.Name != *name {
+		return nil, status.Errorf(codes.Internal,
+			"got wrong snap from LB: '%s' instead of '%s'",
+			snap.Name, *name)
+	}
+
+	snapUUID, err := guuid.Parse(snap.UUID)
+	if err != nil || snapUUID == guuid.Nil {
+		return nil, status.Errorf(codes.Internal,
+			"got bad snapshot from LB: '%s' has invalid UUID '%s'", snap.Name, snap.UUID)
+	}
+	if uuid != nil && snapUUID != *uuid {
+		return nil, status.Errorf(codes.Internal,
+			"got wrong snapshot '%s' from LB: UUID %s instead of %s",
+			snap.Name, snap.UUID, *uuid)
+	}
+	SrcVolUUID, err := guuid.Parse(snap.SourceVolumeUUID)
+	if err != nil || SrcVolUUID == guuid.Nil {
+		return nil, status.Errorf(codes.Internal,
+			"got bad snapshot from LB: '%s' has invalid SrcVolUUID '%s'",
+			snap.Name, snap.SourceVolumeUUID)
+	}
+
+	switch snap.State {
+	case mgmt.Snapshot_Creating,
+		mgmt.Snapshot_Available,
+		mgmt.Snapshot_Deleting,
+		mgmt.Snapshot_Failed:
+	default:
+		return nil, status.Errorf(codes.Internal,
+			"got bad snapshot from LB: '%s' has unexpected state '%s' (%d)",
+			snap.Name, snap.State, snap.State)
+	}
+
+	return &lb.Snapshot{
+		Name:               snap.Name,
+		UUID:               snapUUID,
+		Capacity:           snap.Size,
+		SrcVolUUID:         SrcVolUUID,
+		SrcVolName:         snap.SourceVolumeName,
+		SrcVolReplicaCount: snap.ReplicaCount,
+		SrcVolCompression:  snap.Compression,
+		CreationTime:       snap.CreationTime,
+		State:              lbSnapshotStateFromGRPC(snap.State),
+		ETag:               snap.ETag,
+		ProjectName:        "default", // TODO: get real project name for multi-tenancy support
+	}, nil
+}
