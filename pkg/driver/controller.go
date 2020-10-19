@@ -38,6 +38,7 @@ var (
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 		csi.ControllerServiceCapability_RPC_GET_CAPACITY,
+		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 	}
 	capsCache []*csi.ControllerServiceCapability
 )
