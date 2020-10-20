@@ -641,7 +641,7 @@ func cloneCtxWithETag(ctx context.Context, eTag string) context.Context {
 
 func (c *Client) CreateVolume(
 	ctx context.Context, name string, capacity uint64, replicaCount uint32,
-	compress bool, acl []string, blocking bool,
+	compress bool, acl []string, projectName string, blocking bool, // TODO: refactor options
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -665,6 +665,7 @@ func (c *Client) CreateVolume(
 			Acl:          &mgmt.StringList{Values: acl},
 			Compression:  strconv.FormatBool(compress),
 			ReplicaCount: replicaCount,
+			ProjectName:  projectName,
 		},
 	)
 	if err != nil {

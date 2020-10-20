@@ -86,7 +86,8 @@ type Volume struct {
 	State      VolumeState
 	Protection VolumeProtection
 
-	ETag string
+	ETag        string
+	ProjectName string
 }
 
 func (v *Volume) IsAccessible() bool {
@@ -252,7 +253,8 @@ type Client interface {
 	ListNodes(ctx context.Context) ([]*Node, error)
 
 	CreateVolume(ctx context.Context, name string, capacity uint64,
-		replicaCount uint32, compress bool, acl []string, blocking bool,
+		replicaCount uint32, compress bool, acl []string,
+		projectName string, blocking bool, // TODO: refactor options
 	) (*Volume, error)
 	DeleteVolume(ctx context.Context, uuid guuid.UUID, blocking bool) error
 	GetVolume(ctx context.Context, uuid guuid.UUID) (*Volume, error)

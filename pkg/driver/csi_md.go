@@ -40,6 +40,7 @@ const (
 	volParMgmtEPKey   = "mgmt-endpoint"
 	volParRepCntKey   = "replica-count"
 	volParCompressKey = "compression"
+	volParProjNameKey = "project-name"
 )
 
 // lbCreateVolumeParams represents the contents of the `parameters` field
@@ -54,16 +55,24 @@ const (
 // that must include:
 //     mgmt-endpoint: <host>:<port>[,<host>:port>...]
 //     replica-count: <num-replicas>
-// and may optionally include (if omitted - the default is "disabled"):
+// may optionally include (if omitted - the default is "disabled"):
 //     compression: <"enabled"|"disabled">
+// and may optionally include (if omitted - the default is empty string - ""):
+//     project-name: <valid-project-name>
 // e.g.:
 //     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
 //     replica-count: 2
 //     compression: enabled
+//     project-name: proj-3
 type lbCreateVolumeParams struct {
 	mgmtEPs      endpoint.Slice // LightOS mgmt API server endpoints.
 	replicaCount uint32         // total number of volume replicas.
 	compression  bool           // whether compression is enabled.
+	projectName  string         // project name.
+}
+
+func volParKey(key string) string {
+	return volParRoot + "." + key
 }
 
 // ParseCSICreateVolumeParams parses the `parameters` K:V map passed to
@@ -71,7 +80,6 @@ type lbCreateVolumeParams struct {
 // is only valid if the returned error is 'nil'.
 func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams, error) {
 	res := lbCreateVolumeParams{}
-	volParKey := func(key string) string { return volParRoot + "." + key }
 	var err error
 
 	key := volParKey(volParMgmtEPKey)
@@ -105,6 +113,17 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		return res, mkEinval(key, params[volParCompressKey])
 	}
 
+	key = volParKey(volParProjNameKey)
+	if projectName, ok := params[volParProjNameKey]; !ok {
+		res.projectName = ""
+	} else {
+		proj := projNameRegex.FindString(projectName)
+		if len(proj) == 0 {
+			return res, mkEinval(key, params[volParProjNameKey])
+		}
+		res.projectName = projectName
+	}
+
 	return res, nil
 }
 
@@ -113,8 +132,11 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 // volIDRegex is used for initial syntactic validation of lbVolumeID
 // as serialised into a string.
 var volIDRegex *regexp.Regexp
+var projNameRegex *regexp.Regexp
 
 func init() {
+	projNameRegex = regexp.MustCompile(`^[a-z0-9-\.]{1,63}$`)
+
 	volIDRegex = regexp.MustCompile(
 		`^mgmt:([^|]+)\|` +
 			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`)

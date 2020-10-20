@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
+	"github.com/stretchr/testify/require"
 )
 
 var goodIDs = []string{
@@ -165,6 +167,63 @@ func TestParseCSIVolumeId(t *testing.T) {
 			id%19, id%41, id%127, id%256, id%65535, nguid)
 		t.Run("rndGood:"+rndGoodID, func(t *testing.T) {
 			checkGood(t, i, rndGoodID, nguid)
+		})
+	}
+}
+
+func TestParseCSICreateVolumeParams(t *testing.T) {
+	testCases := []struct {
+		name   string
+		params map[string]string
+		err    error
+		result lbCreateVolumeParams
+	}{
+		{
+			name: "good params",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "3",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "system",
+			},
+			err: nil,
+			result: lbCreateVolumeParams{
+				mgmtEPs:      endpoint.Slice{endpoint.MustParse("1.2.3.4:80")},
+				replicaCount: 3,
+				compression:  false,
+				projectName:  "system",
+			},
+		},
+		{
+			name: "project name too long",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "3",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "system-8787878787878787878787878787878787878787884957438758435783958435784375893457483",
+			},
+			err: mkEinval(volParKey(volParProjNameKey), "system-8787878787878787878787878787878787878787884957438758435783958435784375893457483"),
+		},
+		{
+			name: "replica count not a number",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "s",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "proj-1",
+			},
+			err: mkEinvalf(volParKey(volParRepCntKey), "'%s'", "s"),
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := ParseCSICreateVolumeParams(tc.params)
+			if tc.err != nil {
+				require.EqualError(t, err, tc.err.Error(), "expected err")
+			} else {
+				require.NoError(t, err, "failed to parse")
+				require.Equal(t, tc.result, resp, "should match")
+			}
 		})
 	}
 }

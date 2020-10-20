@@ -184,7 +184,7 @@ func (d *Driver) doCreateVolume(
 	} else {
 		// nope, no such luck. just create one:
 		vol, err = clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
-			req.Compression, req.ACL, true)
+			req.Compression, req.ACL, req.ProjectName, true) // TODO: blocking opt
 		if err != nil {
 			// TODO: convert to status!
 			return nil, err
@@ -230,12 +230,15 @@ func (d *Driver) CreateVolume(
 		return nil, err
 	}
 
+	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+
 	vol, err := d.doCreateVolume(ctx, params.mgmtEPs, lb.Volume{
 		Name:         req.Name,
 		Capacity:     capacity,
 		ReplicaCount: params.replicaCount,
 		Compression:  params.compression,
 		ACL:          []string{lb.ACLAllowNone},
+		ProjectName:  params.projectName,
 	})
 	if err != nil {
 		return nil, err

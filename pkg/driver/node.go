@@ -570,6 +570,7 @@ func (d *Driver) NodeExpandVolume(
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
 		"vol-path": req.VolumePath,
+		"project":  vid.projName,
 	})
 
 	volumePath := req.GetVolumePath()
