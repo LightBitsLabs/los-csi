@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	guuid "github.com/google/uuid"
 	"github.com/lightbitslabs/lb-csi/pkg/lb"
 	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
 	"github.com/lightbitslabs/lb-csi/pkg/util/strlist"
@@ -185,9 +186,43 @@ func (d *Driver) doCreateVolume(
 			log.Info("volume already exists")
 		}
 	} else {
+		if req.SnapshotUUID != guuid.Nil {
+			lbSnap, err := clnt.GetSnapshot(ctx, req.SnapshotUUID, req.ProjectName)
+			if err != nil {
+				return nil, mkInternal("unable to get snapshot %s", req.SnapshotUUID.String())
+			}
+
+			switch lbSnap.State {
+			case lb.SnapshotAvailable:
+				// this is the only one that should permit volume creation.
+			case lb.SnapshotDeleting,
+				lb.SnapshotFailed:
+				return nil, mkInternal("snapshot '%s' (%s) is in state '%s' (%d)",
+					lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
+			case lb.SnapshotCreating:
+				return nil, mkEagain("snapshot %s is still being created", lbSnap.UUID)
+			default:
+				return nil, mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
+					lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
+			}
+
+			if req.ReplicaCount != lbSnap.SrcVolReplicaCount {
+				return nil, mkEinvalf("volume %s requested replicaCount %d != snapshot replicaCount %d",
+					req.Name, req.ReplicaCount, lbSnap.SrcVolReplicaCount)
+			}
+			if req.Compression != lbSnap.SrcVolCompression {
+				return nil, mkEinvalf("volume %s requested compression %d != snapshot compression %d",
+					req.Name, req.Compression, lbSnap.SrcVolCompression)
+			}
+			if req.Capacity < lbSnap.Capacity {
+				return nil, mkEinvalf("volume %s requested size %d < snapshot %s size %d",
+					req.Name, req.Capacity, lbSnap.Capacity)
+			}
+		}
+
 		// nope, no such luck. just create one:
 		vol, err = clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
-			req.Compression, req.ACL, req.ProjectName, true) // TODO: blocking opt
+			req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, true) // TODO: blocking opt
 		if err != nil {
 			// TODO: convert to status!
 			return nil, err
@@ -207,11 +242,6 @@ func (d *Driver) CreateVolume(
 ) (*csi.CreateVolumeResponse, error) {
 	if req.Name == "" {
 		return nil, mkEinvalMissing("name")
-	}
-
-	if req.VolumeContentSource != nil {
-		return nil, mkEinval("volume_content_source",
-			"volumes prepopulation is not supported")
 	}
 
 	if req.AccessibilityRequirements != nil {
@@ -235,6 +265,23 @@ func (d *Driver) CreateVolume(
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 
+	snapshotID := guuid.UUID{}
+	if req.VolumeContentSource != nil {
+		contentSource := req.GetVolumeContentSource()
+		if contentSource.GetVolume() != nil {
+			return nil, mkEinval("volume_content_source",
+				"VolumeContentSource_Volume is not supported")
+		}
+
+		// VolumeContentSource_Snapshot
+		snap := contentSource.GetSnapshot()
+		sid, err := ParseCSIResourceID(snap.SnapshotId)
+		if err != nil {
+			return nil, mkEinval("SnapshotID", err.Error())
+		}
+		snapshotID = sid.uuid
+	}
+
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
 		lb.Volume{
 			Name:         req.Name,
@@ -242,11 +289,13 @@ func (d *Driver) CreateVolume(
 			ReplicaCount: params.replicaCount,
 			Compression:  params.compression,
 			ACL:          []string{lb.ACLAllowNone},
+			SnapshotUUID: snapshotID,
 			ProjectName:  params.projectName,
 		})
 	if err != nil {
 		return nil, err
 	}
+	vol.Volume.ContentSource = req.GetVolumeContentSource()
 
 	return vol, nil
 }

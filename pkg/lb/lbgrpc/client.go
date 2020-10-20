@@ -684,7 +684,7 @@ func cloneCtxWithETag(ctx context.Context, eTag string) context.Context {
 
 func (c *Client) CreateVolume(
 	ctx context.Context, name string, capacity uint64, replicaCount uint32,
-	compress bool, acl []string, projectName string, blocking bool, // TODO: refactor options
+	compress bool, acl []string, projectName string, snapshotID guuid.UUID, blocking bool, // TODO: refactor options
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -700,17 +700,20 @@ func (c *Client) CreateVolume(
 		acl = []string{lb.ACLAllowNone}
 	}
 
-	vol, err := c.clnt.CreateVolume(
-		ctx,
-		&mgmt.CreateVolumeRequest{
-			Name:         name,
-			Size:         capStr,
-			Acl:          &mgmt.StringList{Values: acl},
-			Compression:  strconv.FormatBool(compress),
-			ReplicaCount: replicaCount,
-			ProjectName:  projectName,
-		},
-	)
+	req := mgmt.CreateVolumeRequest{
+		Name:         name,
+		Size:         capStr,
+		Acl:          &mgmt.StringList{Values: acl},
+		Compression:  strconv.FormatBool(compress),
+		ReplicaCount: replicaCount,
+		ProjectName:  projectName,
+	}
+	if snapshotID != guuid.Nil {
+		req.SourceSnapshotUUID = snapshotID.String()
+		c.log.Debugf("creating volume %s from source snapshot uuid: %s",
+			req.Name, req.SourceSnapshotUUID)
+	}
+	vol, err := c.clnt.CreateVolume(ctx, &req)
 	if err != nil {
 		return nil, err
 	}

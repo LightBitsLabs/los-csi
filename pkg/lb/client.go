@@ -81,6 +81,7 @@ type Volume struct {
 	ReplicaCount uint32
 	Capacity     uint64
 	Compression  bool
+	SnapshotUUID guuid.UUID
 
 	ACL []string
 
@@ -152,6 +153,10 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 		var b2s = map[bool]string{false: "disabled", true: "enabled"}
 		diffs.and("%scompression is %s while the %s volume has compression %s",
 			lDescr, b2s[v.Compression], rDescr, b2s[other.Compression])
+	}
+	if v.SnapshotUUID != other.SnapshotUUID {
+		diffs.and("%sVolume %s source snapshot %s differs from the %s volume source snapshot %s",
+			lDescr, v.Name, v.SnapshotUUID, rDescr, other.SnapshotUUID)
 	}
 
 	return diffs
@@ -308,8 +313,7 @@ type Client interface {
 	ListNodes(ctx context.Context) ([]*Node, error)
 
 	CreateVolume(ctx context.Context, name string, capacity uint64,
-		replicaCount uint32, compress bool, acl []string,
-		projectName string, blocking bool, // TODO: refactor options
+		replicaCount uint32, compress bool, acl []string, projectName string, snapshotID guuid.UUID, blocking bool, // TODO: refactor options
 	) (*Volume, error)
 	DeleteVolume(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*Volume, error)
