@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package lightbits.api.duros.v1;
+package lightbits.api.duros.v2;
 
-option go_package = "duros;durospb";
+option go_package = "durosv2;durospb";
 
 
 ///////////////////////////////////////

@@ -42,7 +42,7 @@ const (
 
 var (
 	supportedAPIVersions = []string{
-		"1.0.0",
+		"v2.0",
 	}
 
 	CreateRetryOpts = wait.Backoff{
