@@ -106,8 +106,9 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 
 func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume) *csi.CreateVolumeResponse {
 	volID := lbVolumeID{
-		mgmtEPs: mgmtEPs,
-		uuid:    vol.UUID,
+		mgmtEPs:  mgmtEPs,
+		uuid:     vol.UUID,
+		projName: vol.ProjectName,
 	}
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -124,6 +125,7 @@ func (d *Driver) doCreateVolume(
 		"op":       "CreateVolume",
 		"mgmt-ep":  mgmtEPs,
 		"vol-name": req.Name,
+		"project":  req.ProjectName,
 	})
 
 	clnt, err := d.GetLBClient(ctx, mgmtEPs)
@@ -191,7 +193,7 @@ func (d *Driver) doCreateVolume(
 		}
 		log.WithField("vol-uuid", vol.UUID).Info("volume created")
 	}
-
+	vol.ProjectName = req.ProjectName
 	return mkVolumeResponse(mgmtEPs, vol), nil
 }
 
@@ -254,8 +256,9 @@ func (d *Driver) DeleteVolume(
 	if err != nil {
 		if errors.Is(err, ErrMalformed) {
 			d.log.WithFields(logrus.Fields{
-				"op":     "DeleteVolume",
-				"vol-id": req.VolumeId,
+				"op":      "DeleteVolume",
+				"vol-id":  req.VolumeId,
+				"project": vid.projName,
 			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
 			return &csi.DeleteVolumeResponse{}, nil
 		}
@@ -266,6 +269,7 @@ func (d *Driver) DeleteVolume(
 		"op":       "DeleteVolume",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
+		"project":  vid.projName,
 	})
 
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
@@ -346,6 +350,7 @@ func (d *Driver) ControllerPublishVolume(
 		"op":       "ControllerPublishVolume",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
+		"project":  vid.projName,
 	})
 
 	if err := checkNodeID(req.NodeId); err != nil {
@@ -438,6 +443,7 @@ func (d *Driver) ControllerUnpublishVolume(
 		"op":       "ControllerUnpublishVolume",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
+		"project":  vid.projName,
 	})
 
 	if err := checkNodeID(req.NodeId); err != nil {
@@ -518,8 +524,9 @@ func (d *Driver) ValidateVolumeCapabilities(
 	if err != nil {
 		if errors.Is(err, ErrMalformed) {
 			d.log.WithFields(logrus.Fields{
-				"op":     "ValidateVolumeCapabilities",
-				"vol-id": req.VolumeId,
+				"op":      "ValidateVolumeCapabilities",
+				"vol-id":  req.VolumeId,
+				"project": vid.projName,
 			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
 			return nil, mkEnoent("volume_id", err.Error())
 		}
@@ -530,6 +537,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 		"op":       "ValidateVolumeCapabilities",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
+		"project":  vid.projName,
 	})
 
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
@@ -610,6 +618,7 @@ func (d *Driver) ControllerExpandVolume(
 		"op":       "ControllerExpandVolume",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
+		"project":  vid.projName,
 	})
 
 	requestedCapacity, err := getReqCapacity(req.CapacityRange)

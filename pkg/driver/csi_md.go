@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
@@ -139,7 +140,8 @@ func init() {
 
 	volIDRegex = regexp.MustCompile(
 		`^mgmt:([^|]+)\|` +
-			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$`)
+			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
+			`(\|proj:[a-z0-9-\.]{1,63})?$`)
 }
 
 // lbVolumeID represents the contents of the `volume_id` field
@@ -151,7 +153,7 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>
+//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>|proj=<proj>
 // where:
 //    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
 //            volume. can be a hostname or an IP address. more than one
@@ -163,9 +165,13 @@ func init() {
 //    <nguid>   - volume NGUID (see NVMe spec, Identify NS Data Structure)
 //            in its "canonical", 36-character long, RFC-4122 compliant string
 //            representation.
+//    <proj>    - project name on LightOS cluster. this field is OPTIONAL, in
+//			  which case the cluster is configured with multi-tenancy disabled.
 // e.g.:
 //   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66
 //   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj=p1
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj=project-4
 //
 // TODO: the CSI spec mandates that strings "SHALL NOT" exceed 128 bytes.
 // K8s is more lenient (at least 253 bytes, likely more). in any case, with
@@ -173,14 +179,18 @@ func init() {
 // be guaranteed to be supported. anything beyond that is at the mercy of
 // the CO implementors (and user network admins assigning IP ranges)...
 type lbVolumeID struct {
-	mgmtEPs endpoint.Slice // LightOS mgmt API server endpoints.
-	uuid    guuid.UUID     // NVMe "Identify NS Data Structure".
+	mgmtEPs  endpoint.Slice // LightOS mgmt API server endpoints.
+	uuid     guuid.UUID     // NVMe "Identify NS Data Structure".
+	projName string
 }
 
 // String generates the string representation of lbVolumeID that will be
 // passed back and forth between the CO and this plugin.
 func (vid lbVolumeID) String() string {
 	res := fmt.Sprintf("mgmt:%s|nguid:%s", vid.mgmtEPs, vid.uuid)
+	if len(vid.projName) > 0 {
+		res += fmt.Sprintf("|proj:%s", vid.projName)
+	}
 	return res
 }
 
@@ -195,7 +205,7 @@ func ParseCSIVolumeID(id string) (lbVolumeID, error) {
 	}
 
 	idStr := volIDRegex.FindStringSubmatch(id)
-	if len(idStr) != 3 {
+	if len(idStr) != 4 {
 		return vid, fmt.Errorf("bad volume id: '%s', err: %w", id, ErrMalformed)
 	}
 	var err error
@@ -209,6 +219,14 @@ func ParseCSIVolumeID(id string) (lbVolumeID, error) {
 		return vid, fmt.Errorf("'%s' has invalid NGUID: %s", id, err)
 	} else if vid.uuid == guuid.Nil {
 		return vid, fmt.Errorf("'%s' has invalid nil NGUID", id)
+	}
+	// extract proj part, can be empty
+	if idStr[3] != "" {
+		splitted := strings.Split(idStr[3], ":")
+		if len(splitted) != 2 {
+			return vid, fmt.Errorf("'%s' has invalid projName", idStr[3])
+		}
+		vid.projName = splitted[1]
 	}
 	return vid, nil
 }

@@ -137,6 +137,7 @@ func (d *Driver) NodeStageVolume(
 		"op":       "NodeStageVolume",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
+		"project":  vid.projName,
 	})
 
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
@@ -407,8 +408,6 @@ func (d *Driver) NodePublishVolume(
 	logFields := logrus.Fields{
 		"op": "NodePublishVolume",
 	}
-	logFields["mgmt-ep"] = vid.mgmtEPs
-	logFields["vol-uuid"] = vid.uuid
 	if req.VolumeContext != nil {
 		if podName, ok := req.VolumeContext["csi.storage.k8s.io/pod.name"]; ok {
 			logFields["pod-name"] = podName
@@ -420,6 +419,10 @@ func (d *Driver) NodePublishVolume(
 			logFields["pod-uid"] = podUID
 		}
 	}
+
+	logFields["mgmt-ep"] = vid.mgmtEPs
+	logFields["vol-uuid"] = vid.uuid
+	logFields["project"] = vid.projName
 	log := d.log.WithFields(logFields)
 
 	if req.StagingTargetPath == "" {

@@ -23,6 +23,15 @@ var goodIDs = []string{
 	"mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:3",
+	"mgmt:1.2.3.4:80|nguid:6BB32FB5-99AA-4A4C-A4E7-30B7787BBD66|proj:proj3",
+	"mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:v3.4",
+	"mgmt:1.0.0.1:80,1.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:r-n-d",
+	"mgmt:lb01.net:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:r.n.d-12-06-78",
+	"mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:abababababababbabababababba",
+	"mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:aaa",
+	"mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:bbb",
 }
 
 var badIDs = []string{
@@ -114,6 +123,12 @@ var badIDs = []string{
 	"mgmt:lb01.net:80, ,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:lb01.net:80,x,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66'); DROP TABLE Students;--",
+
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|project:",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj=123",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66||proj:proj1 ",
 }
 
 func TestParseCSIVolumeId(t *testing.T) {
