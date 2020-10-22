@@ -16,6 +16,7 @@ require (
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/pflag v1.0.5
 	google.golang.org/genproto v0.0.0-20191114150713-6bbd007550de
+	github.com/stretchr/testify v1.2.2
 	google.golang.org/grpc v1.29.1
 	k8s.io/apimachinery v0.0.0-20181108192626-90473842928c
 	k8s.io/kubernetes v1.11.10
