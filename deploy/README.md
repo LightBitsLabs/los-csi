@@ -8,9 +8,12 @@ The following is the content of the `lb-csi-bundle-<version>.tar.gz`:
 .
 ├── examples
 │   ├── example-sc.yaml
-│   ├── pod
+│   ├── pod-fs
 │   │   ├── example-fs-pod.yaml
 │   │   └── example-fs-pvc.yaml
+│   ├── pod-block
+│   │   ├── example-block-pod.yaml
+│   │   └── example-block-pvc.yaml
 │   └── stateful-set
 │       └── example-sts.yaml
 ├── k8s
@@ -174,7 +177,7 @@ spec:
       storage: 10Gi
 ```
 
-Example file can be found at: [example-fs-pvc.yaml](examples/pod/example-fs-pvc.yaml)
+Example file can be found at: [example-fs-pvc.yaml](examples/pod-fs/example-fs-pvc.yaml)
 
 To create the PVC, run:
 
@@ -212,7 +215,7 @@ spec:
       claimName: "example-fs-pvc"
 ```
 
-Example file can be found at: [example-fs-pod.yaml](examples/pod/example-fs-pod.yaml)
+Example file can be found at: [example-fs-pod.yaml](examples/pod-fs/example-fs-pod.yaml)
 
 To create the POD, run:
 
