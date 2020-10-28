@@ -6,23 +6,22 @@ The following is the content of the `lb-csi-bundle-<version>.tar.gz`:
 
 ```bash
 .
+├── deploy
+│   └── k8s
+│       ├── lb-csi-plugin-k8s-v1.13.yaml
+│       └── lb-csi-plugin-k8s-v1.15.yaml
 ├── examples
-│   ├── example-sc.yaml
-│   ├── pod-fs
-│   │   ├── example-fs-pod.yaml
-│   │   └── example-fs-pvc.yaml
-│   ├── pod-block
-│   │   ├── example-block-pod.yaml
-│   │   └── example-block-pvc.yaml
-│   └── stateful-set
-│       └── example-sts.yaml
-├── k8s
-    ├── lb-csi-plugin-k8s-v1.13.yaml
-    └── lb-csi-plugin-k8s-v1.15.yaml
+│   └── k8s
+│       ├── example-sc.yaml
+│       ├── pod-fs
+│       │   ├── example-fs-pod.yaml
+│       │   └── example-fs-pvc.yaml
+│       └── stateful-set
+│           └── example-sts.yaml
 ```
 
-* **k8s:** Files to deploy LightOS CSI Plugin
-* **examples:** Examples of workloads that use LightOS CSI Plugin.
+* **deploy/k8s:** Files to deploy LightOS CSI Plugin on kubernetes
+* **examples/k8s:** Examples of kubernetes workloads that use LightOS CSI Plugin.
 
 ## Configure LightOS CSI Plugin Deployment
 
@@ -113,7 +112,7 @@ parameters:
   compression: disabled
 ```
 
-Example file can be found at: [example-sc.yaml](examples/example-sc.yaml)
+Example file can be found at: [example-sc.yaml](../examples/example-sc.yaml)
 
 To create the StorageClass, run:
 
@@ -141,7 +140,7 @@ For instance, to configure a StatefulSet to provide its pods with `10GiB` persis
           storage: 10Gi
 ```
 
-An example Kubernetes spec of StatefulSet to create several simple busybox-based pods that use PVs from an “example-sc” StorageClass is provided in the file [example-sts.yaml](examples/stateful-set/example-sts.yaml) of the Supplementary Package
+An example Kubernetes spec of StatefulSet to create several simple busybox-based pods that use PVs from an “example-sc” StorageClass is provided in the file [example-sts.yaml](../examples/stateful-set/example-sts.yaml) of the Supplementary Package
 
 To create the StatefulSet, run:
 
@@ -177,7 +176,7 @@ spec:
       storage: 10Gi
 ```
 
-Example file can be found at: [example-fs-pvc.yaml](examples/pod-fs/example-fs-pvc.yaml)
+Example file can be found at: [example-fs-pvc.yaml](../examples/pod-fs/example-fs-pvc.yaml)
 
 To create the PVC, run:
 
@@ -215,7 +214,7 @@ spec:
       claimName: "example-fs-pvc"
 ```
 
-Example file can be found at: [example-fs-pod.yaml](examples/pod-fs/example-fs-pod.yaml)
+Example file can be found at: [example-fs-pod.yaml](../examples/pod-fs/example-fs-pod.yaml)
 
 To create the POD, run:
 
