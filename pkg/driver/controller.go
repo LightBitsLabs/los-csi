@@ -135,7 +135,7 @@ func (d *Driver) doCreateVolume(
 	defer d.PutLBClient(clnt)
 
 	// check if a matching volume already exists (likely a result of retry from CO):
-	vol, err := clnt.GetVolumeByName(ctx, req.Name)
+	vol, err := clnt.GetVolumeByName(ctx, req.Name, req.ProjectName)
 	if err != nil && !isStatusNotFound(err) {
 		// TODO: convert to status!
 		return nil, err
@@ -290,7 +290,7 @@ func (d *Driver) DeleteVolume(
 	// cluster-side problems from malformed params, etc. hence the below...
 
 	// maybe it's already gone:
-	vol, err := clnt.GetVolume(ctx, vid.uuid)
+	vol, err := clnt.GetVolume(ctx, vid.uuid, vid.projName)
 	if err != nil {
 		if isStatusNotFound(err) {
 			log.Info("volume already gone")
@@ -328,7 +328,7 @@ func (d *Driver) DeleteVolume(
 	// user data loss...
 
 	// oh, well, just delete it:
-	err = clnt.DeleteVolume(ctx, vol.UUID, true)
+	err = clnt.DeleteVolume(ctx, vol.UUID, vid.projName, true)
 	if err != nil {
 		// TODO: examine and convert the error if necessary:
 		return nil, err
@@ -414,7 +414,7 @@ func (d *Driver) ControllerPublishVolume(
 			strings.Join(nodes, "', '"))
 	}
 
-	vol, err := clnt.UpdateVolume(ctx, vid.uuid, publishVolumeHook)
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, publishVolumeHook)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +488,7 @@ func (d *Driver) ControllerUnpublishVolume(
 		return nil, nil
 	}
 
-	vol, err := clnt.UpdateVolume(ctx, vid.uuid, unpublishVolumeHook)
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, unpublishVolumeHook)
 	if err != nil {
 		if isStatusNotFound(err) {
 			log.Info("volume is already gone, unpublishing is irrelevant")
@@ -546,7 +546,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 	}
 	defer d.PutLBClient(clnt)
 
-	if _, err := clnt.GetVolume(ctx, vid.uuid); err != nil {
+	if _, err := clnt.GetVolume(ctx, vid.uuid, vid.projName); err != nil {
 		if isStatusNotFound(err) {
 			return nil, mkEnoent("volume '%s' doesn't exist", vid)
 		}
@@ -647,7 +647,7 @@ func (d *Driver) ControllerExpandVolume(
 		return &lb.VolumeUpdate{Capacity: requestedCapacity}, nil
 	}
 
-	vol, err := clnt.UpdateVolume(ctx, vid.uuid, expandVolumeHook)
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, expandVolumeHook)
 	if err != nil {
 		return nil, err
 	}

@@ -733,7 +733,7 @@ func (c *Client) CreateVolume(
 			return false, grpcutil.ErrFromCtxErr(err)
 		}
 
-		lbVol, err = c.GetVolume(ctx, uuid)
+		lbVol, err = c.GetVolume(ctx, uuid, projectName)
 		if err != nil {
 			return false, err
 		}
@@ -803,7 +803,7 @@ func isStatusNotFound(err error) bool {
 }
 
 func (c *Client) DeleteVolume(
-	ctx context.Context, uuid guuid.UUID, blocking bool,
+	ctx context.Context, uuid guuid.UUID, projectName string, blocking bool, // TODO: refactor options
 ) error {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -812,6 +812,7 @@ func (c *Client) DeleteVolume(
 		ctx,
 		&mgmt.DeleteVolumeRequest{
 			UUID: uuid.String(),
+			ProjectName: projectName,
 		},
 	)
 	if err != nil || !blocking {
@@ -826,7 +827,7 @@ func (c *Client) DeleteVolume(
 			return false, grpcutil.ErrFromCtxErr(err)
 		}
 
-		lbVol, err := c.GetVolume(ctx, uuid)
+		lbVol, err := c.GetVolume(ctx, uuid, projectName)
 		if err != nil {
 			if isStatusNotFound(err) {
 				return true, nil
@@ -874,7 +875,7 @@ func (c *Client) DeleteVolume(
 }
 
 func (c *Client) getVolume(
-	ctx context.Context, name *string, uuid *guuid.UUID,
+	ctx context.Context, name *string, uuid *guuid.UUID, projectName *string,
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -882,6 +883,9 @@ func (c *Client) getVolume(
 	req := mgmt.GetVolumeRequest{}
 	if name != nil {
 		req.Name = *name
+	}
+	if projectName != nil {
+		req.ProjectName = *projectName
 	}
 	if uuid != nil {
 		req.UUID = uuid.String()
@@ -894,12 +898,12 @@ func (c *Client) getVolume(
 	return c.lbVolumeFromGRPC(vol, name, uuid)
 }
 
-func (c *Client) GetVolume(ctx context.Context, uuid guuid.UUID) (*lb.Volume, error) {
-	return c.getVolume(ctx, nil, &uuid)
+func (c *Client) GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Volume, error) {
+	return c.getVolume(ctx, nil, &uuid, &projectName)
 }
 
-func (c *Client) GetVolumeByName(ctx context.Context, name string) (*lb.Volume, error) {
-	return c.getVolume(ctx, &name, nil)
+func (c *Client) GetVolumeByName(ctx context.Context, name string, projectName string) (*lb.Volume, error) {
+	return c.getVolume(ctx, &name, nil, &projectName)
 }
 
 // doUpdateVolume() implements a single cycle of GetVolume() -> patch ->
@@ -909,7 +913,7 @@ func (c *Client) GetVolumeByName(ctx context.Context, name string) (*lb.Volume, 
 // errors that it returns otherwise are gRPC status errors suitable for
 // direct passthrough to the callers.
 func (c *Client) doUpdateVolume(
-	ctx context.Context, uuid guuid.UUID, hook lb.VolumeUpdateHook,
+	ctx context.Context, uuid guuid.UUID, projectName string, hook lb.VolumeUpdateHook,
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -925,7 +929,7 @@ func (c *Client) doUpdateVolume(
 			"failed to %s volume %s %s LB: %s", op, uuid, prep, err)
 	}
 
-	lbVol, err := c.GetVolume(ctx, uuid)
+	lbVol, err := c.GetVolume(ctx, uuid, projectName)
 	if err != nil {
 		st, ok := status.FromError(err)
 		if !ok {
@@ -993,6 +997,7 @@ func (c *Client) doUpdateVolume(
 
 	req := mgmt.UpdateVolumeRequest{
 		UUID: uuid.String(),
+		ProjectName: projectName,
 	}
 	required := false
 	if update.ACL != nil {
@@ -1067,7 +1072,7 @@ func (c *Client) doUpdateVolume(
 // retrying on codes.Unavailable, concurrent racing updates, etc.) internally,
 // but delegates the higher-level application logic to the `hook`.
 func (c *Client) UpdateVolume(
-	ctx context.Context, uuid guuid.UUID, hook lb.VolumeUpdateHook,
+	ctx context.Context, uuid guuid.UUID, projectName string, hook lb.VolumeUpdateHook,
 ) (*lb.Volume, error) {
 	var lbVol *lb.Volume
 	err := wait.WithExponentialBackoff(UpdateRetryOpts, func() (bool, error) {
@@ -1076,7 +1081,7 @@ func (c *Client) UpdateVolume(
 			return false, grpcutil.ErrFromCtxErr(err)
 		}
 
-		lbVol, err = c.doUpdateVolume(ctx, uuid, hook)
+		lbVol, err = c.doUpdateVolume(ctx, uuid, projectName, hook)
 		return err == nil && lbVol != nil, err
 	})
 

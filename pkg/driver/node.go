@@ -30,7 +30,7 @@ import (
 func (d *Driver) lbVolEligible(
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbVolumeID,
 ) error {
-	vol, err := clnt.GetVolume(ctx, vid.uuid)
+	vol, err := clnt.GetVolume(ctx, vid.uuid, vid.projName)
 	if err != nil {
 		if isStatusNotFound(err) {
 			return mkEnoent("volume '%s' doesn't exist", vid)

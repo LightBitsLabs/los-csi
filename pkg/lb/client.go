@@ -256,9 +256,9 @@ type Client interface {
 		replicaCount uint32, compress bool, acl []string,
 		projectName string, blocking bool, // TODO: refactor options
 	) (*Volume, error)
-	DeleteVolume(ctx context.Context, uuid guuid.UUID, blocking bool) error
-	GetVolume(ctx context.Context, uuid guuid.UUID) (*Volume, error)
-	GetVolumeByName(ctx context.Context, name string) (*Volume, error)
+	DeleteVolume(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
+	GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*Volume, error)
+	GetVolumeByName(ctx context.Context, name string, projectName string) (*Volume, error)
 
-	UpdateVolume(ctx context.Context, uuid guuid.UUID, hook VolumeUpdateHook) (*Volume, error)
+	UpdateVolume(ctx context.Context, uuid guuid.UUID, projectName string, hook VolumeUpdateHook) (*Volume, error)
 }

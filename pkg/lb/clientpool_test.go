@@ -219,13 +219,14 @@ func (c *fakeClient) ListNodes(ctx context.Context) ([]*lb.Node, error) {
 
 func (c *fakeClient) CreateVolume(
 	ctx context.Context, name string, capacity uint64,
-	replicaCount uint32, compress bool, acl []string, blocking bool,
+	replicaCount uint32, compress bool, acl []string,
+	projectName string, blocking bool, // TODO: refactor options
 ) (*lb.Volume, error) {
 	return nil, nil
 }
 
 func (c *fakeClient) DeleteVolume(
-	ctx context.Context, uuid guuid.UUID, blocking bool,
+	ctx context.Context, uuid guuid.UUID, projectName string, blocking bool,
 ) error {
 	return nil
 }
@@ -234,12 +235,12 @@ func (c *fakeClient) GetVolume(ctx context.Context, uuid guuid.UUID) (*lb.Volume
 	return nil, nil
 }
 
-func (c *fakeClient) GetVolumeByName(ctx context.Context, name string) (*lb.Volume, error) {
+func (c *fakeClient) GetVolumeByName(ctx context.Context, name string, projectName string) (*lb.Volume, error) {
 	return nil, nil
 }
 
 func (c *fakeClient) UpdateVolume(
-	ctx context.Context, uuid guuid.UUID, hook lb.VolumeUpdateHook,
+	ctx context.Context, uuid guuid.UUID, projectName string, hook lb.VolumeUpdateHook,
 ) (*lb.Volume, error) {
 	return nil, nil
 }
