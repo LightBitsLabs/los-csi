@@ -1,3 +1,6 @@
+// Copyright (C) 2016--2020 Lightbits Labs Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 package grpcutil
 
 import (
