@@ -317,52 +317,18 @@ func (d *Driver) NodeUnstageVolume(
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
-// TODO: see the wonderful mandated error codes table covering NodePublishVolume
-// return value semantics... (NOT currently implemented that way!)
-func (d *Driver) NodePublishVolume(
-	ctx context.Context, req *csi.NodePublishVolumeRequest,
+func (d *Driver) nodePublishVolumeForBlock(
+	vid lbVolumeID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
+	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
-	logFields := logrus.Fields{
-		"op": "NodePublishVolume",
-	}
+	// TODO - add block volumes support
+	return &csi.NodePublishVolumeResponse{}, status.Error(codes.Unimplemented, "")
+}
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
-	}
-	if req.TargetPath == "" {
-		return nil, mkEinvalMissing("target_path")
-	}
-	if err := d.validateVolumeCapability(req.VolumeCapability); err != nil {
-		return nil, err
-	}
-	if req.StagingTargetPath == "" {
-		return nil, mkEbadOp("ordering", "staging_target_path",
-			"volume must be staged before publishing")
-	}
-
-	if req.VolumeContext != nil {
-		if podName, ok := req.VolumeContext["csi.storage.k8s.io/pod.name"]; ok {
-			logFields["pod-name"] = podName
-		}
-		if podNS, ok := req.VolumeContext["csi.storage.k8s.io/pod.namespace"]; ok {
-			logFields["pod-ns"] = podNS
-		}
-		if podUID, ok := req.VolumeContext["csi.storage.k8s.io/pod.uid"]; ok {
-			logFields["pod-uid"] = podUID
-		}
-	}
-
-	logFields["mgmt-ep"] = vid.mgmtEPs
-	logFields["vol-uuid"] = vid.uuid
-	log := d.log.WithFields(logFields)
-
-	// TODO: check capabilities, block-vs-mount, flags, mode, etc.
-	vid = vid
-
-	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
-	defer d.bdl.Unlock()
-
+func (d *Driver) nodePublishVolumeForFileSystem(
+	vid lbVolumeID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
+	mountOptions []string,
+) (*csi.NodePublishVolumeResponse, error) {
 	// ALLEGEDLY, both StagingTargetPath and tgtPath are supposed to exist
 	// by this point in time, and i THINK i can see kubelet doing it
 	// before calling us...
@@ -399,17 +365,72 @@ func (d *Driver) NodePublishVolume(
 	}
 
 	// if not yet - do it manually:
-	opts := []string{"bind"}
-	if req.GetReadonly() {
-		log.Debugf("Publish as ReadOnly")
-		opts = append(opts, "ro")
-	}
-	err = d.mounter.Mount(stagingPath, tgtPath, "", opts)
+	err = d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
 		return nil, mkEExec("failed to bind mount: %s", err)
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+// TODO: see the wonderful mandated error codes table covering NodePublishVolume
+// return value semantics... (NOT currently implemented that way!)
+func (d *Driver) NodePublishVolume(
+	ctx context.Context, req *csi.NodePublishVolumeRequest,
+) (*csi.NodePublishVolumeResponse, error) {
+	vid, err := ParseCSIVolumeID(req.VolumeId)
+	if err != nil {
+		return nil, mkEinval("volume_id", err.Error())
+	}
+
+	logFields := logrus.Fields{
+		"op": "NodePublishVolume",
+	}
+	logFields["mgmt-ep"] = vid.mgmtEPs
+	logFields["vol-uuid"] = vid.uuid
+	if req.VolumeContext != nil {
+		if podName, ok := req.VolumeContext["csi.storage.k8s.io/pod.name"]; ok {
+			logFields["pod-name"] = podName
+		}
+		if podNS, ok := req.VolumeContext["csi.storage.k8s.io/pod.namespace"]; ok {
+			logFields["pod-ns"] = podNS
+		}
+		if podUID, ok := req.VolumeContext["csi.storage.k8s.io/pod.uid"]; ok {
+			logFields["pod-uid"] = podUID
+		}
+	}
+	log := d.log.WithFields(logFields)
+
+	if req.StagingTargetPath == "" {
+		return nil, mkEbadOp("ordering", "staging_target_path",
+			"volume must be staged before publishing")
+	}
+	if req.TargetPath == "" {
+		return nil, mkEinvalMissing("target_path")
+	}
+	if err := d.validateVolumeCapability(req.VolumeCapability); err != nil {
+		return nil, err
+	}
+	volCap := req.GetVolumeCapability()
+	// TODO: check capabilities, flags, mode, etc.
+
+	mountOptions := []string{"bind"}
+	if req.GetReadonly() {
+		log.Debugf("Publish as ReadOnly")
+		mountOptions = append(mountOptions, "ro")
+	}
+
+	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
+	defer d.bdl.Unlock()
+
+	switch volCap.GetAccessType().(type) {
+	case *csi.VolumeCapability_Block:
+		return d.nodePublishVolumeForBlock(vid, log, req, mountOptions)
+	case *csi.VolumeCapability_Mount:
+		return d.nodePublishVolumeForFileSystem(vid, log, req, mountOptions)
+	default:
+		return nil, mkEinval("volume capability", "unknown volume capability")
+	}
 }
 
 func (d *Driver) NodeUnpublishVolume(
