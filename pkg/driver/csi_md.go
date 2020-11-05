@@ -1,4 +1,5 @@
 // Copyright (C) 2016--2020 Lightbits Labs Ltd.
+// Copyright (C) 2020 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
 package driver
@@ -248,9 +249,6 @@ func (d *Driver) validateVolumeCapability(c *csi.VolumeCapability) error {
 				"custom mount flags are not supported")
 		}
 	case *csi.VolumeCapability_Block:
-		// TODO: consider adding raw block volume support. till then...
-		return mkEinval("volume_capability.block",
-			"raw block volumes are not supported")
 	case nil:
 		return mkEinvalMissing("volume_capability.access_type")
 	default:
