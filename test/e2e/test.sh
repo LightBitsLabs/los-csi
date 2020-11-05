@@ -85,6 +85,7 @@ DriverInfo:
     exec: true
     controllerExpansion: true
     nodeExpansion: true
+    block: true
 EOF
     dbg "Generated $TESTDIR/storage-class.yaml:"
     [ "$VERBOSE" = "true" ] && cat $TESTDIR/storage-class.yaml
