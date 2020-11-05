@@ -329,13 +329,13 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	vid lbVolumeID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
-	// ALLEGEDLY, both StagingTargetPath and tgtPath are supposed to exist
-	// by this point in time, and i THINK i can see kubelet doing it
-	// before calling us...
-
 	stagingPath := req.StagingTargetPath
-	// for idempotency - start in reverse order:
 	tgtPath := req.TargetPath
+	if err := os.MkdirAll(tgtPath, 0750); err != nil {
+		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
+	}
+
+	// for idempotency - start in reverse order:
 	notMnt, err := d.mounter.IsNotMountPoint(tgtPath)
 	if os.IsNotExist(err) {
 		return nil, mkEinvalf("target_path", "'%s' doesn't exist", tgtPath)
