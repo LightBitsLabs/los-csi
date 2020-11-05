@@ -132,13 +132,6 @@ func (d *Driver) NodeStageVolume(
 		return nil, mkEinval("volume_id", err.Error())
 	}
 
-	// currently we don't support raw block volumes, so grab for FS directly:
-	mntCap := req.VolumeCapability.GetMount()
-	if mntCap == nil {
-		return nil, mkEinvalMissing("volume_capability.mount")
-	}
-	wantFSType := mntCap.FsType
-
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "NodeStageVolume",
 		"mgmt-ep":  vid.mgmtEPs,
@@ -218,6 +211,16 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	if req.VolumeCapability.GetBlock() != nil {
+		// block volume - we are done for now.
+		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	mntCap := req.VolumeCapability.GetMount()
+	if mntCap == nil {
+		return nil, mkEinvalMissing("volume_capability.mount")
+	}
+	wantFSType := mntCap.FsType
 	fsType, err := d.mounter.GetDiskFormat(devPath)
 	if err != nil {
 		return nil, mkEExec("error examining format of volume %s", vid.uuid)
@@ -321,8 +324,37 @@ func (d *Driver) nodePublishVolumeForBlock(
 	vid lbVolumeID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
-	// TODO - add block volumes support
-	return &csi.NodePublishVolumeResponse{}, status.Error(codes.Unimplemented, "")
+	target := req.GetTargetPath()
+	source, err := d.getDevicePath(vid.uuid)
+	if err != nil {
+		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
+	}
+
+	// TODO add idempotency support
+
+	// Create the mount point as a file since bind mount device node requires it to be a file
+	log.Debugf("Creating target file %s", target)
+	err = d.mounter.MakeFile(target)
+	if err != nil {
+		if removeErr := os.Remove(target); removeErr != nil {
+			return &csi.NodePublishVolumeResponse{},
+				status.Errorf(codes.Internal, "Could not remove mount target %q: %v", target, removeErr)
+		}
+		return &csi.NodePublishVolumeResponse{},
+			status.Errorf(codes.Internal, "Could not create file %q: %v", target, err)
+	}
+
+	log.Debugf("bind-mount %s at %s", source, target)
+	if err := d.mounter.Mount(source, target, "", mountOptions); err != nil {
+		if removeErr := os.Remove(target); removeErr != nil {
+			return &csi.NodePublishVolumeResponse{},
+				status.Errorf(codes.Internal, "Could not remove mount target %q: %v", target, removeErr)
+		}
+		return &csi.NodePublishVolumeResponse{},
+			status.Errorf(codes.Internal, "Could not mount %q at %q: %v", source, target, err)
+	}
+
+	return &csi.NodePublishVolumeResponse{}, nil
 }
 
 func (d *Driver) nodePublishVolumeForFileSystem(
