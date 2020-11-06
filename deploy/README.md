@@ -13,6 +13,9 @@ The following is the content of the `lb-csi-bundle-<version>.tar.gz`:
 ├── examples
 │   └── k8s
 │       ├── example-sc.yaml
+│       ├── pod-block
+│       │   ├── example-block-pod.yaml
+│       │   └── example-block-pvc.yaml
 │       ├── pod-fs
 │       │   ├── example-fs-pod.yaml
 │       │   └── example-fs-pvc.yaml
