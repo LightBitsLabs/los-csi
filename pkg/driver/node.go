@@ -394,9 +394,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 		return nil, mkEExec("can't examine target path: %s", err)
 	}
 	if !notMnt {
-		// TODO: we really need something like `findmnt -J` here, to
-		// spot the bind-mounts!
-		dev, _, err := mount.GetDeviceNameFromMount(d.mounter, tgtPath)
+		dev, err := getDeviceNameFromMount(tgtPath)
 		if err != nil {
 			log.Debugf("failed to find what's mounted at '%s': %s", tgtPath, err)
 		}
