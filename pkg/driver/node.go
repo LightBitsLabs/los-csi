@@ -386,35 +386,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
 
-	// for idempotency - start in reverse order:
-	notMnt, err := d.mounter.IsNotMountPoint(tgtPath)
-	if os.IsNotExist(err) {
-		return nil, mkEinvalf("target_path", "'%s' doesn't exist", tgtPath)
-	} else if err != nil {
-		return nil, mkEExec("can't examine target path: %s", err)
-	}
-	if !notMnt {
-		dev, err := getDeviceNameFromMount(tgtPath)
-		if err != nil {
-			log.Debugf("failed to find what's mounted at '%s': %s", tgtPath, err)
-		}
-
-		// TODO: WARNING: if for some reason `nvme disconnect` (or its moral
-		// equivalent) affecting the target in question happened at some point
-		// before this, the FS remains *MOUNTED* there, just in a broken state,
-		// obviously (EIO on most accesses), so this code will just say
-		// "'/dev/nvme0n1' is already mounted at '<blah-staging-path>'", but
-		// will NOT actually remount anything (as it probably should have!)
-		// and return success instead, keeping the volume in a totally
-		// inaccessible state, and repeating the same silliness on retries! */
-
-		log.Debugf("'%s' is already mounted at '%s'", dev, tgtPath)
-
-		return &csi.NodePublishVolumeResponse{}, nil
-	}
-
-	// if not yet - do it manually:
-	err = d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
+	err := d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
 		return nil, mkEExec("failed to bind mount: %s", err)
 	}
@@ -472,6 +444,36 @@ func (d *Driver) NodePublishVolume(
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 
+	// for idempotency - start in reverse order:
+	if _, err := os.Stat(req.TargetPath); err == nil {
+		notMnt, err := d.mounter.IsNotMountPoint(req.TargetPath)
+		if os.IsNotExist(err) {
+			return nil, mkEinvalf("target_path", "'%s' doesn't exist", req.TargetPath)
+		} else if err != nil {
+			return nil, mkEExec("can't examine target path: %s", err)
+		}
+		if !notMnt {
+			dev, err := getDeviceNameFromMount(req.TargetPath)
+			if err != nil {
+				log.Debugf("failed to find what's mounted at '%s': %s", req.TargetPath, err)
+			}
+
+			// TODO: WARNING: if for some reason `nvme disconnect` (or its moral
+			// equivalent) affecting the target in question happened at some point
+			// before this, the FS remains *MOUNTED* there, just in a broken state,
+			// obviously (EIO on most accesses), so this code will just say
+			// "'/dev/nvme0n1' is already mounted at '<blah-staging-path>'", but
+			// will NOT actually remount anything (as it probably should have!)
+			// and return success instead, keeping the volume in a totally
+			// inaccessible state, and repeating the same silliness on retries! */
+
+			log.Debugf("'%s' is already mounted at '%s'", dev, req.TargetPath)
+
+			return &csi.NodePublishVolumeResponse{}, nil
+		}
+	}
+
+	// if not yet - do it manually:
 	switch volCap.GetAccessType().(type) {
 	case *csi.VolumeCapability_Block:
 		return d.nodePublishVolumeForBlock(vid, log, req, mountOptions)
