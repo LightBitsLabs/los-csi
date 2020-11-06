@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/dell/gofsutil"
 	"github.com/google/uuid"
 	"github.com/lightbitslabs/lb-csi/pkg/lb"
 	"github.com/lightbitslabs/lb-csi/pkg/nvme-of/client/cli"
@@ -355,6 +356,24 @@ func (d *Driver) nodePublishVolumeForBlock(
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+func getDeviceNameFromMount(tgtPath string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	info, err := gofsutil.GetMounts(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	for _, m := range info {
+		if tgtPath == m.Path {
+			return m.Device, nil
+		}
+	}
+
+	return "", mkEinvalf("Failed to find device for tgtPath", "'%s'", tgtPath)
 }
 
 func (d *Driver) nodePublishVolumeForFileSystem(
