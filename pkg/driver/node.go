@@ -512,6 +512,10 @@ func (d *Driver) NodeUnpublishVolume(
 		}
 	}
 
+	if err = os.RemoveAll(tgtPath); err != nil {
+		return nil, mkEExec("failed to remove '%s': %s", tgtPath, err)
+	}
+
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
