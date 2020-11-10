@@ -1,4 +1,5 @@
 // Copyright (C) 2016--2020 Lightbits Labs Ltd.
+// Copyright (C) 2020 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
 package driver
@@ -339,9 +340,6 @@ func (d *Driver) NodePublishVolume(
 		return nil, mkEbadOp("ordering", "staging_target_path",
 			"volume must be staged before publishing")
 	}
-	if req.Readonly {
-		return nil, mkEinval("readonly", "read-only volumes are not supported")
-	}
 
 	if req.VolumeContext != nil {
 		if podName, ok := req.VolumeContext["csi.storage.k8s.io/pod.name"]; ok {
@@ -402,7 +400,10 @@ func (d *Driver) NodePublishVolume(
 
 	// if not yet - do it manually:
 	opts := []string{"bind"}
-	// TODO: append opts from RO/volCaps as necessary
+	if req.GetReadonly() {
+		log.Debugf("Publish as ReadOnly")
+		opts = append(opts, "ro")
+	}
 	err = d.mounter.Mount(stagingPath, tgtPath, "", opts)
 	if err != nil {
 		return nil, mkEExec("failed to bind mount: %s", err)
