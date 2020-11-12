@@ -66,7 +66,7 @@ type ClientPoolOptions struct {
 	ReapCycle time.Duration
 }
 
-type DialFunc func(context.Context, endpoint.Slice) (Client, error)
+type DialFunc func(context.Context, endpoint.Slice, string) (Client, error)
 
 // ClientPool maintains a pool of long-lived LB clients that can be reused
 // across individual RPC invocations to avoid connection/authentication
@@ -235,8 +235,8 @@ func (cp *ClientPool) reaper() {
 // of these GetClient() invocations may not wait until it's done, and time
 // out or get cancelled prematurely. in that case the resultant client will
 // still end up in the pool.
-func (cp *ClientPool) dial(targets endpoint.Slice, pm *poolMember) {
-	clnt, err := cp.dialer(pm.dialCtx, targets)
+func (cp *ClientPool) dial(targets endpoint.Slice, mgmtScheme string, pm *poolMember) {
+	clnt, err := cp.dialer(pm.dialCtx, targets, mgmtScheme)
 	pm.mu.Lock()
 	if err != nil {
 		clnt = nil // in case dialer was silly...
@@ -271,7 +271,7 @@ func (cp *ClientPool) dial(targets endpoint.Slice, pm *poolMember) {
 //
 // clients obtained from the pool using GetClient() must be returned to the
 // pool using PutClient() once the caller is done using them.
-func (cp *ClientPool) GetClient(ctx context.Context, targets endpoint.Slice) (Client, error) {
+func (cp *ClientPool) GetClient(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (Client, error) {
 	if !targets.IsValid() {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"invalid target endpoints specified: [%s]", targets)
@@ -299,7 +299,7 @@ retry:
 		cp.dialWG.Add(1)
 		go func() {
 			defer cp.dialWG.Done()
-			cp.dial(targets, pm)
+			cp.dial(targets, mgmtScheme, pm)
 		}()
 	}
 	cp.mu.Unlock()

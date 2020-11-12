@@ -138,9 +138,11 @@ func (d *Driver) NodeStageVolume(
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
 		"project":  vid.projName,
+		"scheme":   vid.scheme,
 	})
 
-	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs)
+	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err
 	}

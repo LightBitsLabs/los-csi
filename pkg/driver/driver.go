@@ -231,8 +231,8 @@ func New(cfg Config) (*Driver, error) {
 		Exec:      mount.NewOsExec(),
 	}
 
-	lbdialer := func(ctx context.Context, targets endpoint.Slice) (lb.Client, error) {
-		return lbgrpc.Dial(ctx, log, targets)
+	lbdialer := func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+		return lbgrpc.Dial(ctx, log, targets, mgmtScheme)
 	}
 
 	return &Driver{
@@ -313,8 +313,8 @@ func (d *Driver) mungeLBErr(
 // GetLBClient conjures up a functional LB mgmt API client by whatever means
 // necessary. the errors it returns are gRPC-grade and can be returned directly
 // to the remote CSI API clients.
-func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice) (lb.Client, error) {
-	clnt, err := d.lbclients.GetClient(ctx, mgmtEPs)
+func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+	clnt, err := d.lbclients.GetClient(ctx, mgmtEPs, mgmtScheme)
 	if err != nil {
 		msg := fmt.Sprintf("failed to connect to LBs at '%s': %s", mgmtEPs, err.Error())
 		st, ok := status.FromError(err)

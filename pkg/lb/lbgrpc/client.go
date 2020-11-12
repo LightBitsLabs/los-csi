@@ -5,6 +5,7 @@ package lbgrpc
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -209,7 +211,7 @@ type Client struct {
 // longer than the actual operation context timeout (as opposed to the `ctx`
 // passed here) - `DeadlineExceeded` will be returned as usual, and the caller
 // can retry the operation.
-func Dial(ctx context.Context, log *logrus.Entry, targets endpoint.Slice) (*Client, error) {
+func Dial(ctx context.Context, log *logrus.Entry, targets endpoint.Slice, mgmtScheme string) (*Client, error) {
 	if !targets.IsValid() {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"invalid target endpoints specified: [%s]", targets)
@@ -270,7 +272,6 @@ func Dial(ctx context.Context, log *logrus.Entry, targets endpoint.Slice) (*Clie
 	lbr := newLbResolver(log, scheme, res.eps)
 
 	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
 		grpc.WithBlock(),
 		grpc.WithDisableRetry(),
 		grpc.WithUserAgent("lb-csi-plugin"), // TODO: take from config (?) + add version!
@@ -279,6 +280,14 @@ func Dial(ctx context.Context, log *logrus.Entry, targets endpoint.Slice) (*Clie
 		grpc.WithKeepaliveParams(kal),
 		grpc.WithConnectParams(cp),
 		grpc.WithResolvers(lbr),
+	}
+
+	if mgmtScheme == "grpc" {
+		logger.Infof("connecting insecurely")
+		opts = append(opts, grpc.WithInsecure())
+	} else if mgmtScheme == "grpcs" {
+		logger.Infof("connecting securely")
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
 	}
 
 	var err error
