@@ -315,7 +315,9 @@ func (c *Client) peerReviewUnaryInterceptor( // sic!
 	opts = append(opts, grpc.Peer(&currPeer))
 	err := invoker(ctx, method, req, rep, cc, opts...)
 	c.peerMu.Lock()
-	if currPeer != c.lastPeer {
+
+	// TODO: FIXME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if currPeer.Addr != c.lastPeer.Addr {
 		// TODO: introduce rate-limiter to spare logs and perf!
 		lastPeer := c.lastPeer
 		c.lastPeer = currPeer
@@ -811,7 +813,7 @@ func (c *Client) DeleteVolume(
 	_, err := c.clnt.DeleteVolume(
 		ctx,
 		&mgmt.DeleteVolumeRequest{
-			UUID: uuid.String(),
+			UUID:        uuid.String(),
 			ProjectName: projectName,
 		},
 	)
@@ -996,7 +998,7 @@ func (c *Client) doUpdateVolume(
 	ctx = cloneCtxWithETag(ctx, lbVol.ETag)
 
 	req := mgmt.UpdateVolumeRequest{
-		UUID: uuid.String(),
+		UUID:        uuid.String(),
 		ProjectName: projectName,
 	}
 	required := false
