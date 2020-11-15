@@ -196,10 +196,11 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 		{
 			name: "good params",
 			params: map[string]string{
-				volParMgmtEPKey:   "1.2.3.4:80",
-				volParRepCntKey:   "3",
-				volParCompressKey: "disabled",
-				volParProjNameKey: "system",
+				volParMgmtEPKey:     "1.2.3.4:80",
+				volParRepCntKey:     "3",
+				volParCompressKey:   "disabled",
+				volParProjNameKey:   "system",
+				volParMgmtSchemeKey: "grpc",
 			},
 			err: nil,
 			result: lbCreateVolumeParams{
@@ -207,6 +208,7 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 				replicaCount: 3,
 				compression:  false,
 				projectName:  "system",
+				mgmtScheme:   "grpc",
 			},
 		},
 		{
@@ -222,12 +224,41 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 		{
 			name: "replica count not a number",
 			params: map[string]string{
-				volParMgmtEPKey:   "1.2.3.4:80",
-				volParRepCntKey:   "s",
-				volParCompressKey: "disabled",
-				volParProjNameKey: "proj-1",
+				volParMgmtEPKey:     "1.2.3.4:80",
+				volParRepCntKey:     "s",
+				volParCompressKey:   "disabled",
+				volParProjNameKey:   "proj-1",
+				volParMgmtSchemeKey: "grpcs",
 			},
 			err: mkEinvalf(volParKey(volParRepCntKey), "'%s'", "s"),
+		},
+		{
+			name: "test wrong mgmt scheme",
+			params: map[string]string{
+				volParMgmtEPKey:     "1.2.3.4:80",
+				volParRepCntKey:     "3",
+				volParCompressKey:   "disabled",
+				volParProjNameKey:   "system",
+				volParMgmtSchemeKey: "https",
+			},
+			err: mkEinval(volParKey(volParMgmtSchemeKey), "https"),
+		},
+		{
+			name: "missing mgmt scheme default to grpcs",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "2",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "system",
+			},
+			err: nil,
+			result: lbCreateVolumeParams{
+				mgmtEPs:      endpoint.Slice{endpoint.MustParse("1.2.3.4:80")},
+				replicaCount: 2,
+				compression:  false,
+				projectName:  "system",
+				mgmtScheme:   "grpcs",
+			},
 		},
 	}
 	for _, tc := range testCases {

@@ -37,11 +37,12 @@ var (
 // lbCreateVolumeParams: -----------------------------------------------------
 
 const (
-	volParRoot        = "parameters"
-	volParMgmtEPKey   = "mgmt-endpoint"
-	volParRepCntKey   = "replica-count"
-	volParCompressKey = "compression"
-	volParProjNameKey = "project-name"
+	volParRoot          = "parameters"
+	volParMgmtEPKey     = "mgmt-endpoint"
+	volParRepCntKey     = "replica-count"
+	volParCompressKey   = "compression"
+	volParProjNameKey   = "project-name"
+	volParMgmtSchemeKey = "mgmt-scheme"
 )
 
 // lbCreateVolumeParams represents the contents of the `parameters` field
@@ -70,6 +71,7 @@ type lbCreateVolumeParams struct {
 	replicaCount uint32         // total number of volume replicas.
 	compression  bool           // whether compression is enabled.
 	projectName  string         // project name.
+	mgmtScheme   string         // one of [grpc, grpcs]
 }
 
 func volParKey(key string) string {
@@ -123,6 +125,17 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 			return res, mkEinval(key, params[volParProjNameKey])
 		}
 		res.projectName = projectName
+	}
+
+	key = volParKey(volParMgmtSchemeKey)
+	mgmtScheme := params[volParMgmtSchemeKey]
+	switch mgmtScheme {
+	case "", "grpcs":
+		res.mgmtScheme = "grpcs"
+	case "grpc":
+		res.mgmtScheme = "grpc"
+	default:
+		return res, mkEinval(key, mgmtScheme)
 	}
 
 	return res, nil
