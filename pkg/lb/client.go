@@ -156,6 +156,16 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 	return diffs
 }
 
+type ClusterInfo struct {
+	UUID               guuid.UUID
+	SubsysNQN          string
+	CurrMaxReplicas    uint32
+	MaxReplicas        uint32
+	DiscoveryEndpoints []string
+	ApiEndpoints       []string
+	NvmeEndpoints      []string
+}
+
 type Cluster struct {
 	UUID               guuid.UUID
 	SubsysNQN          string
@@ -250,6 +260,7 @@ type Client interface {
 
 	RemoteOk(ctx context.Context) error
 	GetCluster(ctx context.Context) (*Cluster, error)
+	GetClusterInfo(ctx context.Context) (*ClusterInfo, error)
 	ListNodes(ctx context.Context) ([]*Node, error)
 
 	CreateVolume(ctx context.Context, name string, capacity uint64,

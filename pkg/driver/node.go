@@ -63,7 +63,7 @@ func (d *Driver) lbVolEligible(
 // any given point in time only a subset of these targets might be exporting
 // the volume in question. aka "target rich environment"...
 type targetEnv struct {
-	cluster *lb.Cluster
+	cluster *lb.ClusterInfo
 	targets []*lb.Node // TODO: temporary hack until the Discovery Service lands
 }
 
@@ -72,7 +72,7 @@ func (d *Driver) queryLBforTargetEnv(
 ) (*targetEnv, error) {
 	var err error
 	res := &targetEnv{}
-	res.cluster, err = clnt.GetCluster(ctx)
+	res.cluster, err = clnt.GetClusterInfo(ctx)
 	if err != nil {
 		return nil, d.mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
 			vid.mgmtEPs[0])

@@ -389,6 +389,38 @@ func (c *Client) RemoteOk(ctx context.Context) error {
 	return nil
 }
 
+func (c *Client) GetClusterInfo(ctx context.Context) (*lb.ClusterInfo, error) {
+	cluster, err := c.clnt.GetClusterInfo(ctx, &mgmt.GetClusterRequest{})
+	if err != nil {
+		return nil, err
+	}
+
+	uuid, err := guuid.Parse(cluster.UUID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal,
+			"got bad cluster info: bad UUID '%s': %s", cluster.UUID, err)
+	}
+	if uuid == guuid.Nil {
+		return nil, status.Errorf(codes.Internal, "got bad cluster info: UUID is <NIL>")
+	}
+	if !strings.HasPrefix(cluster.SubsystemNQN, "nqn") {
+		return nil, status.Errorf(codes.Internal,
+			"got bad cluster info: bad subsystem NQN '%s'", cluster.SubsystemNQN)
+	}
+	// apparently cluster.supportedMaxReplicas might be 0 during some stages
+	// of the cluster boot, but allegedly this is a transient condition...
+
+	return &lb.ClusterInfo{
+		UUID:               uuid,
+		SubsysNQN:          cluster.SubsystemNQN,
+		CurrMaxReplicas:    cluster.CurrentMaxReplicas,
+		MaxReplicas:        cluster.SupportedMaxReplicas,
+		DiscoveryEndpoints: cluster.DiscoveryEndpoints,
+		ApiEndpoints:       cluster.ApiEndpoints,
+		NvmeEndpoints:      cluster.NvmeEndpoints,
+	}, nil
+}
+
 func (c *Client) GetCluster(ctx context.Context) (*lb.Cluster, error) {
 	cluster, err := c.clnt.GetCluster(ctx, &mgmt.GetClusterRequest{})
 	if err != nil {
