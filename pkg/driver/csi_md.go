@@ -152,9 +152,10 @@ func init() {
 	projNameRegex = regexp.MustCompile(`^[a-z0-9-\.]{1,63}$`)
 
 	volIDRegex = regexp.MustCompile(
-		`^mgmt:([^|]+)\|` +
-			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
-			`(\|proj:[a-z0-9-\.]{1,63})?$`)
+		`^mgmt:(?P<ep>[^|]+)\|` +
+			`nguid:(?P<nguid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
+			`(\|(?P<proj>proj:[a-z0-9-\.]{1,63}))?` +
+			`(\|(?P<scheme>scheme:(grpc|grpcs)))?$`)
 }
 
 // lbVolumeID represents the contents of the `volume_id` field
@@ -166,7 +167,7 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>|proj=<proj>
+//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>|proj:<proj>||scheme:<grpc|grpcs>
 // where:
 //    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
 //            volume. can be a hostname or an IP address. more than one
@@ -180,11 +181,15 @@ func init() {
 //            representation.
 //    <proj>    - project name on LightOS cluster. this field is OPTIONAL, in
 //			  which case the cluster is configured with multi-tenancy disabled.
+//    <scheme> - project name on LightOS cluster. this field is OPTIONAL, in
+//			  which case the scheme is set to grpcs.
 // e.g.:
 //   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66
 //   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj=p1
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj=project-4
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:p1
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:project-4
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:project-4|scheme:grpc
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs
 //
 // TODO: the CSI spec mandates that strings "SHALL NOT" exceed 128 bytes.
 // K8s is more lenient (at least 253 bytes, likely more). in any case, with
@@ -195,6 +200,7 @@ type lbVolumeID struct {
 	mgmtEPs  endpoint.Slice // LightOS mgmt API server endpoints.
 	uuid     guuid.UUID     // NVMe "Identify NS Data Structure".
 	projName string
+	scheme   string // one of [grpc, grpcs]
 }
 
 // String generates the string representation of lbVolumeID that will be
@@ -203,6 +209,9 @@ func (vid lbVolumeID) String() string {
 	res := fmt.Sprintf("mgmt:%s|nguid:%s", vid.mgmtEPs, vid.uuid)
 	if len(vid.projName) > 0 {
 		res += fmt.Sprintf("|proj:%s", vid.projName)
+	}
+	if len(vid.scheme) > 0 {
+		res += fmt.Sprintf("|scheme:%s", vid.scheme)
 	}
 	return res
 }
@@ -217,30 +226,61 @@ func ParseCSIVolumeID(id string) (lbVolumeID, error) {
 		return vid, ErrNotSpecifiedOrEmpty
 	}
 
-	idStr := volIDRegex.FindStringSubmatch(id)
-	if len(idStr) != 4 {
-		return vid, fmt.Errorf("bad volume id: '%s', err: %w", id, ErrMalformed)
+	match := volIDRegex.FindStringSubmatch(id)
+	if len(match) < 2 {
+		return vid, fmt.Errorf("bad volume id: '%s'. must contain at least 2 items. err: %w", id, ErrMalformed)
+	}
+	result := make(map[string]string)
+	for i, name := range volIDRegex.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = match[i]
+		}
 	}
 	var err error
-	vid.mgmtEPs, err = endpoint.ParseCSV(idStr[1])
-	if err != nil {
-		return vid, fmt.Errorf("'%s' has invalid mgmt hunk: %s", id, err)
+	if ep, ok := result["ep"]; ok {
+		vid.mgmtEPs, err = endpoint.ParseCSV(ep)
+		if err != nil {
+			return vid, fmt.Errorf("'%s' has invalid mgmt hunk: %s", id, err)
+		}
+	} else {
+		return vid, fmt.Errorf("bad volume id: '%s'. missing mgmt-ep part. err: %w", id, ErrMalformed)
 	}
 
-	vid.uuid, err = guuid.Parse(idStr[2])
-	if err != nil {
-		return vid, fmt.Errorf("'%s' has invalid NGUID: %s", id, err)
-	} else if vid.uuid == guuid.Nil {
-		return vid, fmt.Errorf("'%s' has invalid nil NGUID", id)
-	}
-	// extract proj part, can be empty
-	if idStr[3] != "" {
-		splitted := strings.Split(idStr[3], ":")
-		if len(splitted) != 2 {
-			return vid, fmt.Errorf("'%s' has invalid projName", idStr[3])
+	if ep, ok := result["nguid"]; ok {
+		vid.uuid, err = guuid.Parse(ep)
+		if err != nil {
+			return vid, fmt.Errorf("'%s' has invalid NGUID: %s", id, err)
+		} else if vid.uuid == guuid.Nil {
+			return vid, fmt.Errorf("'%s' has invalid nil NGUID", id)
 		}
-		vid.projName = splitted[1]
+	} else {
+		return vid, fmt.Errorf("bad volume id: '%s'. missing nguid part. err: %w", id, ErrMalformed)
 	}
+
+	if proj, ok := result["proj"]; ok {
+		// optional field
+		if proj != "" {
+			splitted := strings.Split(proj, ":")
+			if len(splitted) != 2 {
+				return vid, fmt.Errorf("'%s' invalid projName", proj)
+			}
+			vid.projName = splitted[1]
+		}
+	}
+
+	if scheme, ok := result["scheme"]; ok {
+		// optional field
+		if scheme != "" {
+			splitted := strings.Split(scheme, ":")
+			if len(splitted) != 2 {
+				return vid, fmt.Errorf("'%s' invalid scheme", scheme)
+			}
+			vid.scheme = splitted[1]
+		} else {
+			vid.scheme = "grpcs"
+		}
+	}
+
 	return vid, nil
 }
 

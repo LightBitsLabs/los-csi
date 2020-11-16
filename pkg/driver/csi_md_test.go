@@ -32,6 +32,10 @@ var goodIDs = []string{
 	"mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:abababababababbabababababba",
 	"mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:aaa",
 	"mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:bbb",
+
+	"mgmt:10.19.151.24:443,10.19.151.2:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs",
+	"mgmt:10.19.151.24:443,10.19.151.2:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs",
+	"mgmt:10.19.151.24:443,10.19.151.2:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc",
 }
 
 var badIDs = []string{

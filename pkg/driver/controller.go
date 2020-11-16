@@ -104,11 +104,12 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 	return uint64(volCap), nil
 }
 
-func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume) *csi.CreateVolumeResponse {
+func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string) *csi.CreateVolumeResponse {
 	volID := lbVolumeID{
 		mgmtEPs:  mgmtEPs,
 		uuid:     vol.UUID,
 		projName: vol.ProjectName,
+		scheme:   mgmtScheme,
 	}
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -119,7 +120,7 @@ func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume) *csi.CreateVolumeR
 }
 
 func (d *Driver) doCreateVolume(
-	ctx context.Context, mgmtEPs endpoint.Slice, req lb.Volume,
+	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume,
 ) (*csi.CreateVolumeResponse, error) {
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "CreateVolume",
@@ -194,7 +195,7 @@ func (d *Driver) doCreateVolume(
 		log.WithField("vol-uuid", vol.UUID).Info("volume created")
 	}
 	vol.ProjectName = req.ProjectName
-	return mkVolumeResponse(mgmtEPs, vol), nil
+	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme), nil
 }
 
 // CreateVolume uses info extracted from request `parameters` field to connect
@@ -234,14 +235,15 @@ func (d *Driver) CreateVolume(
 
 	ctx = cloneCtxWithCreds(ctx, req.Secrets)
 
-	vol, err := d.doCreateVolume(ctx, params.mgmtEPs, lb.Volume{
-		Name:         req.Name,
-		Capacity:     capacity,
-		ReplicaCount: params.replicaCount,
-		Compression:  params.compression,
-		ACL:          []string{lb.ACLAllowNone},
-		ProjectName:  params.projectName,
-	})
+	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
+		lb.Volume{
+			Name:         req.Name,
+			Capacity:     capacity,
+			ReplicaCount: params.replicaCount,
+			Compression:  params.compression,
+			ACL:          []string{lb.ACLAllowNone},
+			ProjectName:  params.projectName,
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +591,7 @@ func (d *Driver) GetCapacity(
 		return nil, err
 	}
 
-	clnt, err := d.GetLBClient(ctx, params.mgmtEPs)
+	clnt, err := d.GetLBClient(ctx, params.mgmtEPs, params.mgmtScheme)
 	if err != nil {
 		return nil, err
 	}
