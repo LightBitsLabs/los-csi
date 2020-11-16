@@ -26,6 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 )
@@ -347,4 +348,11 @@ func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice) (lb.Cl
 // dispose of it as necessary at its discretion.
 func (d *Driver) PutLBClient(clnt lb.Client) {
 	d.lbclients.PutClient(clnt)
+}
+
+func cloneCtxWithCreds(ctx context.Context, secrets map[string]string) context.Context {
+	if jwt, ok := secrets["jwt"]; ok {
+		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", "Bearer "+jwt)
+	}
+	return ctx
 }
