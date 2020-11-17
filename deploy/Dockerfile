@@ -1,7 +1,5 @@
 FROM centos:7.5.1804
 
-ARG NVME_CLI_RPM_BASENAME
-
 LABEL maintainers="Lightbits Labs" \
       description="LB CSI Plugin" \
       version.lb-csi.rel="UNKNOWN" \
@@ -11,23 +9,16 @@ LABEL maintainers="Lightbits Labs" \
       version.lb-csi.build.id="UNKNOWN"
 # official builds will also carry the following labels:
 #     version.lb-csi.hash
-#     version.nvme-cli.hash
 # while custom builds might also have labels:
 #     build.host
 #     build.time
 
 # at least as of v18.06.1, Docker appears to interpret empty second source
 # arg to COPY as "*" (shurely shome mishtake)... hence this silliness:
-COPY lb-csi-plugin "$NVME_CLI_RPM_BASENAME.rp?" /
+COPY lb-csi-plugin /
 
-RUN if [ -n "$NVME_CLI_RPM_BASENAME" ] ; then \
-        yum localinstall -y "${NVME_CLI_RPM_BASENAME}.rpm" ; \
-    else \
-        EXTRA_PACKAGES=nvme-cli ; \
-    fi && \
-    yum install -y e2fsprogs xfsprogs $EXTRA_PACKAGES && \
-    yum clean all && \
-    [ -n "$NVME_CLI_RPM_BASENAME" ] && rm -f /"${NVME_CLI_RPM_BASENAME}.rpm" || true
+RUN yum install -y e2fsprogs xfsprogs $EXTRA_PACKAGES && \
+    yum clean all || true
 
 ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_NODE_ID=             \

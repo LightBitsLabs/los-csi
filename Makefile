@@ -19,7 +19,6 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
 
 # these vars are sometimes passed in from the outside:
 #   $BUILD_HASH
-#   $NVME_CLI_HASH
 
 # for local testing you can override those and $DOCKER_REGISTRY:
 override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
@@ -31,10 +30,6 @@ override DOCKER_REGISTRY := $(and $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)
 DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
 
 PKG_PREFIX := github.com/lightbitslabs/lb-csi
-
-# hack around Docker COPY expansion bug:
-NVME_RPM_NAME := $(and $(NVME_CLI_RPM_PATH),$(shell basename -s .rpm $(NVME_CLI_RPM_PATH)))
-NVME_RPM_FLAGS := $(and $(NVME_CLI_RPM_PATH),--build-arg NVME_CLI_RPM_BASENAME=$(NVME_RPM_NAME))
 
 override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
 override BUILD_TIME := $(shell date "+%Y-%m-%d.%H:%M:%S.%N%:z")
@@ -53,7 +48,6 @@ override LABELS := \
     --label version.lb-csi.rel="$(PLUGIN_VER)" \
     --label version.lb-csi.git=$(GIT_VER) \
     $(and $(BUILD_HASH), --label version.lb-csi.hash="$(BUILD_HASH)") \
-    $(and $(NVME_CLI_HASH), --label version.nvme-cli.hash="$(NVME_CLI_HASH)") \
     $(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
     $(if $(BUILD_HASH),, --label version.lb-csi.build.time=$(BUILD_TIME)) \
     $(if $(BUILD_ID), --label version.lb-csi.build.id=$(BUILD_ID),)
@@ -63,10 +57,9 @@ YAML_PATH := deploy/k8s
 all: package
 
 # NOTE: some tests have additional external dependencies (e.g. network access,
-# presence of remote LightOS cluster, `nvme-cli` package being locally
-# installed). these will not be run by default and require specific build
-# tags to be enabled (as well as additional cmd-line params in some cases),
-# e.g.: have_net, have_lb, have_nvme. see specific tests for details.
+# presence of remote LightOS cluster. these will not be run by default and require
+# specific build tags to be enabled (as well as additional cmd-line params in some cases),
+# e.g.: have_net, have_lb. see specific tests for details.
 # you'll also want to run these tests with:
 #     go test <whatever> -count=1 <whatever>
 # to make sure they're actually being run against an external entity, rather
@@ -101,10 +94,8 @@ generate_deployment_yaml:
 	    echo "DOCKER_REGISTRY not set, skipping deployment YAMLs generation" ; \
 	fi
 
-package: build $(NVME_CLI_RPM_PATH) generate_deployment_yaml
-	@if [ -n "$(NVME_CLI_RPM_PATH)" ] ; then cp $(NVME_CLI_RPM_PATH) deploy/ ; fi
-	@docker build $(LABELS) $(NVME_RPM_FLAGS) -t $(DOCKER_REGISTRY)$(DOCKER_TAG) deploy
-	@if [ -n "$(NVME_RPM_NAME)" ] ; then rm deploy/$(NVME_RPM_NAME).rpm ; fi
+package: build generate_deployment_yaml
+	@docker build $(LABELS) -t $(DOCKER_REGISTRY)$(DOCKER_TAG) deploy
 
 push: package
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
