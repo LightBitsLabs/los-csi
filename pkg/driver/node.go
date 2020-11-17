@@ -8,12 +8,14 @@ import (
 	"context"
 	"os"
 	"time"
+	"path/filepath"
+	"io/ioutil"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gofsutil"
 	"github.com/google/uuid"
 	"github.com/lightbitslabs/lb-csi/pkg/lb"
-	"github.com/lightbitslabs/lb-csi/pkg/nvme-of/client/cli"
 	"github.com/lightbitslabs/lb-csi/pkg/util/wait"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -87,25 +89,54 @@ func (d *Driver) queryLBforTargetEnv(
 	return res, nil
 }
 
-func (d *Driver) getDevicePath(nguid uuid.UUID) (string, error) {
-
-	client, err := cli.New(d.log) // TODO: make a member of d? otherwise cmd counting is busted!
-	//                               BUT! then it's a failure on plugin startup -> no log to examine!
+func getDeviceUUID(device string) (string, error) {
+	devUUID, err := ioutil.ReadFile(filepath.Join("/sys/block", device, "nguid"))
 	if err != nil {
-		return "", mkInternal("unable to gain control of NVMe-oF on the client "+
-			"(host/initiator) side: %s", err)
+		return "", err
+	}
+	return strings.TrimSuffix(string(devUUID), "\n"), nil
+}
+
+func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
+	// regex for all nvme devices
+	devices, err := filepath.Glob(filepath.Join("/dev", "nvme[0-9]*n[0-9]*"))
+	if err != nil {
+		return "", err
 	}
 
-	// apparently it can take a little while between connecting (e.g.
-	// 'nvme connect' successfully returning) and corresponding block
-	// devices actually showing up...
+	// filter hidden devices in older kernels: devices in the form /dev/nvmeXcYnZ
+	effDevices := []string{}
+	for _, d := range devices {
+		if !strings.Contains(d, "c") {
+			effDevices = append(effDevices, d)
+		}
+	}
+
+	// iterate over devices and try to find a matching uuid
+	for _, dev := range effDevices {
+		devUUID, err := getDeviceUUID(filepath.Base(dev))
+		if err != nil {
+			return "", err
+		}
+		if devUUID == uuid.String() {
+			// found a match!
+			return dev, nil
+		}
+	}
+
+	// nothing showed up...
+	return "", nil
+}
+
+func (d *Driver) getDevicePath(uuid uuid.UUID) (string, error) {
 	devPath := ""
+	var err error = nil
 	err = wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
-		devPath, err = client.GetDevPathByNGUID(nguid)
+		devPath, err = d.GetDevPathByUUID(uuid)
 		return devPath != "", err
 	})
 	if err != nil || devPath == "" {
-		return "", mkEExec("no local block device for volume %s", nguid)
+		return "", mkEExec("no local block device for volume %s", uuid)
 	}
 	d.log.Debugf("block device representing volume is: '%s'", devPath)
 	return devPath, nil
