@@ -233,7 +233,7 @@ func (d *Driver) CreateVolume(
 		return nil, err
 	}
 
-	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
 		lb.Volume{
@@ -274,7 +274,7 @@ func (d *Driver) DeleteVolume(
 		"project":  vid.projName,
 	})
 
-	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err
@@ -379,7 +379,7 @@ func (d *Driver) ControllerPublishVolume(
 	log = log.WithField("node-id", req.NodeId)
 	ace := nodeIDToHostNQN(req.NodeId)
 
-	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err
@@ -462,7 +462,7 @@ func (d *Driver) ControllerUnpublishVolume(
 	ace := nodeIDToHostNQN(req.NodeId)
 	allowNoneACL := []string{lb.ACLAllowNone}
 
-	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err
@@ -545,7 +545,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 		"project":  vid.projName,
 	})
 
-	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err
@@ -632,7 +632,7 @@ func (d *Driver) ControllerExpandVolume(
 		return nil, err
 	}
 
-	ctx = cloneCtxWithCreds(ctx, req.Secrets)
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err

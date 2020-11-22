@@ -44,6 +44,7 @@ Supported environment variables:
         entries. May be redundant in some monitoring environments that
         automatically timestamp log entries. (default: {{.LogTimestamps}})
   LB_CSI_LOG_FMT    - one of: {text, json}. (default: {{.LogFormat}})
+  LB_CSI_JWT        - JWT used to communicate to LightOS.
 
 Command line flags:
 `
@@ -81,6 +82,8 @@ var (
 		"Add timestamps to log entries, see $LB_CSI_LOG_TIME.")
 	logFormat = flag.StringP("log-fmt", "f", "",
 		"Log entry format, see $LB_CSI_LOG_FMT.")
+	jwt = flag.StringP("jwt", "j", "",
+		"JWT for LightOS API, see $LB_CSI_JWT.")
 	version = flag.Bool("version", false, "Print the version and exit.")
 	help    = flag.BoolP("help", "h", false, "Print help and exit.")
 

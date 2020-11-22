@@ -189,6 +189,11 @@ spec:
           volumeMounts:
             - name: socket-dir
               mountPath: /var/lib/csi/sockets/pluginproxy/
+            # to inject jwt from secret using volume mount uncomment
+            # the following. Will create file under /etc/lb-csi/jwt with jwt value
+            # in secret named `los-secret`
+            # - name: lb-csi-secret-vol
+            #   mountPath: "/etc/lb-csi"
         - name: csi-provisioner
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
@@ -232,6 +237,13 @@ spec:
       volumes:
         - name: socket-dir
           emptyDir: {}
+        # - name: lb-csi-secret-vol
+        #   secret:
+        #     secretName: los-secret
+        #     items:
+        #     - key: jwt
+        #       path: jwt
+        #       mode: 0777
       # to enable seamless access to secure private Docker registries (e.g. to
       # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
@@ -329,6 +341,11 @@ spec:
               mountPath: /dev
             - name: discovery-client-dir
               mountPath: /etc/discovery-client/discovery.d
+            # to inject jwt from secret using volume mount uncomment
+            # the following. Will create file under /etc/lb-csi/jwt with jwt value
+            # in secret named `los-secret`
+            # - name: lb-csi-secret-vol
+            #   mountPath: "/etc/lb-csi"
         - name: csi-node-driver-registrar
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
@@ -379,6 +396,13 @@ spec:
           hostPath:
             path: /etc/discovery-client/discovery.d
             type: Directory
+        # - name: lb-csi-secret-vol
+        #   secret:
+        #     secretName: los-secret
+        #     items:
+        #     - key: jwt
+        #       path: jwt
+        #       mode: 0777
       # to enable seamless access to secure private Docker registries (e.g. to
       # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`

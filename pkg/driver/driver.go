@@ -6,6 +6,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/url"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	"github.com/fsnotify/fsnotify"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
@@ -116,6 +118,10 @@ type Driver struct {
 	// mgmt API timeouts, the time it takes to fsck a 4TB ext4, etc.), a
 	// single huge lock is unfortunate, but safety first...
 	bdl sync.Mutex
+
+	// a string passed in by environment variable LB_CSI_JWT
+	// used to access LightOS API
+	jwt string
 }
 
 const (
@@ -235,7 +241,7 @@ func New(cfg Config) (*Driver, error) {
 		return lbgrpc.Dial(ctx, log, targets, mgmtScheme)
 	}
 
-	return &Driver{
+	d := &Driver{
 		sockPath:      u.Path,
 		nodeID:        cfg.NodeID,
 		hostNQN:       nodeIDToHostNQN(cfg.NodeID),
@@ -244,7 +250,8 @@ func New(cfg Config) (*Driver, error) {
 		mounter:       mounter,
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
-	}, nil
+	}
+	return d, nil
 }
 
 func (d *Driver) Run() error {
@@ -289,8 +296,71 @@ func (d *Driver) Run() error {
 	csi.RegisterNodeServer(d.srv, d)
 	csi.RegisterControllerServer(d.srv, d)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	jwtFilePath := "/etc/lb-csi/jwt"
+	if err := d.monitorJWTVariable(ctx, jwtFilePath); err != nil {
+		d.log.WithError(err).Error("failed to watch %q. will not ba able to read jwt from task.", jwtFilePath)
+	}
+
 	d.log.WithField("addr", d.sockPath).Info("server started")
 	return d.srv.Serve(listener)
+}
+
+func (d *Driver) setJWT(jwt string) {
+	d.log.Infof("jwt set via file with length: %d", len(jwt))
+	d.jwt = jwt
+}
+
+func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
+	jwtFromFile := func(filename string) string {
+		b, err := ioutil.ReadFile(filename)
+		if err != nil {
+			d.log.WithError(err).Error("failed to read jwt from file")
+			return ""
+		}
+		jwt := strings.TrimSpace(string(b))
+		return jwt
+	}
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	err = watcher.Add(jwtFile)
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				// k8s configmaps uses symlinks, we need this workaround.
+				// original configmap file is removed
+				if event.Op == fsnotify.Remove {
+					// remove the watcher since the file is removed
+					watcher.Remove(event.Name)
+					// add a new watcher pointing to the new symlink/file
+					watcher.Add(jwtFile)
+					d.setJWT(jwtFromFile(jwtFile))
+				}
+				// also allow normal files to be modified and reloaded.
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					d.setJWT(jwtFromFile(jwtFile))
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				d.log.WithError(err).Error("watcher error")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	d.setJWT(jwtFromFile(jwtFile))
+	return nil
 }
 
 // general helpers: ----------------------------------------------------------
@@ -350,8 +420,14 @@ func (d *Driver) PutLBClient(clnt lb.Client) {
 	d.lbclients.PutClient(clnt)
 }
 
-func cloneCtxWithCreds(ctx context.Context, secrets map[string]string) context.Context {
-	if jwt, ok := secrets["jwt"]; ok {
+func (d *Driver) cloneCtxWithCreds(ctx context.Context, secrets map[string]string) context.Context {
+	jwt := ""
+	if jwtVal, ok := secrets["jwt"]; ok {
+		jwt = jwtVal
+	} else if d.jwt != "" {
+		jwt = d.jwt
+	}
+	if jwt != "" {
 		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", "Bearer "+jwt)
 	}
 	return ctx
