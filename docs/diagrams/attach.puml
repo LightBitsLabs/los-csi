@@ -1,0 +1,40 @@
+@startuml attach
+
+box k8s #LightBlue
+actor user
+participant k8s
+participant lb_csi
+endbox
+
+box LightOS #MediumPurple
+participant lb_target
+actor admin
+endbox
+
+==create volume==
+...
+==Attach volume (first time)==
+user -> k8s: create pod
+k8s -> lb_csi: ControllerPublishVolume
+lb_csi -> lb_target: Update ACL
+lb_target -> lb_csi: Done
+lb_csi -> k8s: ControllerPublishVolumeResponse
+...
+k8s -> lb_csi: NodeStageVolume
+activate lb_csi
+lb_csi -> lb_csi: create discovery client entries
+loop
+lb_csi -> lb_csi: nvme list
+note right of lb_csi: block device created /dev/nvme0n1
+end
+deactivate lb_csi
+alt mount-volume
+lb_csi -> lb_csi: FormatAndMount(/dev/nvme0n1, stagingTargetPath)
+else block volume
+end
+lb_csi -> k8s: NodeStageVolumeResponse
+...
+k8s -> lb_csi: NodePublishVolume
+lb_csi -> lb_csi: BindMount(stagingTargetPath, TargetPath)
+lb_csi -> k8s: NodePublishVolumeResponse
+k8s -> user: pod running

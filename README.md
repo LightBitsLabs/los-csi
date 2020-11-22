@@ -1,5 +1,8 @@
 # lb-csi plugin
 
+## Design and architecture
+
+See [docs/design.md](./docs/design.md)
 ## Deployment Bundle
 
 We provide deployment examples for `lb-csi-plugin` and workloads that utilize it [here](deploy/README.md)

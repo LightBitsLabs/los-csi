@@ -1,0 +1,37 @@
+@startuml provisioning
+
+box k8s #LightBlue
+actor user
+participant k8s
+participant lb_csi
+endbox
+
+box LightOS #MediumPurple
+participant lb_target
+actor admin
+endbox
+
+==create volume==
+alt dynamic provisioning
+admin -> k8s: create sc
+note right of k8s
+mgmt-endpoint: 10.10.10.40:80,10.10.10.41:80,10.10.10.42:80
+replica-count: "3"
+compression: disabled
+endnote
+user -> k8s: create pvc
+k8s -> lb_csi: ControllerCreateVolume
+lb_csi -> lb_target: CreateVolume
+lb_target -> lb_csi: {nguid, capacity}
+lb_csi -> k8s: CreateVolumeResponse
+else static provisioning
+admin -> lb_target: lbcli create volume
+lb_target -> admin: volumeId
+admin -> k8s: create PV
+note right of k8s
+spec:
+  csi:
+    volumeHandle: mgmt:<mgmt-endpoint>|nguid:<nguid>
+endnote
+user -> k8s: create PVC
+end

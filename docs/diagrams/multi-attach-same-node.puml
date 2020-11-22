@@ -1,0 +1,27 @@
+@startuml multi-attach-single-node
+
+box k8s #LightBlue
+actor user
+participant k8s
+participant lb_csi
+endbox
+
+box LightOS #MediumPurple
+participant lb_target
+actor admin
+endbox
+
+==create volume==
+...
+==Attach volume (first time)==
+...
+==Attach volume (same node, new pod multiple containers)==
+loop for each pod
+user -> k8s: create pod
+loop for each containers
+k8s -> lb_csi: NodePublishVolume
+lb_csi -> lb_csi: BindMount(stagingTargetPath, targetPath)
+lb_csi -> k8s: NodePublishVolumeResponse
+end
+k8s -> user: pod running
+end
