@@ -83,9 +83,7 @@ test_long:
 build:
 	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
 
-package: build $(NVME_CLI_RPM_PATH)
-	@if [ -n "$(NVME_CLI_RPM_PATH)" ] ; then cp $(NVME_CLI_RPM_PATH) deploy/ ; fi
-	@docker build $(LABELS) $(NVME_RPM_FLAGS) -t $(DOCKER_REGISTRY)$(DOCKER_TAG) deploy
+generate_deployment_yaml:
 	@if [ -n "$(DOCKER_REGISTRY)" ] ; then \
 	    for YAML in $(YAML_PATH)/lb-csi-plugin-k8s-*.yaml.template ; do \
 	        [ -e "$${YAML}" ] || continue ; \
@@ -99,6 +97,10 @@ package: build $(NVME_CLI_RPM_PATH)
 	else \
 	    echo "DOCKER_REGISTRY not set, skipping deployment YAMLs generation" ; \
 	fi
+
+package: build $(NVME_CLI_RPM_PATH) generate_deployment_yaml
+	@if [ -n "$(NVME_CLI_RPM_PATH)" ] ; then cp $(NVME_CLI_RPM_PATH) deploy/ ; fi
+	@docker build $(LABELS) $(NVME_RPM_FLAGS) -t $(DOCKER_REGISTRY)$(DOCKER_TAG) deploy
 	@if [ -n "$(NVME_RPM_NAME)" ] ; then rm deploy/$(NVME_RPM_NAME).rpm ; fi
 
 push: package
