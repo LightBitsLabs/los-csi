@@ -118,6 +118,13 @@ image_tag:
 full_image_tag:
 	@echo $(DOCKER_REGISTRY)$(DOCKER_TAG)
 
-generate_bundle:
-	@mkdir -p build
-	@tar --exclude=*.template -czvf build/lb-csi-bundle-$(RELEASE).tar.gz examples/k8s deploy/k8s
+generate_bundle: generate_deployment_yaml
+	@tar -C deploy \
+		--exclude=*.template -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
+		k8s/lb-csi-plugin-k8s-v1.13.yaml \
+		k8s/lb-csi-plugin-k8s-v1.15.yaml \
+		examples
+	@tar -C deploy \
+		--exclude=*.template -czvf build/lb-csi-bundle-dc-$(RELEASE).tar.gz \
+		k8s/lb-csi-plugin-k8s-v1.15-dc.yaml \
+		examples
