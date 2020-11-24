@@ -310,6 +310,15 @@ func (d *Driver) NodeStageVolume(
 		return nil, mkEExec("format/mount failed: '%s'", err.Error())
 	}
 
+	// In case the volume came from a snapshot and happens to also be
+	// larger in capacity, we want to update the fs size accordingly, we
+	// don't care really if any actual resize happened...
+	resizer := resizefs.NewResizeFs(d.mounter)
+	_, err = resizer.Resize(devPath, tgtPath)
+	if err != nil {
+		return nil, mkEExec("error when resizing device %s after mount: %v", vid.uuid, err)
+	}
+
 	log.Debugf("OK, volume '%s' mounted from '%s' to '%s' "+
 		"with '%s' FS", vid.uuid, devPath, tgtPath, wantFSType)
 	return &csi.NodeStageVolumeResponse{}, nil
