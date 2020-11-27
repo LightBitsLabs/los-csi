@@ -27,6 +27,9 @@ override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
 DOCKER_TAG := $(PLUGIN_NAME):$(or $(BUILD_HASH),$(PLUGIN_VER))
 override DOCKER_REGISTRY := $(and $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)
 
+
+DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
+
 PKG_PREFIX := github.com/lightbitslabs/lb-csi
 
 # hack around Docker COPY expansion bug:
@@ -89,7 +92,7 @@ generate_deployment_yaml:
 	        [ -e "$${YAML}" ] || continue ; \
 	        sed -e "s#__DOCKER_REGISTRY__#$(DOCKER_REGISTRY)#" \
 	            -e "s#__DOCKER_TAG__#$(DOCKER_TAG)#" \
-	            -e "s#__PLUGIN_VER__#$(PLUGIN_VER)#" \
+	            -e "s#__DISCOVERY_CLIENT_DOCKER_TAG__#$(DISCOVERY_CLIENT_DOCKER_TAG)#" \
 	            -e "s#__SIDECAR_DOCKER_REGISTRY__#$(SIDECAR_DOCKER_REGISTRY)#" \
 	            -e "s#__MISC_DOCKER_REGISTRY__#$(MISC_DOCKER_REGISTRY)#" \
 	            "$${YAML}" > "$${YAML%%.template}" ; \
