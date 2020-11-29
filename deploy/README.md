@@ -5,22 +5,20 @@ The `lb-csi-bundle` includes example yaml files to deploy `lb-csi-plugin` on a k
 The following is the content of the `lb-csi-bundle-<version>.tar.gz`:
 
 ```bash
-.
-├── deploy
-│   └── k8s
-│       ├── lb-csi-plugin-k8s-v1.13.yaml
-│       └── lb-csi-plugin-k8s-v1.15.yaml
-├── examples
-│   └── k8s
-│       ├── example-sc.yaml
-│       ├── pod-block
-│       │   ├── example-block-pod.yaml
-│       │   └── example-block-pvc.yaml
-│       ├── pod-fs
-│       │   ├── example-fs-pod.yaml
-│       │   └── example-fs-pvc.yaml
-│       └── stateful-set
-│           └── example-sts.yaml
+deploy/examples/
+├── mt
+│   ├── example-mt-pod.yaml
+│   ├── example-mt-pvc.yaml
+│   ├── example-mt-sc.yaml
+│   ├── example-mt-sts.yaml
+│   └── example-secret.yaml
+└── non-mt
+    ├── example-block-pod.yaml
+    ├── example-block-pvc.yaml
+    ├── example-fs-pod.yaml
+    ├── example-fs-pvc.yaml
+    ├── example-sc.yaml
+    └── example-sts.yaml
 ```
 
 * **deploy/k8s:** Files to deploy LightOS CSI Plugin on kubernetes
