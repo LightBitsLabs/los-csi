@@ -4,6 +4,7 @@ go 1.10
 
 require (
 	github.com/container-storage-interface/spec v1.2.0
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/dell/gofsutil v1.4.0
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.3
