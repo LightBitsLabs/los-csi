@@ -72,6 +72,7 @@ parameters:
   mgmt-endpoint: $MGMT_ENDPOINT
   replica-count: "$REPLICA_COUNT"
   compression: $COMPRESSION
+  mgmt-scheme: $MGMT_SCHEME
 EOF
     cat > $TESTDIR/test-driver.yaml <<EOF
 StorageClass:
@@ -100,6 +101,7 @@ usage() {
     echo "      -v|--verbose - verbosity on"
     echo "      -k|--kubeconfig - path to kubeconfig, default is KUBECONFIG environment variable"
     echo "      -m|--mgmt-endpoint - mgmt-endpoint parameter for the storage class. Default is using LB_CSI_SC_MGMT_ENDPOINT environment variable"
+    echo "      -S|--mgmt-scheme - mgmt-scheme parameter for the storage class. options: [grpc, grpcs] (default: grpcs)"
     echo "      -r|--replica-count - replica-count parameter for the storage class. Default is using LB_CSI_SC_REPLICA_COUNT environment variable OR 3 if not defined"
     echo "      -c|--enable-compression - compression parameter for the storage class. Default is using LB_CSI_SC_COMPRESSION environment variable OR disabled if not defined"
     echo "      -s|--skip-test - only download and generate the test files without running the test"
@@ -108,7 +110,7 @@ usage() {
 }
 
 main() {
-    if ! OPTS=$(getopt -o 'hvk:m:r:cst:d:' --long help,verbose,kubeconfig:,mgmt-endpoint:,replica-count:,compression,skip-test,test:,test-dir: -n 'parse-options' -- "$@"); then
+    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir: -n 'parse-options' -- "$@"); then
         err "Failed parsing options." >&2 ; usage; exit 1 ;
     fi
 
@@ -120,6 +122,7 @@ main() {
             -h | --help)          usage; exit 0; shift ;;
             -k | --kubeconfig)    KUBECONFIG="$2"; shift; shift ;;
             -m | --mgmt-endpoint) MGMT_ENDPOINT="$2"; shift; shift ;;
+            -S | --mgmt-scheme)   MGMT_SCHEME="$2"; shift; shift ;;
             -r | --replica-count) REPLICA_COUNT="$2"; shift; shift ;;
             -c | --compression)   COMPRESSION=enabled; shift ;;
             -s | --skip-test)     SKIP_TEST=true; shift ;;
@@ -142,6 +145,10 @@ main() {
         exit 1
     fi
 
+    if [ -z "$MGMT_SCHEME" ]; then
+	MGMT_SCHEME="grpcs"
+    fi
+
     CLUSTER_VERSION=$(kubectl --kubeconfig $KUBECONFIG version --short | grep Server | awk '{print $3}')
     if [ -z "$CLUSTER_VERSION" ]; then
         err "Failed to get k8s cluster version using kubectl --kubeconfig $KUBECONFIG version --short"
@@ -161,6 +168,7 @@ main() {
     dbg "KUBECONFIG=$KUBECONFIG"
     dbg "CLUSTER_VERSION=$CLUSTER_VERSION"
     dbg "MGMT_ENDPOINT=$MGMT_ENDPOINT"
+    dbg "MGMT_SCHEME=$MGMT_SCHEME"
     dbg "REPLICA_COUNT=$REPLICA_COUNT"
     dbg "COMPRESSION=$COMPRESSION"
 
