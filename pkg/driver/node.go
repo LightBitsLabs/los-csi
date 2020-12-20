@@ -392,10 +392,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
-func getDeviceNameFromMount(tgtPath string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error) {
 	info, err := gofsutil.GetMounts(ctx)
 	if err != nil {
 		return "", err
@@ -489,7 +486,7 @@ func (d *Driver) NodePublishVolume(
 			return nil, mkEExec("can't examine target path: %s", err)
 		}
 		if !notMnt {
-			dev, err := getDeviceNameFromMount(req.TargetPath)
+			dev, err := getDeviceNameFromMount(ctx, req.TargetPath)
 			if err != nil {
 				log.Debugf("failed to find what's mounted at '%s': %s", req.TargetPath, err)
 			}
