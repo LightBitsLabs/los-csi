@@ -35,13 +35,19 @@ test() {
 
     info "Start $TEST tests"
     case "$TEST" in
-        resize) focus='csi.lightbitslabs.com.*volume-expand' ;;
+            volume-expand) focus='csi.lightbitslabs.com.*volume-expand' ;;
+	        volume-expand-block) focus='csi.lightbitslabs.com.*(block volmode).*volume-expand' ;;
+	        volume-expand-fs) focus='csi.lightbitslabs.com.*fs.*volume-expand' ;;
+            volume-mode) focus='csi.lightbitslabs.com.*volumeMode' ;;
+            volumes) focus='csi.lightbitslabs.com.*volumes' ;;
+            multi-volume) focus='csi.lightbitslabs.com.*multiVolume' ;;
+            provisioning) focus='csi.lightbitslabs.com.*provisioning' ;;
         *) focus='csi.lightbitslabs.com' ;;
     esac
 
-    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee test.log"
+    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
     dbg "$cmd"
-    (cd $TESTDIR && eval $cmd && sed -i -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' test.log)
+    (cd $TESTDIR && eval $cmd && sed -i -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' "$LOGSDIR"/test.log)
 
     info "Done"
 }
@@ -56,7 +62,7 @@ download() {
     }
 
     info "Downloading kubernetes/test/bin/e2e.test and kubernetes/test/bin/ginkgo from $test_archive_url to $TESTDIR"
-    (cd $TESTDIR && curl --location "$test_archive_url" | tar --strip-components=3 -zxf - kubernetes/test/bin/e2e.test kubernetes/test/bin/ginkgo)
+    (cd $TESTDIR && curl -s --location "$test_archive_url" | tar --strip-components=3 -zxf - kubernetes/test/bin/e2e.test kubernetes/test/bin/ginkgo)
     info "Done"
 }
 
@@ -67,7 +73,6 @@ apiVersion: storage.k8s.io/v1
 metadata:
   name: lb-csi-sc
 provisioner: csi.lightbitslabs.com
-allowVolumeExpansion: true
 parameters:
   mgmt-endpoint: $MGMT_ENDPOINT
   replica-count: "$REPLICA_COUNT"
@@ -107,10 +112,11 @@ usage() {
     echo "      -s|--skip-test - only download and generate the test files without running the test"
     echo "      -t|--test - run a specific test. Supported tests - ${SUPPORTED_TESTS[@]} (default all)"
     echo "      -d|--test-dir - test path, where all artifacts will be stored. (default $TESTDIR)"
+    echo "      -l|--logs-dir - logs path, where test.log will be stored. (default $TESTDIR)"
 }
 
 main() {
-    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir: -n 'parse-options' -- "$@"); then
+    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:l:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir:,logs-dir: -n 'parse-options' -- "$@"); then
         err "Failed parsing options." >&2 ; usage; exit 1 ;
     fi
 
@@ -128,6 +134,7 @@ main() {
             -s | --skip-test)     SKIP_TEST=true; shift ;;
             -t | --test)          TEST="$2"; shift; shift ;;
             -d | --test-dir)      TESTDIR="$(readlink -f $2)"; shift; shift ;;
+            -l | --logs-dir)      LOGSDIR="$(readlink -f $2)"; shift; shift ;;
             -- ) shift; break ;;
             * ) err "unsupported argument $1"; usage; exit 1 ;;
         esac
@@ -162,9 +169,11 @@ main() {
         exit 1
     fi
     [ -z "$TESTDIR" ] && TESTDIR="$SCRIPTPATH"/results/"$CLUSTER_VERSION"/"$TEST"
+    [ -z "$LOGSDIR" ] && LOGSDIR="$TESTDIR"
 
     dbg "TEST=$TEST"
     dbg "TESTDIR=$TESTDIR"
+    dbg "LOGSDIR=$LOGSDIR"
     dbg "KUBECONFIG=$KUBECONFIG"
     dbg "CLUSTER_VERSION=$CLUSTER_VERSION"
     dbg "MGMT_ENDPOINT=$MGMT_ENDPOINT"
@@ -180,8 +189,9 @@ main() {
 VERBOSE=false
 CLUSTER_VERSION=
 TESTDIR=
+LOGSDIR=
 SKIP_TEST=false
-SUPPORTED_TESTS=(all resize)
+SUPPORTED_TESTS=(all volume-expand volume-expand-block volume-expand-fs provisioning multi-volume volumes volume-mode)
 TEST=all
 # storage class lb specific params
 MGMT_ENDPOINT="$LB_CSI_SC_MGMT_ENDPOINT"
