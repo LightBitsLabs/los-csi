@@ -89,12 +89,20 @@ func (d *Driver) queryLBforTargetEnv(
 	return res, nil
 }
 
-func getDeviceUUID(device string) (string, error) {
-	devUUID, err := ioutil.ReadFile(filepath.Join("/sys/block", device, "nguid"))
+func (d *Driver) getDeviceUUID(device string) (string, error) {
+	devUUID, err := ioutil.ReadFile(filepath.Join("/sys/block", device, "wwid"))
 	if err != nil {
+		d.log.Debugf("failed to read wwid from dev: %s err: %s", device, err)
 		return "", err
 	}
-	return strings.TrimSuffix(string(devUUID), "\n"), nil
+
+	devUUIDstr := strings.TrimSuffix(string(devUUID), "\n")
+	// LightOS always exposes uuid, so if we don't see a uuid identifier we
+	// can safely return a mismatch
+	if strings.Contains(devUUIDstr, "uuid") {
+		return strings.TrimPrefix(devUUIDstr, "uuid."), nil
+	}
+	return "", nil
 }
 
 func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
@@ -104,25 +112,33 @@ func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
 		return "", err
 	}
 
-	// filter hidden devices in older kernels: devices in the form /dev/nvmeXcYnZ
+	// filters:
+	// 1. remove partitions - we don't care about those (/dev/nvmeXnYpZ)
+	// 2. hidden devices: in older kernels devices in the form /dev/nvmeXcYnZ
 	effDevices := []string{}
 	for _, d := range devices {
-		if !strings.Contains(d, "c") {
+		if !strings.Contains(d, "c") && !strings.Contains(d, "p") {
 			effDevices = append(effDevices, d)
 		}
 	}
 
 	// iterate over devices and try to find a matching uuid
 	for _, dev := range effDevices {
-		devUUID, err := getDeviceUUID(filepath.Base(dev))
+		devUUID, err := d.getDeviceUUID(filepath.Base(dev))
 		if err != nil {
-			return "", err
+			// ignoring errors to get device UUID
+			// because apperantly some unexpected device
+			// identifications were found in the wild
+			// between kernel backport quirks and old
+			// devices that expose outdated identifications.
+			return "", nil
 		}
 		if devUUID == uuid.String() {
 			// found a match!
 			return dev, nil
 		}
 	}
+	d.log.Debugf("didn't find uuid: %s in effDevices: %s", uuid.String(), effDevices)
 
 	// nothing showed up...
 	return "", nil
