@@ -4,8 +4,8 @@ go 1.10
 
 require (
 	github.com/container-storage-interface/spec v1.2.0
-	github.com/fsnotify/fsnotify v1.4.9
 	github.com/dell/gofsutil v1.4.0
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/protobuf v1.3.3
 	github.com/google/uuid v1.1.1
@@ -18,6 +18,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	google.golang.org/genproto v0.0.0-20191114150713-6bbd007550de
 	github.com/stretchr/testify v1.2.2
+	google.golang.org/genproto v0.0.0-20191114150713-6bbd007550de
 	google.golang.org/grpc v1.29.1
 	k8s.io/apimachinery v0.0.0-20181108192626-90473842928c
 	k8s.io/kubernetes v1.11.10
