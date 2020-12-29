@@ -16,7 +16,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/pflag v1.0.5
-	google.golang.org/genproto v0.0.0-20191114150713-6bbd007550de
 	github.com/stretchr/testify v1.2.2
 	google.golang.org/genproto v0.0.0-20191114150713-6bbd007550de
 	google.golang.org/grpc v1.29.1
