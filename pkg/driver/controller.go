@@ -105,7 +105,7 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 }
 
 func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string) *csi.CreateVolumeResponse {
-	volID := lbVolumeID{
+	volID := lbResourceID{
 		mgmtEPs:  mgmtEPs,
 		uuid:     vol.UUID,
 		projName: vol.ProjectName,
@@ -254,7 +254,7 @@ func (d *Driver) CreateVolume(
 func (d *Driver) DeleteVolume(
 	ctx context.Context, req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		if errors.Is(err, ErrMalformed) {
 			d.log.WithFields(logrus.Fields{
@@ -344,7 +344,7 @@ func (d *Driver) DeleteVolume(
 func (d *Driver) ControllerPublishVolume(
 	ctx context.Context, req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -438,7 +438,7 @@ func (d *Driver) ControllerPublishVolume(
 func (d *Driver) ControllerUnpublishVolume(
 	ctx context.Context, req *csi.ControllerUnpublishVolumeRequest,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -525,7 +525,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 		return nil, mkEinvalMissing("volume_capabilities")
 	}
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		if errors.Is(err, ErrMalformed) {
 			d.log.WithFields(logrus.Fields{
@@ -615,7 +615,7 @@ func (d *Driver) ControllerExpandVolume(
 	ctx context.Context, req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}

@@ -135,11 +135,11 @@ var badIDs = []string{
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66||proj:proj1 ",
 }
 
-func TestParseCSIVolumeId(t *testing.T) {
+func TestParseCSIResourceID(t *testing.T) {
 	first := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	golden := uuid.MustParse("6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66")
 	checkGood := func(t *testing.T, i int, id string, chk uuid.UUID) {
-		vol, err := ParseCSIVolumeID(id)
+		vol, err := ParseCSIResourceID(id)
 		if err != nil {
 			t.Errorf("BUG: failed on '%s':\n%s", id, err)
 		} else if vol.uuid != chk {
@@ -161,7 +161,7 @@ func TestParseCSIVolumeId(t *testing.T) {
 	}
 	for _, badID := range badIDs {
 		t.Run("bad:"+badID, func(t *testing.T) {
-			vol, err := ParseCSIVolumeID(badID)
+			vol, err := ParseCSIResourceID(badID)
 			if err == nil {
 				t.Errorf("BUG: passed on '%s':\nmgmt EPs: '%s', NGUID: '%s'",
 					badID, vol.mgmtEPs, vol.uuid)

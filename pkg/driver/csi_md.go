@@ -141,29 +141,28 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 	return res, nil
 }
 
-// lbVolumeID: ---------------------------------------------------------------
+// lbResourceID: ---------------------------------------------------------------
 
-// volIDRegex is used for initial syntactic validation of lbVolumeID
+// resIDRegex is used for initial syntactic validation of LB resource IDS (volumes, snapshots, etc.)
 // as serialised into a string.
-var volIDRegex *regexp.Regexp
+var resIDRegex *regexp.Regexp
 var projNameRegex *regexp.Regexp
 
 func init() {
 	projNameRegex = regexp.MustCompile(`^[a-z0-9-\.]{1,63}$`)
 
-	volIDRegex = regexp.MustCompile(
+	resIDRegex = regexp.MustCompile(
 		`^mgmt:(?P<ep>[^|]+)\|` +
 			`nguid:(?P<nguid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
 			`(\|(?P<proj>proj:[a-z0-9-\.]{1,63}))?` +
 			`(\|(?P<scheme>scheme:(grpc|grpcs)))?$`)
 }
 
-// lbVolumeID represents the contents of the `volume_id` field
-// (`CreateVolumeResponse.volume.volume_id`) returned by the plugin to the CO
-// from CreateVolume(), and then passed back to the plugin in most of the
-// other CSI API calls. it contains the vital information required by the
-// plugin in order to connect to a remote LB and manage volumes as per CO
-// requests. in case of K8s, this field is also known as `volumeHandle`.
+// lbResourceID uniquely identifies a lightbits resource such as a volume / snapshot / etc.
+// It is what the plugin returns to the CO in response to creating resources, then
+// passed back to the plugin in most of the other CSI API calls.
+// it contains the vital information required by the plugin in order to connect to a remote
+// LB and manage resources as per CO requests.
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
@@ -196,16 +195,16 @@ func init() {
 // the current `volume_id` format, at most 4 mgmt API server endpoints can
 // be guaranteed to be supported. anything beyond that is at the mercy of
 // the CO implementors (and user network admins assigning IP ranges)...
-type lbVolumeID struct {
+type lbResourceID struct {
 	mgmtEPs  endpoint.Slice // LightOS mgmt API server endpoints.
 	uuid     guuid.UUID     // NVMe "Identify NS Data Structure".
 	projName string
 	scheme   string // one of [grpc, grpcs]
 }
 
-// String generates the string representation of lbVolumeID that will be
+// String generates the string representation of lbResourceID that will be
 // passed back and forth between the CO and this plugin.
-func (vid lbVolumeID) String() string {
+func (vid lbResourceID) String() string {
 	res := fmt.Sprintf("mgmt:%s|nguid:%s", vid.mgmtEPs, vid.uuid)
 	if len(vid.projName) > 0 {
 		res += fmt.Sprintf("|proj:%s", vid.projName)
@@ -216,22 +215,22 @@ func (vid lbVolumeID) String() string {
 	return res
 }
 
-// ParseCSIVolumeID parses CSI wire-protocol-level `volume_id` string into its
-// constituents and syntactically validates it. the returned lbVolumeID is
+// ParseCSIResourceID parses CSI wire-protocol-level `volume_id` string into its
+// constituents and syntactically validates it. the returned lbResourceID is
 // only valid if the returned error is 'nil'.
-func ParseCSIVolumeID(id string) (lbVolumeID, error) {
-	vid := lbVolumeID{}
+func ParseCSIResourceID(id string) (lbResourceID, error) {
+	vid := lbResourceID{}
 
 	if id == "" {
 		return vid, ErrNotSpecifiedOrEmpty
 	}
 
-	match := volIDRegex.FindStringSubmatch(id)
+	match := resIDRegex.FindStringSubmatch(id)
 	if len(match) < 2 {
 		return vid, fmt.Errorf("bad volume id: '%s'. must contain at least 2 items. err: %w", id, ErrMalformed)
 	}
 	result := make(map[string]string)
-	for i, name := range volIDRegex.SubexpNames() {
+	for i, name := range resIDRegex.SubexpNames() {
 		if i != 0 && name != "" {
 			result[name] = match[i]
 		}

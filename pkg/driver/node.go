@@ -6,11 +6,11 @@ package driver
 
 import (
 	"context"
-	"os"
-	"time"
-	"path/filepath"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gofsutil"
@@ -30,7 +30,7 @@ import (
 // all of this might change by the time we actually try to connect/mount, of
 // course, but usually only for the worse, not for the better.
 func (d *Driver) lbVolEligible(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbVolumeID,
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
 ) error {
 	vol, err := clnt.GetVolume(ctx, vid.uuid, vid.projName)
 	if err != nil {
@@ -70,7 +70,7 @@ type targetEnv struct {
 }
 
 func (d *Driver) queryLBforTargetEnv(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbVolumeID,
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
 ) (*targetEnv, error) {
 	var err error
 	res := &targetEnv{}
@@ -183,7 +183,7 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -323,7 +323,7 @@ func (d *Driver) NodeUnstageVolume(
 	}
 	tgtPath := req.StagingTargetPath
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -380,7 +380,7 @@ func (d *Driver) NodeUnstageVolume(
 }
 
 func (d *Driver) nodePublishVolumeForBlock(
-	vid lbVolumeID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
+	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
 	target := req.GetTargetPath()
@@ -432,7 +432,7 @@ func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error)
 }
 
 func (d *Driver) nodePublishVolumeForFileSystem(
-	vid lbVolumeID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
+	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
 	stagingPath := req.StagingTargetPath
@@ -454,7 +454,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 func (d *Driver) NodePublishVolume(
 	ctx context.Context, req *csi.NodePublishVolumeRequest,
 ) (*csi.NodePublishVolumeResponse, error) {
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -548,7 +548,7 @@ func (d *Driver) NodeUnpublishVolume(
 		return nil, mkEinvalMissing("target_path")
 	}
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -617,7 +617,7 @@ func (d *Driver) NodeExpandVolume(
 	ctx context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
 
-	vid, err := ParseCSIVolumeID(req.VolumeId)
+	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
