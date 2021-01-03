@@ -10,6 +10,7 @@
   - [Flows and Use-cases](#flows-and-use-cases)
     - [Volume Creation](#volume-creation)
     - [Volume Attach](#volume-attach)
+    - [Snapshots and Clones](#snapshots-and-clones)
 
 ## Architecture and Operation
 
@@ -142,3 +143,24 @@ In multiple attach on the same node (not that this is NOT the multi-attach use c
 The following diagram shows the flow for creating multiple PODs, each one with multiple containers, all referencing the same PVC, assuming the PVC is already bound to a POD in that node:
 
 ![Multiple volume attach on the same node](../docs/images/multi-attach-single-node.png)
+
+### Snapshots and Clones
+
+The CSI driver supports snapshotting and cloning of volumes.
+
+A snapshot represents a point-in-time copy of a volume. A snapshot can be used either to provision an new volume (pre-populated with the snapshot data) or to restore the existing volume to a previous state (represented by the snapshot).
+
+The following diagram shows the flow for creating a snapshot from an existing volume, then creating a new volume from that snapshot:
+
+![Clone from snapshot](../docs/images/create-volume-from-snapshot.png)
+
+A Clone is defined as a duplicate of an existing Kubernetes Volume.
+The CSI driver supports volume creation from existing volumes by first creating an intermediate snapshot, then creating a volume from that snapshot, finally deleting the intermediate snapshot.
+The intermediate snapshot name is the volume name, which provides idempotency.
+
+The following diagram shows the flow for creating a volume from another volume - AKA cloning:
+
+![Clone from volume](../docs/images/create-volume-from-volume.png)
+
+
+

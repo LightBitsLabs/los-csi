@@ -1,0 +1,79 @@
+@startuml create-volume-from-snapshot
+
+box k8s #LightBlue
+actor user
+participant k8s
+participant lb_csi
+endbox
+
+box LightOS #MediumPurple
+participant lb_target
+endbox
+
+==create volume==
+user -> k8s: create pvc
+k8s -> lb_csi: ControllerCreateVolume
+lb_csi -> lb_target: CreateVolume
+note right of lb_csi: SnapshotUUID=""
+lb_target -> lb_target: create volume
+lb_target -> lb_csi: {nguid, capacity}
+lb_csi -> k8s: CreateVolumeResponse
+k8s -> user: pvc created
+==create snapshot==
+user -> k8s: create snapshot
+k8s -> lb_csi: ControllerCreateSnapshot
+lb_csi -> lb_target: CreateSnapshot
+lb_target -> lb_target: create snapshot
+lb_target -> lb_csi: {uuid}
+lb_csi -> k8s: CreateSnapshotResponse
+==create volume from snapshot==
+user -> k8s: create pvc
+note right of k8s
+spec:
+    dataSource:
+        name: <snap name>
+        kind: VolumeSnapshot
+        apiGroup: snapshot.storage.k8s.io
+endnote
+k8s -> lb_csi: ControllerCreateVolume
+lb_csi -> lb_target: CreateVolume
+note right of lb_csi: SnapshotUUID="uuid"
+lb_target -> lb_target: create volume **from existing snapshot**
+
+lb_target -> lb_csi: {nguid, capacity}
+lb_csi -> k8s: CreateVolumeResponse
+k8s -> user: pvc created
+
+@enduml
+
+@startuml create-volume-from-volume
+
+box k8s #LightBlue
+actor user
+participant k8s
+participant lb_csi
+endbox
+
+box LightOS #MediumPurple
+participant lb_target
+endbox
+
+==create volume==
+...
+==create volume from volume==
+user -> k8s: create pvc
+note right of k8s
+spec:
+    dataSource:
+        name: <vol name>
+        kind: PersistentVolumeClaim
+endnote
+k8s -> lb_csi: ControllerCreateVolume
+lb_csi -> lb_target: CreateSnapshot
+lb_target -> lb_target: create snapshot
+lb_target -> lb_csi: {uuid}
+==create volume from snapshot==
+...
+
+
+@enduml
