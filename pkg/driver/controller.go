@@ -39,6 +39,7 @@ var (
 		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 		csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
+		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	}
 	capsCache []*csi.ControllerServiceCapability
 )
@@ -264,23 +265,40 @@ func (d *Driver) CreateVolume(
 		return nil, err
 	}
 
+	log := d.log.WithFields(logrus.Fields{
+		"op":      "CreateVolume",
+		"mgmt-ep": params.mgmtEPs,
+		"project": params.projectName,
+	})
+
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 
-	snapshotID := guuid.UUID{}
-	if req.VolumeContentSource != nil {
-		contentSource := req.GetVolumeContentSource()
+	var snapshotID string
+	snapshotUUID := guuid.UUID{}
+	contentSource := req.GetVolumeContentSource()
+	if contentSource != nil {
 		if contentSource.GetVolume() != nil {
-			return nil, mkEinval("volume_content_source",
-				"VolumeContentSource_Volume is not supported")
+			log.Debugf("clone volume from volume - create intermediate snapshot")
+			snapReq := csi.CreateSnapshotRequest{
+				SourceVolumeId: contentSource.GetVolume().GetVolumeId(),
+				Name:           "snapshot-" + req.GetName(),
+				Parameters:     req.GetParameters(),
+			}
+			snap, err := d.CreateSnapshot(ctx, &snapReq)
+			if err != nil {
+				log.Errorf("clone volume from volume - create intermediate snapshot failed")
+				return nil, err
+			}
+			snapshotID = snap.GetSnapshot().GetSnapshotId()
+		} else {
+			log.Debugf("clone volume from snapshot")
+			snapshotID = contentSource.GetSnapshot().SnapshotId
 		}
-
-		// VolumeContentSource_Snapshot
-		snap := contentSource.GetSnapshot()
-		sid, err := ParseCSIResourceID(snap.SnapshotId)
+		sid, err := ParseCSIResourceID(snapshotID)
 		if err != nil {
 			return nil, mkEinval("SnapshotID", err.Error())
 		}
-		snapshotID = sid.uuid
+		snapshotUUID = sid.uuid
 	}
 
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
@@ -290,13 +308,29 @@ func (d *Driver) CreateVolume(
 			ReplicaCount: params.replicaCount,
 			Compression:  params.compression,
 			ACL:          []string{lb.ACLAllowNone},
-			SnapshotUUID: snapshotID,
+			SnapshotUUID: snapshotUUID,
 			ProjectName:  params.projectName,
 		})
 	if err != nil {
 		return nil, err
 	}
-	vol.Volume.ContentSource = req.GetVolumeContentSource()
+	if contentSource != nil {
+		if contentSource.GetVolume() != nil {
+			log.Debugf("clone volume from volume - delete intermediate snapshot")
+			req := csi.DeleteSnapshotRequest{
+				SnapshotId: snapshotID,
+			}
+			_, err := d.DeleteSnapshot(ctx, &req)
+			if err != nil {
+				log.Errorf("clone volume from volume - delete intermediate snapshot failed")
+				// TODO - currently LightOS doesn't support deleting a snapshot
+				// while there are cloned volumes from it. Uncomment once it does:
+				// return nil, err
+			}
+
+		}
+	}
+	vol.Volume.ContentSource = contentSource
 
 	return vol, nil
 }
