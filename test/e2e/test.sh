@@ -86,6 +86,8 @@ SnapshotClass:
   FromName: true
 DriverInfo:
   Name: csi.lightbitslabs.com
+  SupportedSizeRange:
+    Min: 1Gi
   Capabilities:
     persistence: true
     exec: true
