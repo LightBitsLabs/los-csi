@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	guuid "github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
@@ -1410,6 +1411,10 @@ func (c *Client) lbSnapshotFromGRPC(
 		return nil, status.Errorf(codes.Internal,
 			"got bad snapshot from LB: '%s' has unexpected state '%s' (%d)",
 			snap.Name, snap.State, snap.State)
+	}
+
+	if snap.CreationTime == nil {
+		snap.CreationTime = ptypes.TimestampNow()
 	}
 
 	return &lb.Snapshot{
