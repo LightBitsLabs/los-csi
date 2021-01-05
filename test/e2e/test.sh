@@ -42,6 +42,7 @@ test() {
             volumes) focus='csi.lightbitslabs.com.*volumes' ;;
             multi-volume) focus='csi.lightbitslabs.com.*multiVolume' ;;
             provisioning) focus='csi.lightbitslabs.com.*provisioning' ;;
+            snapshottable) focus='csi.lightbitslabs.com.*snapshottable' ;;
         *) focus='csi.lightbitslabs.com' ;;
     esac
 
@@ -94,6 +95,8 @@ DriverInfo:
     controllerExpansion: true
     nodeExpansion: true
     block: true
+    snapshotDataSource: true
+    pvcDataSource: true
 EOF
     dbg "Generated $TESTDIR/storage-class.yaml:"
     [ "$VERBOSE" = "true" ] && cat $TESTDIR/storage-class.yaml
@@ -193,7 +196,7 @@ CLUSTER_VERSION=
 TESTDIR=
 LOGSDIR=
 SKIP_TEST=false
-SUPPORTED_TESTS=(all volume-expand volume-expand-block volume-expand-fs provisioning multi-volume volumes volume-mode)
+SUPPORTED_TESTS=(all volume-expand volume-expand-block volume-expand-fs provisioning multi-volume volumes volume-mode snapshottable)
 TEST=all
 # storage class lb specific params
 MGMT_ENDPOINT="$LB_CSI_SC_MGMT_ENDPOINT"
