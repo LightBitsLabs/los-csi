@@ -122,6 +122,46 @@ func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string)
 	}
 }
 
+func (d *Driver) validateSnapshot(ctx context.Context, clnt lb.Client, req lb.Volume) (bool, error) {
+	if req.SnapshotUUID == guuid.Nil {
+		return true, nil
+	}
+
+	lbSnap, err := clnt.GetSnapshot(ctx, req.SnapshotUUID, req.ProjectName)
+	if err != nil {
+		return false, mkInternal("unable to get snapshot %s", req.SnapshotUUID.String())
+	}
+
+	switch lbSnap.State {
+	case lb.SnapshotAvailable:
+		// this is the only one that should permit volume creation.
+	case lb.SnapshotDeleting,
+		lb.SnapshotFailed:
+		return false, mkInternal("snapshot '%s' (%s) is in state '%s' (%d)",
+			lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
+	case lb.SnapshotCreating:
+		return false, mkEagain("snapshot %s is still being created", lbSnap.UUID)
+	default:
+		return false, mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
+			lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
+	}
+
+	if req.ReplicaCount != lbSnap.SrcVolReplicaCount {
+		return false, mkEinvalf("volume %s requested replicaCount %d != snapshot replicaCount %d",
+			req.Name, req.ReplicaCount, lbSnap.SrcVolReplicaCount)
+	}
+	if req.Compression != lbSnap.SrcVolCompression {
+		return false, mkEinvalf("volume %s requested compression %d != snapshot compression %d",
+			req.Name, req.Compression, lbSnap.SrcVolCompression)
+	}
+	if req.Capacity < lbSnap.Capacity {
+		return false, mkEinvalf("volume %s requested size %d < snapshot %s size %d",
+			req.Name, req.Capacity, lbSnap.Capacity)
+	}
+
+	return true, nil
+}
+
 func (d *Driver) doCreateVolume(
 	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume,
 ) (*csi.CreateVolumeResponse, error) {
@@ -188,41 +228,11 @@ func (d *Driver) doCreateVolume(
 			log.Info("volume already exists")
 		}
 	} else {
-		if req.SnapshotUUID != guuid.Nil {
-			lbSnap, err := clnt.GetSnapshot(ctx, req.SnapshotUUID, req.ProjectName)
-			if err != nil {
-				return nil, mkInternal("unable to get snapshot %s", req.SnapshotUUID.String())
-			}
-
-			switch lbSnap.State {
-			case lb.SnapshotAvailable:
-				// this is the only one that should permit volume creation.
-			case lb.SnapshotDeleting,
-				lb.SnapshotFailed:
-				return nil, mkInternal("snapshot '%s' (%s) is in state '%s' (%d)",
-					lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
-			case lb.SnapshotCreating:
-				return nil, mkEagain("snapshot %s is still being created", lbSnap.UUID)
-			default:
-				return nil, mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
-					lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
-			}
-
-			if req.ReplicaCount != lbSnap.SrcVolReplicaCount {
-				return nil, mkEinvalf("volume %s requested replicaCount %d != snapshot replicaCount %d",
-					req.Name, req.ReplicaCount, lbSnap.SrcVolReplicaCount)
-			}
-			if req.Compression != lbSnap.SrcVolCompression {
-				return nil, mkEinvalf("volume %s requested compression %d != snapshot compression %d",
-					req.Name, req.Compression, lbSnap.SrcVolCompression)
-			}
-			if req.Capacity < lbSnap.Capacity {
-				return nil, mkEinvalf("volume %s requested size %d < snapshot %s size %d",
-					req.Name, req.Capacity, lbSnap.Capacity)
-			}
+		// nope, no such luck. just create one:
+		if ok, err := d.validateSnapshot(ctx, clnt, req); !ok {
+			return nil, err
 		}
 
-		// nope, no such luck. just create one:
 		vol, err = clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
 			req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, true) // TODO: blocking opt
 		if err != nil {
