@@ -162,6 +162,57 @@ func (d *Driver) validateSnapshot(ctx context.Context, clnt lb.Client, req lb.Vo
 	return true, nil
 }
 
+func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volume) (bool, error) {
+
+	log := d.log.WithFields(logrus.Fields{
+		"op":       "validateVolume",
+		"vol-name": vol.Name,
+		"vol-uuid": vol.UUID,
+	})
+	switch vol.State {
+	case lb.VolumeAvailable,
+		lb.VolumeUpdating:
+		// this one might be reusable as is...
+	case lb.VolumeCreating:
+		return false, mkEagain("volume '%s' is still being created", vol.Name)
+	default:
+		return false, mkInternal("volume '%s' exists but is in unexpected "+
+			"state '%s' (%d)", vol.Name, vol.State, vol.State)
+	}
+
+	// TODO: check protection state and stall with EAGAIN, making
+	// the CO retry, if it's read-only on unavailable?
+	// this way the user workload will be DELAYED, possibly for a
+	// long time - until the relevant LightOS cluster nodes are up
+	// and caught up - but at least will not see EIO right off the
+	// bat (that might still happen on massive LightOS cluster node
+	// outages after the volume is created and returned, of course)...
+
+	diffs := req.ExplainDiffsFrom(vol, "requested", "actual", true)
+	if len(diffs) > 0 {
+		return false, mkEExist("volume '%s' exists but is incompatible: %s",
+			vol.Name, strings.Join(diffs, ", "))
+	}
+	if !strlist.AreEqual(vol.ACL, req.ACL) {
+		// this is likely a race with some other instance, but
+		// the ACL should be properly adjusted afterwards, on
+		// ControllerPublishVolume()/ControllerUnpublishVolume()
+		// (which the other instance may have already reached).
+		log.Warnf("found matching existing volume with "+
+			"unexpected ACL %#q instead of %#q", vol.ACL, req.ACL)
+	}
+
+	// if reached here - a matching volume already exists...
+	if !vol.IsWritable() {
+		log.Warnf("volume already exists, but is not currently usable: "+
+			"its protection state is '%s'", vol.Protection)
+	} else {
+		log.Info("volume already exists")
+	}
+
+	return true, nil
+}
+
 func (d *Driver) doCreateVolume(
 	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume,
 ) (*csi.CreateVolumeResponse, error) {
@@ -180,54 +231,11 @@ func (d *Driver) doCreateVolume(
 
 	// check if a matching volume already exists (likely a result of retry from CO):
 	vol, err := clnt.GetVolumeByName(ctx, req.Name, req.ProjectName)
-	if err != nil && !isStatusNotFound(err) {
-		// TODO: convert to status!
-		return nil, err
-	}
-	if err == nil {
-		switch vol.State {
-		case lb.VolumeAvailable,
-			lb.VolumeUpdating:
-			// this one might be reusable as is...
-		case lb.VolumeCreating:
-			return nil, mkEagain("volume '%s' is still being created", vol.Name)
-		default:
-			return nil, mkInternal("volume '%s' already exists but is in unexpected "+
-				"state '%s' (%d)", vol.Name, vol.State, vol.State)
+	if err != nil {
+		if !isStatusNotFound(err) {
+			// TODO: convert to status!
+			return nil, err
 		}
-
-		log = log.WithField("vol-uuid", vol.UUID)
-
-		// TODO: check protection state and stall with EAGAIN, making
-		// the CO retry, if it's read-only on unavailable?
-		// this way the user workload will be DELAYED, possibly for a
-		// long time - until the relevant LightOS cluster nodes are up
-		// and caught up - but at least will not see EIO right off the
-		// bat (that might still happen on massive LightOS cluster node
-		// outages after the volume is created and returned, of course)...
-
-		diffs := req.ExplainDiffsFrom(vol, "requested", "actual", true)
-		if len(diffs) > 0 {
-			return nil, mkEExist("volume '%s' already exists but is incompatible: %s",
-				vol.Name, strings.Join(diffs, ", "))
-		}
-		if !strlist.AreEqual(vol.ACL, req.ACL) {
-			// this is likely a race with some other instance, but
-			// the ACL should be properly adjusted afterwards, on
-			// ControllerPublishVolume()/ControllerUnpublishVolume()
-			// (which the other instance may have already reached).
-			log.Warnf("found matching existing volume with "+
-				"unexpected ACL %#q instead of %#q", vol.ACL, req.ACL)
-		}
-
-		// if reached here - a matching volume already exists...
-		if !vol.IsWritable() {
-			log.Warnf("volume already exists, but is not currently usable: "+
-				"its protection state is '%s'", vol.Protection)
-		} else {
-			log.Info("volume already exists")
-		}
-	} else {
 		// nope, no such luck. just create one:
 		if ok, err := d.validateSnapshot(ctx, clnt, req); !ok {
 			return nil, err
@@ -239,9 +247,15 @@ func (d *Driver) doCreateVolume(
 			// TODO: convert to status!
 			return nil, err
 		}
-		log.WithField("vol-uuid", vol.UUID).Info("volume created")
+
 	}
 
+	// verify what we asked for is what we got...
+	if ok, err := d.validateVolume(ctx, req, vol); !ok {
+		return nil, err
+	}
+
+	log.WithField("vol-uuid", vol.UUID).Info("volume created successfully")
 	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme), nil
 }
 
