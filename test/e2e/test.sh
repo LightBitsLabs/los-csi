@@ -29,9 +29,19 @@ run() {
     "$@" || exit $?
 }
 
+cleanup() {
+    info "Delete default storage class"
+    kubectl delete -f $TESTDIR/storage-class.yaml
+}
+
 test() {
     local focus
     local cmd
+
+    # https://github.com/kubernetes/kubernetes/issues/97993
+    info "Create default storage class"
+    trap cleanup EXIT
+    kubectl create -f $TESTDIR/storage-class.yaml
 
     info "Start $TEST tests"
     case "$TEST" in
@@ -73,6 +83,8 @@ kind: StorageClass
 apiVersion: storage.k8s.io/v1
 metadata:
   name: lb-csi-sc
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
 provisioner: csi.lightbitslabs.com
 parameters:
   mgmt-endpoint: $MGMT_ENDPOINT
