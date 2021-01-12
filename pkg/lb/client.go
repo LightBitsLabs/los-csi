@@ -158,10 +158,12 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 		diffs.and("%sVolume %s project name %s differs from the %s volume project name %s",
 			lDescr, v.Name, v.ProjectName, rDescr, other.ProjectName)
 	}
-	if v.SnapshotUUID != other.SnapshotUUID {
-		diffs.and("%sVolume %s source snapshot %s differs from the %s volume source snapshot %s",
-			lDescr, v.Name, v.SnapshotUUID, rDescr, other.SnapshotUUID)
-	}
+	// TODO - uncoment once LBM1-15016 is fixed
+	// LBM1-15016 - create volume from snapshot does not return sourceSnapshotID on v2
+	// if v.SnapshotUUID != other.SnapshotUUID {
+	// 	diffs.and("%sVolume %s source snapshot %s differs from the %s volume source snapshot %s",
+	// 		lDescr, v.Name, v.SnapshotUUID, rDescr, other.SnapshotUUID)
+	// }
 
 	return diffs
 }
