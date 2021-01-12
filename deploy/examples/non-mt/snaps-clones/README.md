@@ -36,7 +36,6 @@ Tail both pods and see that the snapshot and clone from the snapshot was success
 kubectl exec -it example-pod -- tail -5 /mnt/test/log
 kubectl exec -it example-clone-from-snapshot-pod -- tail -5 /mnt/test/log
 ```
-
 ### Clone from volume
 
 When cloning from volume, no need to create a snapshot manually - the CSI driver will create an intermediate snapshot from which it will clone the volume:
