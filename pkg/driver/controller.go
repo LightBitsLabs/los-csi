@@ -241,7 +241,7 @@ func (d *Driver) doCreateVolume(
 		}
 		log.WithField("vol-uuid", vol.UUID).Info("volume created")
 	}
-	vol.ProjectName = req.ProjectName
+
 	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme), nil
 }
 

@@ -154,6 +154,10 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 		diffs.and("%scompression is %s while the %s volume has compression %s",
 			lDescr, b2s[v.Compression], rDescr, b2s[other.Compression])
 	}
+	if v.ProjectName != other.ProjectName {
+		diffs.and("%sVolume %s project name %s differs from the %s volume project name %s",
+			lDescr, v.Name, v.ProjectName, rDescr, other.ProjectName)
+	}
 	if v.SnapshotUUID != other.SnapshotUUID {
 		diffs.and("%sVolume %s source snapshot %s differs from the %s volume source snapshot %s",
 			lDescr, v.Name, v.SnapshotUUID, rDescr, other.SnapshotUUID)
