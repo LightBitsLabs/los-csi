@@ -24,8 +24,7 @@ func TestCSISanity(t *testing.T) {
 	compression := getEnv("CSI_SANITY_COMPRESSION", "disabled")
 	// We can't run tests without LB cluster...
 	if mgmtEndpoint == "" {
-		t.Errorf("mandatory parameter mgmt-endpoint missing, most tests will fail!")
-		t.Fail()
+		t.Skip("mandatory parameter mgmt-endpoint missing, skipping CSISanity")
 	}
 
 	nodeID, err := os.Hostname()
