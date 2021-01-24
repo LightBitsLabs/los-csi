@@ -220,12 +220,12 @@ func New(cfg Config) (*Driver, error) {
 	log := logger.WithFields(extraFields)
 
 	log.WithFields(logrus.Fields{
-		"driver-name":       driverName,
-		"config":            fmt.Sprintf("%+v", cfg),
-		"version-rel":       version,
-		"version-git":       versionGitCommit,
-		"version-hash":      versionBuildHash,
-		"version-build-id":  versionBuildID,
+		"driver-name":      driverName,
+		"config":           fmt.Sprintf("%+v", cfg),
+		"version-rel":      version,
+		"version-git":      versionGitCommit,
+		"version-hash":     versionBuildHash,
+		"version-build-id": versionBuildID,
 	}).Info("starting")
 
 	// ok, so this is a bit heavy-handed, but until K8s guys factor it out -
@@ -300,7 +300,7 @@ func (d *Driver) Run() error {
 	defer cancel()
 	jwtFilePath := "/etc/lb-csi/jwt"
 	if err := d.monitorJWTVariable(ctx, jwtFilePath); err != nil {
-		d.log.WithError(err).Error("failed to watch %q. will not ba able to read jwt from task.", jwtFilePath)
+		d.log.WithError(err).Errorf("failed to watch %q. will not ba able to read jwt from task.", jwtFilePath)
 	}
 
 	d.log.WithField("addr", d.sockPath).Info("server started")

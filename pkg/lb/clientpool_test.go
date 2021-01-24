@@ -126,7 +126,7 @@ const (
 //     1000 - will block forever or past `ctx` deadline
 //     2000 - will fail immediately
 func fakeClientDial(
-	ctx context.Context, env *testEnv, targets endpoint.Slice, opts fakeClientOptions,
+	ctx context.Context, env *testEnv, targets endpoint.Slice, mgmtScheme string, opts fakeClientOptions,
 ) (*fakeClient, error) {
 	if opts.maxDialDelayUsec < opts.minDialDelayUsec {
 		panic(fmt.Sprintf("FakeClientDial: maxDialDelayUsec (%d) < minDialDelayUsec (%d)",
@@ -213,6 +213,10 @@ func (c *fakeClient) GetCluster(ctx context.Context) (*lb.Cluster, error) {
 	return nil, nil
 }
 
+func (c *fakeClient) GetClusterInfo(ctx context.Context) (*lb.ClusterInfo, error) {
+	return nil, nil
+}
+
 func (c *fakeClient) ListNodes(ctx context.Context) ([]*lb.Node, error) {
 	return nil, nil
 }
@@ -220,7 +224,7 @@ func (c *fakeClient) ListNodes(ctx context.Context) ([]*lb.Node, error) {
 func (c *fakeClient) CreateVolume(
 	ctx context.Context, name string, capacity uint64,
 	replicaCount uint32, compress bool, acl []string,
-	projectName string, blocking bool, // TODO: refactor options
+	projectName string, snapshotID guuid.UUID, blocking bool, // TODO: refactor options
 ) (*lb.Volume, error) {
 	return nil, nil
 }
@@ -231,7 +235,7 @@ func (c *fakeClient) DeleteVolume(
 	return nil
 }
 
-func (c *fakeClient) GetVolume(ctx context.Context, uuid guuid.UUID) (*lb.Volume, error) {
+func (c *fakeClient) GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Volume, error) {
 	return nil, nil
 }
 
@@ -242,6 +246,25 @@ func (c *fakeClient) GetVolumeByName(ctx context.Context, name string, projectNa
 func (c *fakeClient) UpdateVolume(
 	ctx context.Context, uuid guuid.UUID, projectName string, hook lb.VolumeUpdateHook,
 ) (*lb.Volume, error) {
+	return nil, nil
+}
+
+func (c *fakeClient) CreateSnapshot(
+	ctx context.Context, name string, projectName string,
+	srcVolUUID guuid.UUID, blocking bool,
+) (*lb.Snapshot, error) {
+	return nil, nil
+}
+
+func (c *fakeClient) DeleteSnapshot(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error {
+	return nil
+}
+
+func (c *fakeClient) GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Snapshot, error) {
+	return nil, nil
+}
+
+func (c *fakeClient) GetSnapshotByName(ctx context.Context, name string, projectName string) (*lb.Snapshot, error) {
 	return nil, nil
 }
 
@@ -283,7 +306,7 @@ func (env *testEnv) assertTotalClients(expected int64) {
 func (env *testEnv) assertGetClient(
 	ctx context.Context, targets endpoint.Slice, format string, args ...interface{},
 ) lb.Client {
-	clnt, err := env.pool.GetClient(ctx, targets)
+	clnt, err := env.pool.GetClient(ctx, targets, "grpc")
 	if err != nil {
 		env.t.Fatalf("BUG: GetClient(%s) failed: "+format,
 			append([]interface{}{targets}, args...)...)
@@ -294,7 +317,7 @@ func (env *testEnv) assertGetClient(
 func (env *testEnv) assertGetNoClient(
 	ctx context.Context, targets endpoint.Slice, format string, args ...interface{},
 ) {
-	clnt, err := env.pool.GetClient(ctx, targets)
+	clnt, err := env.pool.GetClient(ctx, targets, "grpc")
 	if err == nil {
 		env.t.Fatalf("BUG: GetClient(%s) unexpectedly succeeded with client ID %s: "+
 			format, append([]interface{}{targets, clnt.ID()}, args...)...)
@@ -370,8 +393,8 @@ func runSmoke(t *testing.T, st smokeTest) {
 		poolOpts = *st.poolOpts
 	}
 	env.pool = lb.NewClientPoolWithOptions(
-		func(ctx context.Context, targets endpoint.Slice) (lb.Client, error) {
-			return fakeClientDial(ctx, &env, targets, st.clientOpts)
+		func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+			return fakeClientDial(ctx, &env, targets, mgmtScheme, st.clientOpts)
 		},
 		poolOpts,
 	)
@@ -449,7 +472,7 @@ var (
 
 func testGetUsePut(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
-	clnt := env.assertGetClient(ctx, hostA, "bummer...")
+	clnt := env.assertGetClient(ctx, hostA, "bummer...", "grpc")
 	env.assertNumClients(1)
 	env.assertUseClientOk(clnt)
 	env.pool.PutClient(clnt)
@@ -458,7 +481,7 @@ func testGetUsePut(env *testEnv) {
 
 func testClosePoolInUse(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
-	clnt := env.assertGetClient(ctx, hostA, "bummer...")
+	clnt := env.assertGetClient(ctx, hostA, "bummer...", "grpc")
 	env.assertNumClients(1)
 	env.assertUseClientOk(clnt)
 	env.assertTotalClients(1)
@@ -466,7 +489,7 @@ func testClosePoolInUse(env *testEnv) {
 
 func testUseClientAfterPoolClose(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
-	clnt := env.assertGetClient(ctx, hostA, "bummer...")
+	clnt := env.assertGetClient(ctx, hostA, "bummer...", "grpc")
 	env.assertNumClients(1)
 	env.assertUseClientOk(clnt)
 	env.pool.Close()
@@ -647,7 +670,7 @@ func fuzzOne(
 		deadline := time.Now().Add(1 * time.Millisecond)
 		tmpCtx, cancel := context.WithDeadline(ctx, deadline)
 		defer cancel()
-		_, err := env.pool.GetClient(tmpCtx, targets)
+		_, err := env.pool.GetClient(tmpCtx, targets, "grpc")
 		if err == nil {
 			env.t.Errorf("BUG: GetClient(%s) unexpectedly succeeded", targets)
 			failed <- struct{}{}
@@ -662,7 +685,7 @@ func fuzzOne(
 		deadline := time.Now().Add(100 * time.Millisecond)
 		tmpCtx, cancel := context.WithDeadline(ctx, deadline)
 		defer cancel()
-		_, err := env.pool.GetClient(tmpCtx, targets)
+		_, err := env.pool.GetClient(tmpCtx, targets, "grpc")
 		if err == nil {
 			env.t.Errorf("BUG: GetClient(%s) unexpectedly succeeded", targets)
 			failed <- struct{}{}
@@ -676,7 +699,7 @@ func fuzzOne(
 	default:
 		tmpCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
-		clnt, err := env.pool.GetClient(ctx, targets)
+		clnt, err := env.pool.GetClient(ctx, targets, "grpc")
 		if err != nil {
 			if tmpCtx.Err() == nil {
 				env.t.Errorf("BUG: GetClient(%s) failed: %s", targets, err)
@@ -738,8 +761,8 @@ func TestFuzz(t *testing.T) {
 		maxOpDelayUsec:   5000, // 5 msec
 	}
 	env.pool = lb.NewClientPoolWithOptions(
-		func(ctx context.Context, targets endpoint.Slice) (lb.Client, error) {
-			return fakeClientDial(ctx, &env, targets, clientOpts)
+		func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+			return fakeClientDial(ctx, &env, targets, mgmtScheme, clientOpts)
 		},
 		poolOpts,
 	)

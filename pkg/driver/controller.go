@@ -641,9 +641,9 @@ func (d *Driver) ValidateVolumeCapabilities(
 				"vol-id":  req.VolumeId,
 				"project": vid.projName,
 			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
-			return nil, mkEnoent("volume_id", err.Error())
+			return nil, mkEnoent("volume_id %s", err.Error())
 		}
-		return nil, mkEnoent("volume_id", err.Error())
+		return nil, mkEnoent("volume_id %s", err.Error())
 	}
 
 	log := d.log.WithFields(logrus.Fields{
