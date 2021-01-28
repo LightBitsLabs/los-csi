@@ -24,7 +24,6 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
 override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
 override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
 DOCKER_TAG := $(PLUGIN_NAME):$(or $(BUILD_HASH),$(PLUGIN_VER))
-override DOCKER_REGISTRY := $(and $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)
 
 
 DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
@@ -79,27 +78,73 @@ test_long:
 build:
 	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
 
-generate_deployment_yaml:
-	@if [ -n "$(DOCKER_REGISTRY)" ] ; then \
-	    for YAML in $(YAML_PATH)/lb-csi-plugin-k8s-*.yaml.template ; do \
-	        [ -e "$${YAML}" ] || continue ; \
-	        sed -e "s#__DOCKER_REGISTRY__#$(DOCKER_REGISTRY)#" \
-	            -e "s#__DOCKER_TAG__#$(DOCKER_TAG)#" \
-	            -e "s#__DISCOVERY_CLIENT_DOCKER_TAG__#$(DISCOVERY_CLIENT_DOCKER_TAG)#" \
-	            -e "s#__SIDECAR_DOCKER_REGISTRY__#$(SIDECAR_DOCKER_REGISTRY)#" \
-	            -e "s#__MISC_DOCKER_REGISTRY__#$(MISC_DOCKER_REGISTRY)#" \
-	            "$${YAML}" > "$${YAML%%.template}" ; \
-	    done ; \
-	else \
-	    echo "DOCKER_REGISTRY not set, skipping deployment YAMLs generation" ; \
-	fi
+generate_deployment_yaml: deploy/k8s helm
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=false \
+		--set enableSnapshot=false \
+		--set kubeVersion=v1.13 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.13.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=false \
+		--set enableSnapshot=false \
+		--set kubeVersion=v1.15 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.15.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=false \
+		--set kubeVersion=v1.16 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.16.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=false \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.16 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.16-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.17 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.17 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.18 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.18 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
 
 package: build generate_deployment_yaml
-	@docker build $(LABELS) -t $(DOCKER_REGISTRY)$(DOCKER_TAG) deploy
+	@docker build $(LABELS) -t $(DOCKER_REGISTRY)/$(DOCKER_TAG) deploy
 
 push: package
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
-	@docker push $(DOCKER_REGISTRY)$(DOCKER_TAG)
+	@docker push $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
@@ -110,15 +155,19 @@ image_tag:
 	@echo $(DOCKER_TAG)
 
 full_image_tag:
-	@echo $(DOCKER_REGISTRY)$(DOCKER_TAG)
+	@echo $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 
 generate_bundle: generate_deployment_yaml
 	@tar -C deploy \
-		--exclude=*.template -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
-		k8s/lb-csi-plugin-k8s-v1.13.yaml \
-		k8s/lb-csi-plugin-k8s-v1.15.yaml \
-		examples
-	@tar -C deploy \
-		--exclude=*.template -czvf build/lb-csi-bundle-dc-$(RELEASE).tar.gz \
-		k8s/lb-csi-plugin-k8s-v1.15-dc.yaml \
-		examples
+		-czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
+		k8s helm examples
+
+deploy/k8s:
+	mkdir -p deploy/k8s
+
+helm:
+	curl -fsSL -o /tmp/get_helm.sh \
+		https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+	chmod 700 /tmp/get_helm.sh
+	/tmp/get_helm.sh --version v3.5.0
+	rm /tmp/get_helm.sh
