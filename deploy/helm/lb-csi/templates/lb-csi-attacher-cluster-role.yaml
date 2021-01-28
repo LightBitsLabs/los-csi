@@ -1,0 +1,40 @@
+{{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: lb-csi-attacher-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+{{- if ($kubeVersion | semverCompare ">= 1.15.0")}}
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+{{- else if ($kubeVersion | semverCompare ">=1.13.0 < 1.14.0")}}
+  - apiGroups: ["csi.storage.k8s.io"]
+    resources: ["csinodeinfos"]
+    verbs: ["get", "list", "watch"]
+{{end}}
+
+---
+
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: lb-csi-attacher-binding
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.controllerServiceAccountName }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: lb-csi-attacher-role
+  apiGroup: rbac.authorization.k8s.io
+

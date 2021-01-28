@@ -1,0 +1,10 @@
+{{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
+{{if ($kubeVersion | semverCompare ">= 1.15.0") }}
+apiVersion: storage.k8s.io/v1beta1
+kind: CSIDriver
+metadata:
+  name: csi.lightbitslabs.com
+spec:
+  attachRequired: true
+  podInfoOnMount: true
+{{end}}
