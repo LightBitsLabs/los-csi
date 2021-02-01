@@ -1,6 +1,7 @@
 # Helm Chart LB-CSI plugin
 
 - [Helm Chart LB-CSI plugin](#helm-chart-lb-csi-plugin)
+  - [Overview](#overview)
   - [Usage](#usage)
     - [Install](#install)
     - [Uninstall](#uninstall)
@@ -9,6 +10,34 @@
   - [Values](#values)
   - [Using a custom Docker registry with the Helm Chart](#using-a-custom-docker-registry-with-the-helm-chart)
     - [Custom Docker registry example: Github packages](#custom-docker-registry-example-github-packages)
+
+## Overview
+
+Helm may be used to install the `lb-csi-plugin`. Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
+
+```bash
+├── helm
+│   └── lb-csi
+│       ├── Chart.yaml
+│       ├── README.md
+│       ├── templates
+│       │   ├── controllerServiceAccount.yaml
+│       │   ├── csidriver.yaml
+│       │   ├── csinodeinfo_crd.yaml
+│       │   ├── lb-csi-attacher-cluster-role.yaml
+│       │   ├── lb-csi-controller.yaml
+│       │   ├── lb-csi-external-resizer-cluster-role.yaml
+│       │   ├── lb-csi-node.yaml
+│       │   ├── lb-csi-provisioner-cluster-role.yaml
+│       │   ├── nodeServiceAccount.yaml
+│       │   ├── registry-secret.yml
+│       │   ├── secret.yaml
+│       │   ├── snapshot-rbac.yaml
+│       │   ├── volume-snapshot-class-crd.yaml
+│       │   ├── volume-snapshot-content-crd.yaml
+│       │   └── volume-snapshot-crd.yaml
+│       └── values.yaml
+```
 
 ## Usage
 

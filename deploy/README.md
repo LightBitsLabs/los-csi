@@ -1,90 +1,44 @@
-# Deployment bundle
+# Workload Deployment Examples
 
-The `lb-csi-bundle` includes example yaml files to deploy `lb-csi-plugin` on a k8s cluster.
+The `lb-csi-bundle` includes example manifests to deploy workloads using `lb-csi-plugin` on a k8s cluster.
 
-The following is the content of the `lb-csi-bundle-<version>.tar.gz`:
+Part of `lb-csi-plugin` release is the `lb-csi-bundle-<version>.tar.gz`.
+
+Content of the `lb-csi-bundle-<version>.tar.gz`:
 
 ```bash
 deploy/examples/
-├── mt
-│   ├── example-mt-pod.yaml
-│   ├── example-mt-pvc.yaml
-│   ├── example-mt-sc.yaml
-│   ├── example-mt-sts.yaml
-│   └── example-secret.yaml
-└── non-mt
-    ├── example-block-pod.yaml
-    ├── example-block-pvc.yaml
-    ├── example-fs-pod.yaml
-    ├── example-fs-pvc.yaml
-    ├── example-sc.yaml
-    └── example-sts.yaml
+│   ├── mt
+│   │   ├── example-mt-pod.yaml
+│   │   ├── example-mt-pvc.yaml
+│   │   ├── example-mt-sc.yaml
+│   │   ├── example-mt-sts.yaml
+│   │   └── example-secret.yaml
+│   └── non-mt
+│       ├── block
+│       │   ├── example-block-pod.yaml
+│       │   └── example-block-pvc.yaml
+│       ├── example-sc.yaml
+│       ├── example-snapshot-sc.yaml
+│       ├── filesystem
+│       │   ├── example-fs-pod.yaml
+│       │   └── example-fs-pvc.yaml
+│       ├── snaps-clones
+│       │   ├── 01.example-pvc.yaml
+│       │   ├── 02.example-pod.yaml
+│       │   ├── 03.example-snapshot.yaml
+│       │   ├── 04.example-pvc-from-snapshot.yaml
+│       │   ├── 05.example-pvc-from-snapshot-pod.yaml
+│       │   ├── 06.example-pvc-from-pvc.yaml
+│       │   ├── 07.example-pvc-from-pvc-pod.yaml
+│       │   ├── README.md
+│       │   ├── test-concurrent-clone.yaml
+│       │   └── test-concurrent-snapshot-and-clone.yaml
+│       └── statefulset
+│           └── example-sts.yaml
 ```
 
-* **deploy/k8s:** Files to deploy LightOS CSI Plugin on kubernetes
-* **examples/k8s:** Examples of kubernetes workloads that use LightOS CSI Plugin.
-
-## Configure LightOS CSI Plugin Deployment
-
-Create the required ServiceAccount and RBAC ClusterRole/ClusterRoleBinding Kubernetes objects
-
-Not every Kubernetes release requires a version-specific deployment spec file.
-If the Kubernetes version in question is supported by the Lightbits CSI plugin according to its release notes document, use the deployment spec file targeted for the highest Kubernetes version that is lower or equal than the one being deployed to. E.g., given the above two example deployment files:
-
-* To deploy on Kubernetes v1.13 - use Kubernetes v1.13 deployment spec file.
-* To deploy on Kubernetes v1.15 and above - use Kubernetes v1.15 deployment spec file.
-
-### Deploying LightOS CSI Plugin
-
-To deploy the plugin, run the following commands with examples as the current directory and with kubectl in your $PATH.
-
-```bash
-kubectl create -f lb-csi-plugin-k8s-v1.15.yaml
-```
-
-After the above command completes, the deployment process can take between several seconds and several minutes, depending on the size of the Kubernetes cluster, load on the cluster nodes, network connectivity, etc.
-
-After a short while, you can issue the following commands to verify the results. Your output will likely differ from the following example, including to reflect your Kubernetes cluster configuration, randomly generated pod names, etc.
-
-```bash
-$ kubectl get --namespace=kube-system statefulset lb-csi-controller
-NAME                DESIRED   CURRENT   AGE
-lb-csi-controller   1         1         4m
-
-$ kubectl get --namespace=kube-system daemonsets lb-csi-node
-NAME          DESIRED   CURRENT   READY     UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
-lb-csi-node   3         3         3         3            3           <none>          4m
-
-$  kubectl get --namespace=kube-system pod --selector app=lb-csi-plugin -o wide
-NAME                  READY     STATUS    RESTARTS   AGE       IP              NODE      NOMINATED NODE
-lb-csi-controller-0   3/3       Running   0          1m        10.233.65.12    node3     <none>
-lb-csi-node-6ptlf     2/2       Running   0          1m        192.168.20.20   node3     <none>
-lb-csi-node-blc46     2/2       Running   0          1m        192.168.20.22   node4     <none>
-lb-csi-node-djv7t     2/2       Running   0          1m        192.168.20.18   node2     <none>
-```
-
-### Removing LightOS CSI Plugin
-
-Assuming you have deployed Lightbits CSI plugin by following the instructions in the section [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
-
-```bash
-$ kubectl delete -f lb-csi-plugin-k8s-v1.15.yaml
-
-$ kubectl get --namespace=kube-system statefulset lb-csi-controller
-No resources found.
-Error from server (NotFound): statefulsets.apps "lb-csi-controller" not found
-
-$ kubectl get --namespace=kube-system daemonsets lb-csi-node
-No resources found.
-Error from server (NotFound): daemonsets.extensions "lb-csi-node" not found
-
-$ kubectl get --namespace=kube-system pod --selector app=lb-csi-plugin
-No resources found.
-```
-
-The “No resources found” errors for the last three commands are expected and confirm the successful removal of the CSI plugin from the Kubernetes cluster.
-
-After Lightbits CSI plugin is removed from the Kubernetes cluster, some volumes created by Kubernetes using the CSI plugin may remain on the LightOS storage cluster and may need to be manually deleted using the LightOS management API or CLI.
+* **examples:** Examples of workloads that use LightOS CSI Plugin.
 
 ## Sample Workload Configurations Using LightOS CSI Plugin
 
@@ -97,6 +51,7 @@ For example, to create a lb-csi-plugin StorageClass that maps to the kubernetes 
 * **mgmt-endpoints:** LightOS cluster API endpoints (should be edited to match your LightOS cluster endpoints)
 * **replica-count:** the number of replicas for each volume provisioned by this storage class
 * **compression:** rather we should enable/disable compression.
+* **mgmt-scheme:** access LightOS API using grpc/grpcs (defaults to `grpcs`).
 
 The following YAML file can be used:
 
@@ -109,11 +64,12 @@ provisioner: csi.lightbitslabs.com
 allowVolumeExpansion: true
 parameters:
   mgmt-endpoint: 10.0.0.1:80,10.0.0.2:80,10.0.0.3:80
+  mgmt-scheme: grpc
   replica-count: "3"
   compression: disabled
 ```
 
-Example file can be found at: [example-sc.yaml](../examples/example-sc.yaml)
+Example file can be found at: [example-sc.yaml](./examples/non-mt/example-sc.yaml)
 
 To create the StorageClass, run:
 
@@ -141,12 +97,12 @@ For instance, to configure a StatefulSet to provide its pods with `10GiB` persis
           storage: 10Gi
 ```
 
-An example Kubernetes spec of StatefulSet to create several simple busybox-based pods that use PVs from an “example-sc” StorageClass is provided in the file [example-sts.yaml](../examples/stateful-set/example-sts.yaml) of the Supplementary Package
+An example Kubernetes spec of StatefulSet to create several simple busybox-based pods that use PVs from an “example-sc” StorageClass is provided in the file [example-sts.yaml](./examples/non-mt/statefulset/example-sts.yaml) of the Supplementary Package
 
 To create the StatefulSet, run:
 
 ```bash
-kubectl apply -f examples/stateful-set/example-sts.yaml
+kubectl apply -f examples/non-mt/statefulset/example-sts.yaml
 ```
 
 ### Create A PersistentVolumeClaim
@@ -177,7 +133,7 @@ spec:
       storage: 10Gi
 ```
 
-Example file can be found at: [example-fs-pvc.yaml](../examples/pod-fs/example-fs-pvc.yaml)
+Example file can be found at: [example-fs-pvc.yaml](./examples/non-mt/filesystem/example-fs-pvc.yaml)
 
 To create the PVC, run:
 
@@ -215,7 +171,7 @@ spec:
       claimName: "example-fs-pvc"
 ```
 
-Example file can be found at: [example-fs-pod.yaml](../examples/pod-fs/example-fs-pod.yaml)
+Example file can be found at: [example-fs-pod.yaml](./examples/non-mt/filesystem/example-fs-pod.yaml)
 
 To create the POD, run:
 
