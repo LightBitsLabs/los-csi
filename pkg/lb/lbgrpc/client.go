@@ -667,6 +667,7 @@ func (c *Client) lbVolumeFromGRPC(
 		Capacity:     vol.Size,
 		Compression:  compress,
 		ETag:         vol.ETag,
+		ProjectName:  vol.ProjectName,
 	}, nil
 }
 

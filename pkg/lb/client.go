@@ -155,7 +155,7 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 			lDescr, b2s[v.Compression], rDescr, b2s[other.Compression])
 	}
 	if v.ProjectName != other.ProjectName {
-		diffs.and("%sVolume %s project name %s differs from the %s volume project name %s",
+		diffs.and("%sVolume %s project name %q differs from the %s volume project name %q",
 			lDescr, v.Name, v.ProjectName, rDescr, other.ProjectName)
 	}
 	// TODO - uncoment once LBM1-15016 is fixed
