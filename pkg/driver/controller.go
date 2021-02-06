@@ -295,8 +295,6 @@ func (d *Driver) CreateVolume(
 		"project": params.projectName,
 	})
 
-	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
-
 	var snapshotID string
 	snapshotUUID := guuid.UUID{}
 	contentSource := req.GetVolumeContentSource()
@@ -325,6 +323,7 @@ func (d *Driver) CreateVolume(
 		snapshotUUID = sid.uuid
 	}
 
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
 		lb.Volume{
 			Name:         req.Name,
@@ -816,6 +815,7 @@ func (d *Driver) CreateSnapshot(
 		"snapshot-name": req.Name,
 	})
 
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
 		return nil, err
@@ -866,6 +866,7 @@ func (d *Driver) DeleteSnapshot(
 		"snapshot-id": req.SnapshotId,
 	})
 
+	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, sid.mgmtEPs, sid.scheme)
 	if err != nil {
 		return nil, err
