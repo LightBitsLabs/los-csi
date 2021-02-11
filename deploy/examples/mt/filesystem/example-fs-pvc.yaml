@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: example-fs-pvc
 spec:
-  storageClassName: "example-sc"
+  storageClassName: "example-mt-sc"
   accessModes:
   - ReadWriteOnce
   volumeMode: Filesystem

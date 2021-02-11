@@ -37,7 +37,7 @@ spec:
       name: test-mnt
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "example-sc"
+      storageClassName: "example-mt-sc"
       resources:
         requests:
           storage: 10Gi

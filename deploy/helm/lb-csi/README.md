@@ -4,6 +4,7 @@
   - [Overview](#overview)
   - [Usage](#usage)
     - [Install](#install)
+    - [List Installed Releases](#list-installed-releases)
     - [Uninstall](#uninstall)
     - [Install in different namespace](#install-in-different-namespace)
     - [Rendering Manifests Using Templates](#rendering-manifests-using-templates)
@@ -47,10 +48,19 @@ Helm may be used to install the `lb-csi-plugin`. Helm chart is provided with `lb
 helm install --namespace=kube-system lb-csi helm/lb-csi
 ```
 
+### List Installed Releases
+
+```bash
+helm list --namespace=kube-system
+
+NAME  	NAMESPACE  	REVISION	UPDATED                                	STATUS  	CHART              	APP VERSION
+lb-csi	kube-system	1       	2021-02-11 10:41:57.605518574 +0200 IST	deployed	lb-csi-plugin-0.1.0	1.4.0
+```
+
 ### Uninstall
 
 ```bash
-helm uninstall --namespace=kube-system helm/lb-csi
+helm uninstall --namespace=kube-system lb-csi
 ```
 
 ### Install in different namespace
