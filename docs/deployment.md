@@ -17,14 +17,19 @@ Some of the features are not supported for some of the k8s versions. For example
 We provide a manifest file for each k8s version supported.
 
 ```bash
-├── k8s
-│   ├── lb-csi-plugin-k8s-v1.13.yaml
-│   ├── lb-csi-plugin-k8s-v1.15.yaml
-│   ├── lb-csi-plugin-k8s-v1.16.yaml
-│   ├── lb-csi-plugin-k8s-v1.17-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.17.yaml
-│   └── lb-csi-plugin-k8s-v1.18.yaml
+k8s/
+├── lb-csi-plugin-k8s-v1.13.yaml
+├── lb-csi-plugin-k8s-v1.15-dc.yaml
+├── lb-csi-plugin-k8s-v1.15.yaml
+├── lb-csi-plugin-k8s-v1.16-dc.yaml
+├── lb-csi-plugin-k8s-v1.16.yaml
+├── lb-csi-plugin-k8s-v1.17-dc.yaml
+├── lb-csi-plugin-k8s-v1.17.yaml
+├── lb-csi-plugin-k8s-v1.18-dc.yaml
+└── lb-csi-plugin-k8s-v1.18.yaml
 ```
+
+**NOTE:** manifiests with suffix `-dc.yaml` deploy discovery-client on k8s as a container in `lb-csi-node` DaemonSet.
 
 ### Deploying LightOS CSI Plugin
 

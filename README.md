@@ -27,7 +27,7 @@ deploy/examples/
 
 ### Plugin Deployment Using Static Manifest
 
-For more information on plugin deployment using provided manifests see [here](deploy/README.md)
+For more information on plugin deployment using provided manifests see [here](./docs/deployment.md)
 
 ### Plugin Deployment Using Helm
 
