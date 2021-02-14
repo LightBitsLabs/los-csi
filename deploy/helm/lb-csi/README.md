@@ -101,7 +101,7 @@ helm template deploy/helm/lb-csi/ \
 | imageRegistry                | registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
 | sidecarImageRegistry         | registry to pull CSI sidecar images                                                 | quay.io         |
 | imagePullPolicy              |                                                                                     | Always          |
-| imagePullSecret              | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | ""              |
+| imagePullSecrets             | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | []              |
 | controllerServiceAccountName | name of controller service account                                                  | lb-csi-ctrl-sa  |
 | nodeServiceAccountName       | name of node service account                                                        | lb-csi-node-sa  |
 | enableExpandVolume           | Should we allow volume expand feature support (supported for `k8s` v1.16 and above) | true            |
@@ -112,7 +112,7 @@ helm template deploy/helm/lb-csi/ \
 
 A custom Docker registry may be used as the source of the operator Docker image. Before "helm install" is run, a Secret of type "docker-registry" should be created with the proper credentials.
 
-Then the `imagePullSecret` helm value may be set to the name of the ImagePullSecret to cause the custom Docker registry to be used.
+Then the `imagePullSecrets` helm value may be set to the name of the ImagePullSecret to cause the custom Docker registry to be used.
 
 ### Custom Docker registry example: Github packages
 
@@ -131,7 +131,7 @@ kubectl create secret docker-registry github-docker-registry \
 
 Replace `USERNAME` with the github username and `ACCESSTOKEN` with the personal access token.
 
-Now we can run "helm install" with the override value for imagePullSecret. This is often used with an override value for image so that a specific tag can be chosen. Note that the image value should include the full path to the custom registry.
+Now we can run "helm install" with the override value for `imagePullSecrets`. This is often used with an override value for image so that a specific tag can be chosen. Note that the image value should include the full path to the custom registry.
 
 ```bash
 helm install \

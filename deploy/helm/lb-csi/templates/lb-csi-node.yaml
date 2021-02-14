@@ -162,9 +162,16 @@ spec:
         #     - key: jwt
         #       path: jwt
         #       mode: 0777
+{{- if empty .Values.imagePullSecrets | not }}
+      imagePullSecrets:
+      {{- range .Values.imagePullSecrets }}
+       - name: {{ . | quote }}
+      {{- end }}
+{{- else }}
       # to enable seamless access to secure private Docker registries (e.g. to
       # `docker.lightbitslabs.com/lightos-k8s`), create a k8s secret with
       # the corresponding credentials and reference it in an `imagePullSecrets`
       # clause here, as an immediate descendant of `spec.template.spec`:
       #imagePullSecrets:
       #- name: my-docker-registry-credentials-secret
+{{- end }}

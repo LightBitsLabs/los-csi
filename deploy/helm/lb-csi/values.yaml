@@ -5,7 +5,7 @@ image: "lb-csi-plugin:1.4.0"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
 sidecarImageRegistry: quay.io
 imagePullPolicy: IfNotPresent
-imagePullSecret: ""
+imagePullSecrets: ""
 discoveryClientInContainer: false
 discoveryClientImage: "lb-nvme-discovery-client:1.4.0"
 controllerServiceAccountName: lb-csi-ctrl-sa
