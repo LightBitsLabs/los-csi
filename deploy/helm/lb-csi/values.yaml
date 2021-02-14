@@ -3,6 +3,7 @@ enableExpandVolume: true
 enableSnapshot: true
 image: "lb-csi-plugin:1.4.0"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
+sidecarImageRegistry: quay.io
 imagePullPolicy: IfNotPresent
 imagePullSecret: ""
 discoveryClientInContainer: false

@@ -85,7 +85,7 @@ spec:
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
           # modify the image identifier below accordingly:
-          image: {{ .Values.imageRegistry }}/k8scsi/csi-node-driver-registrar:v1.2.0
+          image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-node-driver-registrar:v1.2.0
           args:
             - "--v=4"
             - "--csi-address=$(ADDRESS)"

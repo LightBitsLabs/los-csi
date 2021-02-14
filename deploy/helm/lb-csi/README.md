@@ -98,7 +98,8 @@ helm template deploy/helm/lb-csi/ \
 | discoveryClientInContainer   | Should we deploy lb-nvme-discovery-client as container in lb-csi-node pods          | false           |
 | discoveryClientImage         | lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`)           | ""              |
 | image                        | lb-csi-plugin image name (string format:  `<image-name>:<tag>`)                     | ""              |
-| imageRegistry                |                                                                                     | docker.lightbitslabs.com/lightos-csi|
+| imageRegistry                | registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
+| sidecarImageRegistry         | registry to pull CSI sidecar images                                                 | quay.io         |
 | imagePullPolicy              |                                                                                     | Always          |
 | imagePullSecret              | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | ""              |
 | controllerServiceAccountName | name of controller service account                                                  | lb-csi-ctrl-sa  |
