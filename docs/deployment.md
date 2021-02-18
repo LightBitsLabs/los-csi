@@ -29,7 +29,7 @@ k8s/
 └── lb-csi-plugin-k8s-v1.18.yaml
 ```
 
-**NOTE:** manifiests with suffix `-dc.yaml` deploy discovery-client on k8s as a container in `lb-csi-node` DaemonSet.
+**NOTE:** manifests with suffix `-dc.yaml` deploy discovery-client on k8s as a container in `lb-csi-node` DaemonSet.
 
 ### Deploying LightOS CSI Plugin
 

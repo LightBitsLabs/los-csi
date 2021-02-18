@@ -1,0 +1,14 @@
+{{- if and (required "snaps.stage field is required" .Values.stage) (eq .Values.stage "example-pvc")}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.pvcName | quote }}
+spec:
+  storageClassName: {{ .Values.global.storageClass.name | quote }}
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi
+{{- end }}

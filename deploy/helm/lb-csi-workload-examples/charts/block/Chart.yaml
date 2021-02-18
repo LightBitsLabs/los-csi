@@ -1,0 +1,6 @@
+apiVersion: v2
+name: block
+description: A Helm chart for block example pod that use lb-csi-plugin
+type: application
+version: 0.1.0
+appVersion: "1.4.0"

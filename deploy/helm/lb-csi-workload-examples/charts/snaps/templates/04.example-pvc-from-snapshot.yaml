@@ -1,0 +1,17 @@
+{{- if and (required "snaps.stage field is required" .Values.stage) (eq .Values.stage "pvc-from-snapshot")}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc-from-snapshot
+spec:
+  storageClassName: {{ .Values.global.storageClass.name | quote }}
+  dataSource:
+    name: example-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+{{- end }}

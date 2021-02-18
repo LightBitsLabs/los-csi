@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: PersistentVolume  
+metadata:     
+  name: example-pre-provisioned-pv
+spec:
+  accessModes:
+  - ReadWriteOnce       
+  capacity:   
+    storage: 10Gi       
+  csi:
+    driver: csi.lightbitslabs.com       
+    fsType: ext4
+    controllerExpandSecretRef:  
+      name: {{ .Values.global.storageClass.secretName }}
+      namespace: {{ .Values.global.storageClass.secretNamespace }}
+    controllerPublishSecretRef: 
+      name: {{ .Values.global.storageClass.secretName }}
+      namespace: {{ .Values.global.storageClass.secretNamespace }}
+    nodePublishSecretRef:       
+      name: {{ .Values.global.storageClass.secretName }}
+      namespace: {{ .Values.global.storageClass.secretNamespace }}
+    nodeStageSecretRef:
+      name: {{ .Values.global.storageClass.secretName }}
+      namespace: {{ .Values.global.storageClass.secretNamespace }}
+    volumeHandle: mgmt:{{ (required "mgmtEndpoints field is required" .Values.global.storageClass.mgmtEndpoints) }}|nguid:{{ (required "lightosVolNguid field is required" .Values.lightosVolNguid) }}|proj:{{ .Values.global.storageClass.projectName }}|scheme:grpcs
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: {{ .Values.global.storageClass.name | quote }}
+  volumeMode: {{ (required "volumeMode field is required" .Values.volumeMode) }}

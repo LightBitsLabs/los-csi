@@ -1,0 +1,25 @@
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: example-block-pod
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+    args:
+    - sleep
+    - "1000000"
+    imagePullPolicy: Always
+    volumeDevices:
+      - name: lb-csi-mount
+        devicePath: /dev/lbcsiblkdev
+  restartPolicy: "Never"
+  volumes:
+    - name: lb-csi-mount
+      persistentVolumeClaim:
+        claimName: example-block-pvc

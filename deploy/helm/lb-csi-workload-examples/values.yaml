@@ -1,0 +1,35 @@
+---
+
+global:
+  storageClass:
+    name: example-sc
+    # Name of the LightOS project we want the plugin to target.
+    projectName: default
+    # LightOS cluster API endpoints
+    mgmtEndpoints: "" # required! comma delimited endpoints string, for example <ip>:<port>,<ip>:<port>
+    # Number of replicas for each volume provisioned by this StorageClass
+    replicaCount: "3"
+    compression: disabled
+    secretName: example-secret
+    secretNamespace: default
+
+# subchart workloads:
+storageclass:
+  enabled: false  
+block:
+  enabled: false  
+filesystem:
+  enabled: false
+preprovisioned:
+  enabled: false
+  lightosVolNguid: "" # required! nguid of LightOS volume.
+  volumeMode: # required! one of ["Block", "Filesystem"] 
+statefulset:
+  enabled: false
+  statefulSetName: example-sts
+snaps:
+  enabled: false
+  pvcName: example-pvc
+  stage: "" # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc"]
+  snapshotStorageClass:
+    name: example-snapshot-sc

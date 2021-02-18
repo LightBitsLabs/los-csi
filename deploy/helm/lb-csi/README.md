@@ -2,6 +2,7 @@
 
 - [Helm Chart LB-CSI plugin](#helm-chart-lb-csi-plugin)
   - [Overview](#overview)
+    - [Helm Chart Content](#helm-chart-content)
   - [Usage](#usage)
     - [Install](#install)
     - [List Installed Releases](#list-installed-releases)
@@ -14,7 +15,11 @@
 
 ## Overview
 
-Helm may be used to install the `lb-csi-plugin`. Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
+Helm may be used to install the `lb-csi-plugin`.
+
+LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
+
+### Helm Chart Content
 
 ```bash
 ├── helm

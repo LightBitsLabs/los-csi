@@ -1,0 +1,11 @@
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: example-snapshot-sc
+driver: csi.lightbitslabs.com
+deletionPolicy: Delete
+{{- if and .Values.global.storageClass.secretName .Values.global.storageClass.secretNamespace }}
+parameters:
+  csi.storage.k8s.io/snapshotter-secret-name: {{ .Values.global.storageClass.secretName }}
+  csi.storage.k8s.io/snapshotter-secret-namespace: {{ .Values.global.storageClass.secretNamespace }}
+{{- end }}

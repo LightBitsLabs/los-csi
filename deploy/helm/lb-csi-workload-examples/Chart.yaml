@@ -1,0 +1,24 @@
+apiVersion: v2
+name: lb-csi-workload-examples
+version: 0.1.0
+description: Helm Chart for LightOS CSI Workload Examples.
+appVersion: 1.4.0
+home: https://github.com/lightbitslabs/lb-csi
+icon: https://www.lightbitslabs.com/wp-content/uploads/2018/08/cropped-header-logo-32x32.png
+maintainers:
+- name: Lightbits LTD
+  email: support@lightbitslabs.com
+  url: https://www.lightbitslabs.com/
+dependencies:
+- name: block
+  condition: block.enabled
+- name: filesystem
+  condition: filesystem.enabled
+- name: preprovisioned
+  condition: preprovisioned.enabled
+- name: statefulset
+  condition: statefulset.enabled
+- name: snaps
+  condition: snaps.enabled
+- name: storageclass
+  condition: storageclass.enabled

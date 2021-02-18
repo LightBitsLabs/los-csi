@@ -1,0 +1,10 @@
+{{- if and (required "snaps.stage field is required" .Values.stage) (eq .Values.stage "snapshot-from-pvc")}}
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: example-snapshot
+spec:
+  volumeSnapshotClassName: {{ .Values.snapshotStorageClass.name | quote }}
+  source:
+    persistentVolumeClaimName: {{ .Values.pvcName | quote }}
+{{- end }}
