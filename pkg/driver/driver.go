@@ -428,6 +428,11 @@ func (d *Driver) cloneCtxWithCreds(ctx context.Context, secrets map[string]strin
 		jwt = d.jwt
 	}
 	if jwt != "" {
+		// many times we see a user passing a jwt with `\n` at the end.
+		// this will result in the following error:
+		//  code = Internal desc = stream terminated by RST_STREAM with error code: PROTOCOL_ERROR
+		// a JWT will never contain '\n' so we will protect the user from such an error.
+		jwt = strings.Trim(jwt, "\n")
 		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", "Bearer "+jwt)
 	}
 	return ctx
