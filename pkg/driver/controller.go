@@ -305,6 +305,7 @@ func (d *Driver) CreateVolume(
 				SourceVolumeId: contentSource.GetVolume().GetVolumeId(),
 				Name:           "snapshot-" + req.GetName(),
 				Parameters:     req.GetParameters(),
+				Secrets:        req.Secrets,
 			}
 			snap, err := d.CreateSnapshot(ctx, &snapReq)
 			if err != nil {
@@ -813,6 +814,7 @@ func (d *Driver) CreateSnapshot(
 		"op":            "CreateSnapshot",
 		"mgmt-ep":       vid.mgmtEPs,
 		"snapshot-name": req.Name,
+		"project":       vid.projName,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
@@ -864,6 +866,7 @@ func (d *Driver) DeleteSnapshot(
 		"op":          "DeleteSnapshot",
 		"mgmt-ep":     sid.mgmtEPs,
 		"snapshot-id": req.SnapshotId,
+		"project":     sid.projName,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)

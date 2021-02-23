@@ -1146,7 +1146,9 @@ func (c *Client) getSnapshot(
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
 
-	req := mgmt.GetSnapshotRequest{}
+	req := mgmt.GetSnapshotRequest{
+		ProjectName: projectName,
+	}
 	if name != nil {
 		req.Name = *name
 	}
@@ -1184,6 +1186,7 @@ func (c *Client) CreateSnapshot(
 			Name:             name,
 			SourceVolumeUUID: srcVolUUID.String(),
 			Description:      "K8S Snapshot: Volume UUID: " + srcVolUUID.String(),
+			ProjectName:      projectName,
 		},
 	)
 	if err != nil {
@@ -1296,7 +1299,8 @@ func (c *Client) DeleteSnapshot(
 	_, err := c.clnt.DeleteSnapshot(
 		ctx,
 		&mgmt.DeleteSnapshotRequest{
-			UUID: uuid.String(),
+			UUID:        uuid.String(),
+			ProjectName: projectName,
 		},
 	)
 	if err != nil || !blocking {
