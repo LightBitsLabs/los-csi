@@ -1,3 +1,21 @@
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/06.example-pvc-from-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc-from-pvc
+spec:
+  storageClassName: "example-sc"
+  dataSource:
+    name: "example-pvc"
+    kind: PersistentVolumeClaim
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/07.example-pvc-from-pvc-pod.yaml
 apiVersion: v1
 kind: Pod
 metadata:

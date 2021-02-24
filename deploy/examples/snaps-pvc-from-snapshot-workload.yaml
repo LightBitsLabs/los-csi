@@ -1,0 +1,44 @@
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/04.example-pvc-from-snapshot.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-pvc-from-snapshot
+spec:
+  storageClassName: "example-sc"
+  dataSource:
+    name: example-snapshot
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/05.example-pvc-from-snapshot-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "example-pvc-from-snapshot-pod"
+spec:
+  containers:
+  - name: busybox
+    imagePullPolicy: IfNotPresent
+    image: busybox
+    resources:
+      limits:
+        memory: "128Mi"
+        cpu: "500m"
+    args:
+    - sleep
+    - "1000000"
+    stdin: true
+    tty: true
+    volumeMounts:
+    - name: test-mnt
+      mountPath: "/mnt/test"
+  volumes:
+  - name: test-mnt
+    persistentVolumeClaim:
+      claimName: "example-pvc-from-snapshot"

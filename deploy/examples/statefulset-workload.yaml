@@ -1,3 +1,5 @@
+---
+# Source: lb-csi-workload-examples/charts/statefulset/templates/example-sts.yaml
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
@@ -37,7 +39,7 @@ spec:
       name: test-mnt
     spec:
       accessModes: [ "ReadWriteOnce" ]
-      storageClassName: "example-mt-sc"
+      storageClassName: "example-sc"
       resources:
         requests:
           storage: 10Gi

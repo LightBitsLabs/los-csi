@@ -1,13 +1,12 @@
-# Helm Workload Examples
+# Workload Examples Deployment Using Helm
 
-This Helm chart ease the deployment of the provided workload examples that use the `lb-csi-plugin`
+Helm chart ease the deployment of the provided workload examples that use the `lb-csi-plugin` as a persistant storage backend.
 
-- [Helm Workload Examples](#helm-workload-examples)
+- [Workload Examples Deployment Using Helm](#workload-examples-deployment-using-helm)
   - [Overview](#overview)
-    - [Helm Chart Content](#helm-chart-content)
-  - [Values](#values)
-    - [LightOS Specific Cluster Information](#lightos-specific-cluster-information)
-    - [LightOS API JWT](#lightos-api-jwt)
+  - [Helm Chart Content](#helm-chart-content)
+    - [Chart Values](#chart-values)
+      - [Mandatory Values To Modify](#mandatory-values-to-modify)
   - [Usage](#usage)
     - [Secret, StorageClass and VolumeSnapshotClass Chart](#secret-storageclass-and-volumesnapshotclass-chart)
       - [Deploy Secret And StorageClasses Workload](#deploy-secret-and-storageclasses-workload)
@@ -58,7 +57,7 @@ Workload examples included:
 - snaps
 - statefulset
 
-### Helm Chart Content
+## Helm Chart Content
 
 ```bash
 ├── lb-csi-workload-examples
@@ -111,9 +110,26 @@ Workload examples included:
 │   └── values.yaml
 ```
 
-## Values
+### Chart Values
 
 Workload examples are configurable using the [lb-csi-workload-examples/values.yaml](./lb-csi-workload-examples/values.yaml) file.
+
+| name   |  description  | default         |
+|--------|---------------|-----------------|
+| storageclass.enable   | deploy Secret, StorageClass and VolumeSnapshotClass     | false |
+| block.enable          | deploy block volume workload   | false |
+| filesyste.enable      | deploy filesystem volume workload   | false |
+| statefulset.enable    | deploy statefulset workload   | false |
+| preprovisioned.enable | deploy preprovisioned volume workload  | false           |
+| preprovisioned.lightosVolNguid | NGUID of LightOS volume   | ""  |
+| snaps.enable  | Deploy Snapshot workloads   | false  |
+| snaps.pvcName | Name of the pvc for Snapshot example |  example-pvc    |
+| snaps.stage    | name the snapshot stage we want to execute | ""  |
+|    |           |            |
+|    |           |            |
+|    |           |            |
+|    |           |            |
+|    |           |            |
 
 All workloads are disabled by default, and can be enabled by the `<workload_name>.enabled` property.
 
@@ -133,7 +149,7 @@ global:
     # Name of the LightOS project we want the plugin to target.
     projectName: default
     # LightOS cluster API endpoints
-    mgmtEndpoints: 10.16.103.6:443,10.16.103.2:443,10.16.103.24:443
+    mgmtEndpoints: "" # required! comma delimited endpoints string, for example <ip>:<port>,<ip>:<port>
     # Number of replicas for each volume provisioned by this StorageClass
     replicaCount: "3"
     compression: disabled
@@ -141,62 +157,76 @@ global:
     secretNamespace: default
 
 # subchart workloads:
+storageclass:
+  enabled: false  
 block:
   enabled: false  
 filesystem:
   enabled: false
 preprovisioned:
   enabled: false
-  lightosVolNguid: 5a10e9d0-71ea-11eb-a93d-f7f39ba6a1ef
+  lightosVolNguid: "" # required! nguid of LightOS volume.
 statefulset:
   enabled: false
   statefulSetName: example-sts
 snaps:
   enabled: false
+  pvcName: example-pvc
+  stage: "" # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc"]
   snapshotStorageClass:
     name: example-snapshot-sc
 ```
 
-### LightOS Specific Cluster Information
+#### Mandatory Values To Modify
 
-Before we deploy a workload we to fetch some information from LightOS cluster
+Following values **MUST** be modified to match target Kubernetes cluster.
 
-`lb-cs-plugin` needs to be informed about LightOS management API endpoints.
+- LightOS Cluster API Endpoints (`mgmt-endpoint`)
 
-These endpoints are passed as a comma delimited string in `StorageClass.Parameters.mgmt-endpoints`.
+  Before we deploy a workload we to fetch some information from LightOS cluster
 
-set `MGMT_EP` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running following command:
+  `lb-cs-plugin` needs to be informed about LightOS management API endpoints.
 
-```bash
-export MGMT_EP=$(lbcli get cluster -o json | jq -r '.apiEndpoints | join("\\,")')
-```
-  
-**NOTICE:** The '\\' in the join command. When passing this value to helm we must use the escape character `\`.
+  These endpoints are passed as a comma delimited string in `StorageClass.Parameters.mgmt-endpoints`.
 
-### LightOS API JWT
+  set `MGMT_EP` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running following command:
 
-Each API call to LightOS require a JWT for authentication and authorization.
+  ```bash
+  export MGMT_EP=$(lbcli get cluster -o json | jq -r '.apiEndpoints | join("\\,")')
+  ```
 
-The JWT is passed to the plugin by creating a Kubernetes Secret resource.
+  **NOTICE:** The '\\' in the join command. When passing this value to helm we must use the escape character `\`.
 
-The Provided chart can be used to automate the process of creating this Secret by providing the JWT in `helm/lb-csi-workload-examples/charts/storageclass/lightos-jwt.toml` file.
+- LightOS API JWT
 
-Helm will read the file and create the following `Secret`:
+  Each API call to LightOS require a JWT for authentication and authorization.
 
-```yaml
-# Source: lb-csi-workload-examples/templates/secret.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: example-secret
-  namespace: default
-type: kubernetes.io/lb-csi
-data:
-  jwt: |-
-    ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lTbGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5ESXdORE15TENKcFlYUWlPakUyTVRNNE9EUTBNeklzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lWRXh5VHpoSWVrTjNiek5qTlV4UlJuazVTV3BvVVNJc0ltNWlaaUk2TVRZeE16ZzRORFF6TWl3aWNtOXNaWE1pT2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpiR2xsYm5RaWZRLkpBNExwcWExRzFzZGZ3bE1zRVBWNzZCbE1uZVA1bnFzdlZOTzQ2N0l3MUNHSzFjVUNZLWk5MGpjVmdTM1YxVmlCN3J1MG5mX2JkaEdvX091WERaaHktQzVXeGVocVVtaFk0V3NhdWlHejNnQ2NHc3Roa21TbHVkNUlXeXZ4djM5ZEJPenJ0MGJDVW9ELXdVSEdUeC14eUpLWVc0MjFSM19sRW1TTm1KeDRHZUc4NV9GQkNiSU93OGF2YUl5eDJlNXFBeDBpTTdhSDZCTlo0S2tiQ0tnZmtjVl9MRDBqQUtfWUVyeThGdi1NRDU4cGVrZXVNQ0dkWTdfWVBPdG5KelIweUZ2dG9PZmNOdnAxLXRXNXNDbkUwWTliUV9FX3lzMlVYMjlia25OUTJhYmRoeU5FN0ZjeWk3QlZtVnNWYTBfUzhQMU9OaXZHODNQOVYybUdPd1czQQo=
-```
+  The JWT is passed to the plugin by creating a Kubernetes Secret resource.
+
+  The Provided chart can be used to automate the process of creating this Secret by providing the JWT in `helm/lb-csi-workload-examples/charts/storageclass/lightos-jwt.toml` file.
+
+  Helm will read the file and create the following `Secret`:
+
+  ```yaml
+  # Source: lb-csi-workload-examples/templates/secret.yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: example-secret
+    namespace: default
+  type: kubernetes.io/lb-csi
+  data:
+    jwt: |-
+      ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lTbGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5ESXdORE15TENKcFlYUWlPakUyTVRNNE9EUTBNeklzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lWRXh5VHpoSWVrTjNiek5qTlV4UlJuazVTV3BvVVNJc0ltNWlaaUk2TVRZeE16ZzRORFF6TWl3aWNtOXNaWE1pT2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpiR2xsYm5RaWZRLkpBNExwcWExRzFzZGZ3bE1zRVBWNzZCbE1uZVA1bnFzdlZOTzQ2N0l3MUNHSzFjVUNZLWk5MGpjVmdTM1YxVmlCN3J1MG5mX2JkaEdvX091WERaaHktQzVXeGVocVVtaFk0V3NhdWlHejNnQ2NHc3Roa21TbHVkNUlXeXZ4djM5ZEJPenJ0MGJDVW9ELXdVSEdUeC14eUpLWVc0MjFSM19sRW1TTm1KeDRHZUc4NV9GQkNiSU93OGF2YUl5eDJlNXFBeDBpTTdhSDZCTlo0S2tiQ0tnZmtjVl9MRDBqQUtfWUVyeThGdi1NRDU4cGVrZXVNQ0dkWTdfWVBPdG5KelIweUZ2dG9PZmNOdnAxLXRXNXNDbkUwWTliUV9FX3lzMlVYMjlia25OUTJhYmRoeU5FN0ZjeWk3QlZtVnNWYTBfUzhQMU9OaXZHODNQOVYybUdPd1czQQo=
+  ```
 
 ## Usage
+
+Ideally, the output should contain no error messages. If you see any, try to determine if the problem is with the connectivity to the Kubernetes cluster, the kubelet configuration, or some other minor issue.
+
+After the above command completes, the deployment process can take between several seconds and several minutes, depending on the size of the Kubernetes cluster, load on the cluster nodes, network connectivity, etc.
+
+After a short while, you can issue the following commands to verify the results. Your output will likely differ from the following example, including to reflect your Kubernetes cluster configuration, randomly generated pod names, etc.
 
 ### Secret, StorageClass and VolumeSnapshotClass Chart
 
@@ -591,7 +621,8 @@ pod/example-pod                     1/1     Running   0          18m
 pod/example-pvc-from-snapshot-pod   1/1     Running   0          2m25s
 ```
 
-**NOTE:** We see the `PV`, `PVC` and `POD`s from the Stage #1 as well.
+**NOTE:**
+> We see the `PV`, `PVC` and `POD`s from the Stage #1 as well.
 
 #### _Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_
 
@@ -636,7 +667,8 @@ pod/example-pvc-from-pvc-pod        1/1     Running   0          23s
 pod/example-pvc-from-snapshot-pod   1/1     Running   0          5h36m
 ```
 
-**NOTE:** We see the `PV`, `PVC` and `POD`s from the Stages #1 and #3 as well.
+**NOTE:**
+> We see the `PV`, `PVC` and `POD`s from the Stages #1 and #3 as well.
 
 #### Uninstall Snapshot Workloads
 

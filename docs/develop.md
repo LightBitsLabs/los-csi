@@ -1,6 +1,7 @@
 # Developing The Plugin
 
 - [Developing The Plugin](#developing-the-plugin)
+  - [Requirements](#requirements)
   - [Versioning](#versioning)
     - [External Build](#external-build)
     - [Internal Build](#internal-build)
@@ -8,6 +9,14 @@
         - [`version.lb-csi.hash`](#versionlb-csihash)
         - [`version.lb-csi.rel`](#versionlb-csirel)
         - [`version.lb-csi.git`](#versionlb-csigit)
+
+## Requirements
+
+In order to build the plugin you will need:
+
+- docker.
+- golang >= 1.14.
+- helm >= 3.5.0.
 
 ## Versioning
 

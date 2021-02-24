@@ -1,0 +1,30 @@
+---
+# Source: lb-csi-workload-examples/charts/preprovisioned/templates/example-pre-provisioned-pv.yaml
+apiVersion: v1
+kind: PersistentVolume  
+metadata:     
+  name: example-pre-provisioned-pv
+spec:
+  accessModes:
+  - ReadWriteOnce       
+  capacity:   
+    storage: 10Gi       
+  csi:
+    driver: csi.lightbitslabs.com       
+    fsType: ext4
+    controllerExpandSecretRef:  
+      name: example-secret
+      namespace: default
+    controllerPublishSecretRef: 
+      name: example-secret
+      namespace: default
+    nodePublishSecretRef:       
+      name: example-secret
+      namespace: default
+    nodeStageSecretRef:
+      name: example-secret
+      namespace: default
+    volumeHandle: mgmt:10.10.0.2:443,10.10.0.3:443,10.10.0.4:443|nguid:60907a32-76c7-11eb-ac25-fb55927189f9|proj:default|scheme:grpcs
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: "example-sc"
+  volumeMode: Filesystem

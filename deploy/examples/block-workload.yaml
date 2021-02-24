@@ -1,4 +1,19 @@
 ---
+# Source: lb-csi-workload-examples/charts/block/templates/example-block-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: example-block-pvc
+spec:
+  storageClassName: "example-sc"
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Block
+  resources:
+    requests:
+      storage: 3Gi
+---
+# Source: lb-csi-workload-examples/charts/block/templates/example-block-pod.yaml
 kind: Pod
 apiVersion: v1
 metadata:

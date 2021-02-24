@@ -1,7 +1,23 @@
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/01.example-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "example-pvc"
+spec:
+  storageClassName: "example-sc"
+  accessModes:
+  - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/02.example-pod.yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "example-fs-pod"
+  name: "example-pod"
 spec:
   containers:
   - name: busybox-date-container
@@ -22,4 +38,4 @@ spec:
   volumes:
   - name: test-mnt
     persistentVolumeClaim:
-      claimName: "example-fs-pvc"
+      claimName: "example-pvc"

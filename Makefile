@@ -139,6 +139,34 @@ generate_deployment_yaml: deploy/k8s helm
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
 
+generate_examples_yaml: deploy/examples helm
+	helm template --set storageclass.enabled=true \
+		--set global.storageClass.mgmtEndpoints="10.10.0.2:443\,10.10.0.3:443\,10.10.0.4:443" \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/secret-and-storage-class.yaml
+	helm template --set block.enabled=true \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/block-workload.yaml
+	helm template --set filesystem.enabled=true \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/filesystem-workload.yaml
+	helm template --set statefulset.enabled=true \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/statefulset-workload.yaml
+	helm template --set preprovisioned.enabled=true \
+		--set global.storageClass.mgmtEndpoints="10.10.0.2:443\,10.10.0.3:443\,10.10.0.4:443" \
+		--set preprovisioned.lightosVolNguid=60907a32-76c7-11eb-ac25-fb55927189f9 \
+		--set preprovisioned.volumeMode=Filesystem \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-workload.yaml
+	helm template --set snaps.enabled=true \
+		--set snaps.stage=example-pvc \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-pvc-workload.yaml
+	helm template --set snaps.enabled=true \
+		--set snaps.stage=snapshot-from-pvc \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-snapshot-from-pvc-workload.yaml
+	helm template --set snaps.enabled=true \
+		--set snaps.stage=pvc-from-snapshot \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-snapshot-workload.yaml
+	helm template --set snaps.enabled=true \
+		--set snaps.stage=pvc-from-pvc \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-pvc-workload.yaml
+
 package: build generate_deployment_yaml
 	@docker build $(LABELS) -t $(DOCKER_REGISTRY)/$(DOCKER_TAG) deploy
 
@@ -164,6 +192,9 @@ generate_bundle: generate_deployment_yaml
 
 deploy/k8s:
 	mkdir -p deploy/k8s
+
+deploy/examples:
+	mkdir -p deploy/examples
 
 helm:
 	curl -fsSL -o /tmp/get_helm.sh \

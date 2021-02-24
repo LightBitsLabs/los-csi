@@ -1,17 +1,18 @@
-# Helm Chart LB-CSI plugin
+# LightOS CSI Plugin Deployment Using Helm
 
-- [Helm Chart LB-CSI plugin](#helm-chart-lb-csi-plugin)
+- [LightOS CSI Plugin Deployment Using Helm](#lightos-csi-plugin-deployment-using-helm)
   - [Overview](#overview)
-    - [Helm Chart Content](#helm-chart-content)
+  - [Helm Chart Content](#helm-chart-content)
+    - [Chart Values](#chart-values)
   - [Usage](#usage)
-    - [Install](#install)
+    - [Install LightOS CSI Plugin](#install-lightos-csi-plugin)
     - [List Installed Releases](#list-installed-releases)
-    - [Uninstall](#uninstall)
-    - [Install in different namespace](#install-in-different-namespace)
+    - [Uninstall LightOS CSI Plugin](#uninstall-lightos-csi-plugin)
+    - [Install In Different Namespace](#install-in-different-namespace)
     - [Rendering Manifests Using Templates](#rendering-manifests-using-templates)
-  - [Values](#values)
-  - [Using a custom Docker registry with the Helm Chart](#using-a-custom-docker-registry-with-the-helm-chart)
-    - [Custom Docker registry example: Github packages](#custom-docker-registry-example-github-packages)
+    - [Using A Custom Docker Registry](#using-a-custom-docker-registry)
+      - [Custom Docker registry example: Github packages](#custom-docker-registry-example-github-packages)
+  - [Next Steps](#next-steps)
 
 ## Overview
 
@@ -19,7 +20,7 @@ Helm may be used to install the `lb-csi-plugin`.
 
 LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
 
-### Helm Chart Content
+## Helm Chart Content
 
 ```bash
 ├── helm
@@ -45,9 +46,26 @@ LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
 │       └── values.yaml
 ```
 
+### Chart Values
+
+| name                         | description                                                                         | default         |
+|------------------------------|-------------------------------------------------------------------------------------|-----------------|
+| discoveryClientInContainer   | Should we deploy lb-nvme-discovery-client as container in lb-csi-node pods          | false           |
+| discoveryClientImage         | lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`)           | ""              |
+| image                        | lb-csi-plugin image name (string format:  `<image-name>:<tag>`)                     | ""              |
+| imageRegistry                | registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
+| sidecarImageRegistry         | registry to pull CSI sidecar images                                                 | quay.io         |
+| imagePullPolicy              |                                                                                     | Always          |
+| imagePullSecrets             | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | []              |
+| controllerServiceAccountName | name of controller service account                                                  | lb-csi-ctrl-sa  |
+| nodeServiceAccountName       | name of node service account                                                        | lb-csi-node-sa  |
+| enableExpandVolume           | Should we allow volume expand feature support (supported for `k8s` v1.16 and above) | true            |
+| kubeletRootDir               | Kubelet root directory. (change only k8s deployment is different from default       | /var/lib/kubelet|
+| kubeVersion                  | Target k8s version for offline manifests rendering (overrides .Capabilities.Version)| ""              |
+
 ## Usage
 
-### Install
+### Install LightOS CSI Plugin
 
 ```bash
 helm install --namespace=kube-system lb-csi helm/lb-csi
@@ -62,13 +80,13 @@ NAME  	NAMESPACE  	REVISION	UPDATED                                	STATUS  	CHA
 lb-csi	kube-system	1       	2021-02-11 10:41:57.605518574 +0200 IST	deployed	lb-csi-plugin-0.1.0	1.4.0
 ```
 
-### Uninstall
+### Uninstall LightOS CSI Plugin
 
 ```bash
 helm uninstall --namespace=kube-system lb-csi
 ```
 
-### Install in different namespace
+### Install In Different Namespace
 
 You can install the `lb-csi-plugin` in a different namespace (ex: `lb-csi-ns`)
 by creating a namespace your self or using the shortcut to let helm create a namespace for you:
@@ -106,30 +124,13 @@ helm template deploy/helm/lb-csi/ \
   --set enableSnapshot=true > lb-csi-plugin-k8s-v1.17.yaml
 ```
 
-## Values
-
-| name                         | description                                                                         | default         |
-|------------------------------|-------------------------------------------------------------------------------------|-----------------|
-| discoveryClientInContainer   | Should we deploy lb-nvme-discovery-client as container in lb-csi-node pods          | false           |
-| discoveryClientImage         | lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`)           | ""              |
-| image                        | lb-csi-plugin image name (string format:  `<image-name>:<tag>`)                     | ""              |
-| imageRegistry                | registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
-| sidecarImageRegistry         | registry to pull CSI sidecar images                                                 | quay.io         |
-| imagePullPolicy              |                                                                                     | Always          |
-| imagePullSecrets             | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | []              |
-| controllerServiceAccountName | name of controller service account                                                  | lb-csi-ctrl-sa  |
-| nodeServiceAccountName       | name of node service account                                                        | lb-csi-node-sa  |
-| enableExpandVolume           | Should we allow volume expand feature support (supported for `k8s` v1.16 and above) | true            |
-| kubeletRootDir               | Kubelet root directory. (change only k8s deployment is different from default       | /var/lib/kubelet|
-| kubeVersion                  | Target k8s version for offline manifests rendering (overrides .Capabilities.Version)| ""              |
-
-## Using a custom Docker registry with the Helm Chart
+### Using A Custom Docker Registry
 
 A custom Docker registry may be used as the source of the operator Docker image. Before "helm install" is run, a Secret of type "docker-registry" should be created with the proper credentials.
 
 Then the `imagePullSecrets` helm value may be set to the name of the ImagePullSecret to cause the custom Docker registry to be used.
 
-### Custom Docker registry example: Github packages
+#### Custom Docker registry example: Github packages
 
 Github Packages may be used as a custom Docker registry.
 
@@ -146,7 +147,7 @@ kubectl create secret docker-registry github-docker-registry \
 
 Replace `USERNAME` with the github username and `ACCESSTOKEN` with the personal access token.
 
-Now we can run "helm install" with the override value for `imagePullSecrets`. This is often used with an override value for image so that a specific tag can be chosen. Note that the image value should include the full path to the custom registry.
+Now we can run "helm install" with the override value for `imagePullSecrets`. This is often used with an override value for image so that a specific tag can be chosen.
 
 ```bash
 helm install \
@@ -155,3 +156,8 @@ helm install \
   --set imagePullSecrets=github-docker-registry \
   lb-csi ./helm/lb-csi
 ```
+
+## Next Steps
+
+- [Workload Examples Deployment Using Static Manifests](./workload_examples_deployment_using_static_manifests.md).
+- [Workload Examples Deployment Using Helm](./workload_examples_deployment_using_helm.md).
