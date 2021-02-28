@@ -114,23 +114,6 @@ Workload examples included:
 
 Workload examples are configurable using the [lb-csi-workload-examples/values.yaml](./lb-csi-workload-examples/values.yaml) file.
 
-| name   |  description  | default         |
-|--------|---------------|-----------------|
-| storageclass.enable   | deploy Secret, StorageClass and VolumeSnapshotClass     | false |
-| block.enable          | deploy block volume workload   | false |
-| filesyste.enable      | deploy filesystem volume workload   | false |
-| statefulset.enable    | deploy statefulset workload   | false |
-| preprovisioned.enable | deploy preprovisioned volume workload  | false           |
-| preprovisioned.lightosVolNguid | NGUID of LightOS volume   | ""  |
-| snaps.enable  | Deploy Snapshot workloads   | false  |
-| snaps.pvcName | Name of the pvc for Snapshot example |  example-pvc    |
-| snaps.stage    | name the snapshot stage we want to execute | ""  |
-|    |           |            |
-|    |           |            |
-|    |           |            |
-|    |           |            |
-|    |           |            |
-
 All workloads are disabled by default, and can be enabled by the `<workload_name>.enabled` property.
 
 All examples share the same `StorageClass` and `Secret` templates.
@@ -176,6 +159,26 @@ snaps:
   snapshotStorageClass:
     name: example-snapshot-sc
 ```
+
+Values Description:
+
+| name   |  description  | default         | required   |
+|--------|---------------|-----------------|------------|
+| storageclass.enable   | Deploy Secret, StorageClass | false | false |
+| block.enable          | Deploy block volume workload   | false | false |
+| filesyste.enable      | Deploy filesystem volume workload   | false | false |
+| statefulset.enable    | Deploy statefulset workload   | false | false |
+| preprovisioned.enable | Deploy preprovisioned volume workload  | false | false |
+| preprovisioned.lightosVolNguid | NGUID of LightOS volume   | ""  | false |
+| snaps.enable  | Deploy Snapshot workloads   | false  | false |
+| snaps.pvcName | Name of the pvc for Snapshot example |  example-pvc    | false |
+| snaps.stage    | name the snapshot stage we want to execute | ""  | false |
+| global.storageClass.mgmtEndpoints | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>` | "" | true |
+| global.storageClass.projectName | Created resoures will be scoped to this project | default | false |
+| global.storageClass.replicaCount | Number of replicas for each volume | 3 | false |
+| global.storageClass.compression | Rather copressions in enabled/disabled | disabled | false |
+| global.storageClass.secretName | Secret containing `JWT` to authenticate against LightOS API | example-secret | true |
+| global.storageClass.secretNamespace | Namespace the secret is defined at | default | true |
 
 #### Mandatory Values To Modify
 
@@ -489,27 +492,41 @@ No resources found in default namespace.
 
 ### Deploy Snapshot and Clones Workloads
 
-This examples is a bit more complex and is build of 4 different stages:
+This examples is a bit more complex and is build of six different stages:
 
-- [Stage 1: Create Example `PVC` and `POD`](#stage-1-create-example-pvc-and-pod)
-- [Stage 2: Take a `Snapshot` from PVC created at stage 1](#stage-2-take-a-snapshot-from-pvc-created-at-stage-1)
-- [Stage 3: Create a `PVC` from Snapshot created at stage 2 and create a `POD` that use it](#stage-3-create-a-pvc-from-snapshot-created-at-stage-2-and-create-a-pod-that-use-it)
-- [Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it](#stage-4-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
-- [Uninstall Snapshot Workloads](#uninstall-snapshot-workloads)
+- [Stage 1: Create `VolumeSnapshotClass`](#stage-1-create-volumesnapshotclass)
+- [Stage 2: Create Example `PVC` and `POD`](#stage-2-create-example-pvc-and-pod)
+- [Stage 3: Take a `Snapshot` from PVC created at stage 2](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
+- [Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that use it](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
+- [Stage 5: Create a `PVC` from the `PVC` we created at stage 4 and create a `POD` that use it](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
+- [Stage 6: Uninstall Snapshot Workloads](#stage-6-uninstall-snapshot-workloads)
 
 The examples are dependent on one another, so you must to run them in order.
 
 For Helm to deploy the `snaps` Chart in stages we introduce the mandatory variable `snaps.stage`
 The Chart support four stages:
 
+- snapshot-class
 - example-pvc
 - snapshot-from-pvc
 - pvc-from-snapshot
 - pvc-from-pvc
 
-Uninstalling a release must be done in reverse order.
+The examples are dependent on one another, so you must run them in order.
 
-#### _Stage 1: Create Example `PVC` and `POD`_
+#### _Stage 1: Create `VolumeSnapshotClass`_
+
+Create a `VolumeSnapshotClass`:
+
+```bash
+helm install \
+  --set snaps.enabled=true \
+  --set snaps.stage=snapshot-class \
+  lb-csi-workload-snaps-snapshot-class \
+  ./helm/lb-csi-workload-examples
+```
+
+#### _Stage 2: Create Example `PVC` and `POD`_
 
 Running the following command:
 
@@ -546,7 +563,7 @@ NAME              READY   STATUS    RESTARTS   AGE
 pod/example-pod   1/1     Running   0          58s
 ```
 
-#### _Stage 2: Take a `Snapshot` from PVC created at stage 1_
+#### _Stage 3: Take a `Snapshot` from PVC created at stage 2_
 
 Create a snapshot from previously created `PVC` named `example-pvc`
 
@@ -581,7 +598,7 @@ NAME                                                                            
 volumesnapshotcontent.snapshot.storage.k8s.io/snapcontent-b710e398-eaa5-45be-bbdc-db74d799e5cc   true         10737418240   Delete           csi.lightbitslabs.com   example-snapshot-sc   example-snapshot   3m49s
 ```
 
-#### _Stage 3: Create a `PVC` from Snapshot created at stage 2 and create a `POD` that use it_
+#### _Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that use it_
 
 Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
 
@@ -622,9 +639,9 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          2m25s
 ```
 
 **NOTE:**
-> We see the `PV`, `PVC` and `POD`s from the Stage #1 as well.
+> We see the `PV`, `PVC` and `POD`s from the Stage #2 as well.
 
-#### _Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_
+#### _Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_
 
 Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
 
@@ -668,9 +685,9 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          5h36m
 ```
 
 **NOTE:**
-> We see the `PV`, `PVC` and `POD`s from the Stages #1 and #3 as well.
+> We see the `PV`, `PVC` and `POD`s from the Stages #2 and #4 as well.
 
-#### Uninstall Snapshot Workloads
+#### _Stage 6: Uninstall Snapshot Workloads_
 
 If we list the releases installed we will see:
 
@@ -736,6 +753,13 @@ Verify all resources are gone:
 kubectl get pv,pvc,pods
 No resources found in default namespace.
 ```
+
+Delete `VolumeSnapshotClass`:
+
+```bash
+helm uninstall lb-csi-workload-snaps-snapshot-class
+```
+
 
 ### Install in different namespace
 

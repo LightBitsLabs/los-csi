@@ -26,7 +26,6 @@ LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
 ├── helm
 │   └── lb-csi
 │       ├── Chart.yaml
-│       ├── README.md
 │       ├── templates
 │       │   ├── controllerServiceAccount.yaml
 │       │   ├── csidriver.yaml

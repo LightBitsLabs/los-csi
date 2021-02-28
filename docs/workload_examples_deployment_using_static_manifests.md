@@ -18,11 +18,12 @@
     - [Expand Volume Example](#expand-volume-example)
   - [Pre-Provisioned Volume Example Using A Pod](#pre-provisioned-volume-example-using-a-pod)
   - [Snapshot and Clones Examples](#snapshot-and-clones-examples)
-    - [_Stage 1: Create Example `PVC` and `POD`_](#stage-1-create-example-pvc-and-pod)
-    - [_Stage 2: Take a `Snapshot` from PVC created at stage 1_](#stage-2-take-a-snapshot-from-pvc-created-at-stage-1)
-    - [_Stage 3: Create a `PVC` from Snapshot created at stage 2 and create a `POD` that use it_](#stage-3-create-a-pvc-from-snapshot-created-at-stage-2-and-create-a-pod-that-use-it)
-    - [_Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
-      - [Uninstall Snapshot Workloads](#uninstall-snapshot-workloads)
+    - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
+    - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
+    - [_Stage 3: Take a `Snapshot` from PVC created at stage #2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
+    - [_Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
+    - [_Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-4-and-create-a-pod-that-use-it)
+    - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
 
 ## Workload Examples Using Static Manifests Content
 
@@ -42,6 +43,13 @@ examples/
 ```
 
 ## Secret and StorageClass
+
+**NOTE:**
+> For these workloads to work, you are required at a minimum to provide the following cluster specific parameters:
+> - `JWT`
+> - `mgmt-endpoints`
+>
+> Without modifing these parameters, the workloads will likely fail.
 
 ### Storing LightOS Authentication JWT in a Kubernetes Secret
 
@@ -130,7 +138,7 @@ allowVolumeExpansion: true
 parameters:
   mgmt-endpoint: 10.10.0.1:443,10.10.0.2:443,10.10.0.3:443
   mgmt-scheme: grpcs
-  project-name: proj-a
+  project-name: default
   replica-count: "3"
   compression: enabled
   csi.storage.k8s.io/controller-publish-secret-name: example-secret
@@ -314,12 +322,32 @@ Due to the way that StatefulSet-s are currently implemented in Kubernetes, the `
 
 **Note:**
 > Kubernetes has a number of features designed to avert user data loss by preventing PV and/or PVC deletion in circumstances that might otherwise seem unexpected to someone unfamiliar with Kubernetes workings. These include:
-
+>
 > - Reclaim policy of PVs (see the “Reclaiming” section of the Kubernetes PVs documentation for details).
 > - Protection of in-use PVs/PVCs (see the “Storage Object in Use Protection” section of the Kubernetes PVs documentation for details).
 StatefulSet PVC protection (see Kubernetes GitHub issue #55045)
-
+>
 > The general Kubernetes troubleshooting links in the previous note might help in finding the root cause for the PV/PVC not being deleted as expected.
+
+_**Please make sure you delete leftover `PVC` and `PV` resources before you proceed by running the following commands:**_
+
+```bash
+kubectl delete \
+  persistentvolumeclaim/test-mnt-example-sts-0 \
+  persistentvolumeclaim/test-mnt-example-sts-1 \
+  persistentvolumeclaim/test-mnt-example-sts-2
+
+persistentvolumeclaim "test-mnt-example-sts-0" deleted
+persistentvolumeclaim "test-mnt-example-sts-1" deleted
+persistentvolumeclaim "test-mnt-example-sts-2" deleted
+```
+
+Verify all `PV`, `PVC` and `POD`s are gone:
+
+```bash
+kubectl get pv,pvc,pods
+No resources found in default namespace.
+```
 
 ## Dynamic Volume Provisioning Example Using a Pod
 
@@ -400,17 +428,44 @@ TBD
 
 ## Snapshot and Clones Examples
 
-This examples is a bit more complex and is build of 4 different stages:
+This examples is a bit more complex and is build of six different stages:
 
-- [Stage 1: Create Example `PVC` and `POD`](#stage-1-create-example-pvc-and-pod)
-- [Stage 2: Take a `Snapshot` from PVC created at stage 1](#stage-2-take-a-snapshot-from-pvc-created-at-stage-1)
-- [Stage 3: Create a `PVC` from Snapshot created at stage 2 and create a `POD` that use it](#stage-3-create-a-pvc-from-snapshot-created-at-stage-2-and-create-a-pod-that-use-it)
-- [Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it](#stage-4-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
-- [Uninstall Snapshot Workloads](#uninstall-snapshot-workloads)
+- [Workload Examples Deployment Using Static Manifests](#workload-examples-deployment-using-static-manifests)
+  - [Workload Examples Using Static Manifests Content](#workload-examples-using-static-manifests-content)
+  - [Secret and StorageClass](#secret-and-storageclass)
+    - [Storing LightOS Authentication JWT in a Kubernetes Secret](#storing-lightos-authentication-jwt-in-a-kubernetes-secret)
+    - [Create StorageClass](#create-storageclass)
+  - [Dynamic Volume Provisioning Example Using StatefulSet](#dynamic-volume-provisioning-example-using-statefulset)
+    - [Deploy StatefulSet](#deploy-statefulset)
+    - [Verify StatefulSet Deployment](#verify-statefulset-deployment)
+    - [Remove StatefulSet](#remove-statefulset)
+  - [Dynamic Volume Provisioning Example Using a Pod](#dynamic-volume-provisioning-example-using-a-pod)
+    - [Filesystem Volume Mode PVC](#filesystem-volume-mode-pvc)
+      - [Deploy PVC and POD](#deploy-pvc-and-pod)
+      - [Verify Deployment](#verify-deployment)
+      - [Delete PVC and POD](#delete-pvc-and-pod)
+    - [Block Volume Mode PVC](#block-volume-mode-pvc)
+    - [Expand Volume Example](#expand-volume-example)
+  - [Pre-Provisioned Volume Example Using A Pod](#pre-provisioned-volume-example-using-a-pod)
+  - [Snapshot and Clones Examples](#snapshot-and-clones-examples)
+    - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
+    - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
+    - [_Stage 3: Take a `Snapshot` from PVC created at stage #2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
+    - [_Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
+    - [_Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-4-and-create-a-pod-that-use-it)
+    - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
 
 The examples are dependent on one another, so you must run them in order.
 
-### _Stage 1: Create Example `PVC` and `POD`_
+### _Stage 1: Create `VolumeSnapshotClass`_
+
+Create a `VolumeSnapshotClass`:
+
+```bash
+kubectl create -f examples/snaps-example-snapshot-class.yaml
+```
+
+### _Stage 2: Create Example `PVC` and `POD`_
 
 Running the following command:
 
@@ -434,7 +489,7 @@ NAME              READY   STATUS    RESTARTS   AGE
 pod/example-pod   1/1     Running   0          58s
 ```
 
-### _Stage 2: Take a `Snapshot` from PVC created at stage 1_
+### _Stage 3: Take a `Snapshot` from PVC created at stage #2_
 
 Create a snapshot from previously created `PVC` named `example-pvc`
 
@@ -455,7 +510,7 @@ NAME                                                              DRIVER        
 volumesnapshotclass.snapshot.storage.k8s.io/example-snapshot-sc   csi.lightbitslabs.com   Delete           81s
 ```
 
-### _Stage 3: Create a `PVC` from Snapshot created at stage 2 and create a `POD` that use it_
+### _Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_
 
 Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
 
@@ -483,9 +538,9 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          2m25s
 ```
 
 **NOTE:**
-> We see the `PV`, `PVC` and `POD`s from the Stage #1 as well.
+> We see the `PV`, `PVC` and `POD`s from the Stage #2 as well.
 
-### _Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_
+### _Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_
 
 Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
 
@@ -516,11 +571,11 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          5h36m
 ```
 
 **NOTE:**
-> We see the `PV`, `PVC` and `POD`s from the Stages #1 and #3 as well.
+> We see the `PV`, `PVC` and `POD`s from the Stages #2 and #4 as well.
 
-#### Uninstall Snapshot Workloads
+### _Stage 6: Uninstall Snapshot Workloads_
 
-Installation must be in reverse order of the deployment.
+Installation MUST be in reverse order of the deployment.
 
 After each uninstall we need to verify that all related resources were released before continue to next uninstall.
 
@@ -532,7 +587,7 @@ persistentvolumeclaim "example-pvc-from-pvc" deleted
 pod "example-pvc-from-pvc-pod" deleted
 ```
 
-In order to verify that all resources are deleted the following command should return no entry:
+In order to verify that all resources are deleted, the following command should not generate any output:
 
 ```bash
 kubectl get pv,pvc,pod | grep pvc-from-pvc
@@ -546,7 +601,7 @@ persistentvolumeclaim "example-pvc-from-snapshot" deleted
 pod "example-pvc-from-snapshot-pod" deleted
 ```
 
-In order to verify that all resources are deleted the following command should return no entry:
+In order to verify that all resources are deleted, the following command should not generate any output:
 
 ```bash
 kubectl get pv,pvc,pod | grep pvc-from-snapshot
@@ -559,7 +614,7 @@ kubectl delete -f examples/snaps-snapshot-from-pvc-workload.yaml
 volumesnapshot.snapshot.storage.k8s.io "example-snapshot" deleted
 ```
 
-In order to verify that all resources are deleted the following command should return no entry:
+In order to verify that all resources are deleted, the following command should not generate any output:
 
 ```bash
 kubectl get VolumeSnapshot,VolumeSnapshotContent | grep snapshot-from-pvc
@@ -578,4 +633,11 @@ Verify all resources are gone:
 ```bash
 kubectl get pv,pvc,pods
 No resources found in default namespace.
+```
+
+Delete `VolumeSnapshotClass`:
+
+```bash
+kubectl delete -f examples/snaps-example-snapshot-class.yaml
+volumesnapshotclass "example-snapshot-sc" deleted
 ```
