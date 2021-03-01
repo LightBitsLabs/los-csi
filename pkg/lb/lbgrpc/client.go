@@ -1433,6 +1433,6 @@ func (c *Client) lbSnapshotFromGRPC(
 		CreationTime:       snap.CreationTime,
 		State:              lbSnapshotStateFromGRPC(snap.State),
 		ETag:               snap.ETag,
-		ProjectName:        "default", // TODO: get real project name for multi-tenancy support
+		ProjectName:        snap.ProjectName,
 	}, nil
 }
