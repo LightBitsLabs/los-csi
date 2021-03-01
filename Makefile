@@ -155,6 +155,9 @@ generate_examples_yaml: deploy/examples helm
 		--set preprovisioned.volumeMode=Filesystem \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-workload.yaml
 	helm template --set snaps.enabled=true \
+		--set snaps.stage=snapshot-class \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-snapshot-class.yaml
+	helm template --set snaps.enabled=true \
 		--set snaps.stage=example-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-pvc-workload.yaml
 	helm template --set snaps.enabled=true \
