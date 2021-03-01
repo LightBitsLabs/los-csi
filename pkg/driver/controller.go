@@ -882,7 +882,7 @@ func (d *Driver) DeleteSnapshot(
 			log.Info("snapshot already gone")
 			return &csi.DeleteSnapshotResponse{}, nil
 		}
-		return nil, mkEagain("failed to get snapshot %s from LB", sid.uuid)
+		return nil, mkEagain("failed to get snapshot %q on project %q from LB", sid.uuid, sid.projName)
 	}
 
 	switch snap.State {
@@ -895,8 +895,8 @@ func (d *Driver) DeleteSnapshot(
 	case lb.SnapshotCreating:
 		return nil, mkEagain("snapshot %s is still being created", snap.UUID)
 	default:
-		return nil, mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
-			snap.Name, snap.UUID.String(), snap.State, snap.State)
+		return nil, mkInternal("found snapshot '%s' (%s) in project %q in unexpected state '%s' (%d)",
+			snap.Name, snap.UUID.String(), sid.projName, snap.State, snap.State)
 	}
 
 	err = clnt.DeleteSnapshot(ctx, sid.uuid, sid.projName, true)
