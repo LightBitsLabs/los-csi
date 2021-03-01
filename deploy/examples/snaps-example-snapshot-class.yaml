@@ -1,0 +1,11 @@
+---
+# Source: lb-csi-workload-examples/charts/snaps/templates/00.snapshot-sc.yaml
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: example-snapshot-sc
+driver: csi.lightbitslabs.com
+deletionPolicy: Delete
+parameters:
+  csi.storage.k8s.io/snapshotter-secret-name: example-secret
+  csi.storage.k8s.io/snapshotter-secret-namespace: default

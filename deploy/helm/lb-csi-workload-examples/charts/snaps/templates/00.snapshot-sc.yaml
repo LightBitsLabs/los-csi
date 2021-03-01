@@ -1,3 +1,4 @@
+{{- if and (required "snaps.stage field is required" .Values.stage) (eq .Values.stage "snapshot-class")}}
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
@@ -8,4 +9,5 @@ deletionPolicy: Delete
 parameters:
   csi.storage.k8s.io/snapshotter-secret-name: {{ .Values.global.storageClass.secretName }}
   csi.storage.k8s.io/snapshotter-secret-namespace: {{ .Values.global.storageClass.secretNamespace }}
+{{- end }}
 {{- end }}
