@@ -186,6 +186,7 @@ full_image_tag:
 	@echo $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 
 generate_bundle: generate_deployment_yaml
+	@mkdir -p ./build
 	@tar -C deploy \
 		-czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
 		k8s helm examples
