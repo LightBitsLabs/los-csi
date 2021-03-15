@@ -8,7 +8,7 @@ Helm chart ease the deployment of the provided workload examples that use the `l
     - [Chart Values](#chart-values)
       - [Mandatory Values To Modify](#mandatory-values-to-modify)
   - [Usage](#usage)
-    - [Secret, StorageClass and VolumeSnapshotClass Chart](#secret-storageclass-and-volumesnapshotclass-chart)
+    - [Secret and StorageClass Chart](#secret-and-storageclass-chart)
       - [Deploy Secret And StorageClasses Workload](#deploy-secret-and-storageclasses-workload)
       - [Verify Secret And StorageClasses Workload](#verify-secret-and-storageclasses-workload)
       - [Uninstall Secret And StorageClasses Workload](#uninstall-secret-and-storageclasses-workload)
@@ -25,11 +25,12 @@ Helm chart ease the deployment of the provided workload examples that use the `l
       - [Verify StatefulSet Workload](#verify-statefulset-workload)
       - [Uninstall StatefulSet Workload](#uninstall-statefulset-workload)
     - [Deploy Snapshot and Clones Workloads](#deploy-snapshot-and-clones-workloads)
-      - [_Stage 1: Create Example `PVC` and `POD`_](#stage-1-create-example-pvc-and-pod)
-      - [_Stage 2: Take a `Snapshot` from PVC created at stage 1_](#stage-2-take-a-snapshot-from-pvc-created-at-stage-1)
-      - [_Stage 3: Create a `PVC` from Snapshot created at stage 2 and create a `POD` that use it_](#stage-3-create-a-pvc-from-snapshot-created-at-stage-2-and-create-a-pod-that-use-it)
-      - [_Stage 4: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
-      - [Uninstall Snapshot Workloads](#uninstall-snapshot-workloads)
+      - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
+      - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
+      - [_Stage 3: Take a `Snapshot` from PVC created at stage 2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
+      - [_Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
+      - [_Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
+      - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
     - [Install in different namespace](#install-in-different-namespace)
     - [Rendering Manifests Using Helm Chart](#rendering-manifests-using-helm-chart)
 
@@ -231,20 +232,20 @@ After the above command completes, the deployment process can take between sever
 
 After a short while, you can issue the following commands to verify the results. Your output will likely differ from the following example, including to reflect your Kubernetes cluster configuration, randomly generated pod names, etc.
 
-### Secret, StorageClass and VolumeSnapshotClass Chart
+### Secret and StorageClass Chart
 
 This Chart will install the following resources:
 
 - A `Secret` containing the lightos JWT
-- A `StorageClass` referenceing the secret and configured with all values needed to provision volumes on LightOS.
-- A `SnapshotStorageClass` referenceing the secret.
+- A `StorageClass` referencing the secret and configured with all values needed to provision volumes on LightOS.
 
 #### Deploy Secret And StorageClasses Workload
 
 ```bash
 helm install \
   --set storageclass.enabled=true \
-  --set global.storageClass.mgmtEndpoints="$MGMT_EP" lb-csi-workload-examples-sc \
+  --set global.storageClass.mgmtEndpoints="$MGMT_EP" \
+  lb-csi-workload-examples-sc \
   helm/lb-csi-workload-examples
 ```
 
@@ -264,15 +265,12 @@ TEST SUITE: None
 Verify that all resources where created:
 
 ```bash
-kubectl get sc,secret,VolumeSnapshotClass
+kubectl get sc,secret
 NAME                                     PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
 storageclass.storage.k8s.io/example-sc   csi.lightbitslabs.com   Delete          Immediate           true                   5m27s
 
 NAME                                                       TYPE                                  DATA   AGE
 secret/example-secret                                      kubernetes.io/lb-csi                  1      5m27s
-
-NAME                                                              DRIVER                  DELETIONPOLICY   AGE
-volumesnapshotclass.snapshot.storage.k8s.io/example-snapshot-sc   csi.lightbitslabs.com   Delete           5m27s
 ```
 
 #### Uninstall Secret And StorageClasses Workload

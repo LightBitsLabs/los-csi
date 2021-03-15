@@ -17,7 +17,7 @@
     - [Block Volume Mode PVC](#block-volume-mode-pvc)
     - [Expand Volume Example](#expand-volume-example)
   - [Pre-Provisioned Volume Example Using A Pod](#pre-provisioned-volume-example-using-a-pod)
-  - [Snapshot and Clones Examples](#snapshot-and-clones-examples)
+  - [Volume Snapshot and Clones Provisioning Examples](#volume-snapshot-and-clones-provisioning-examples)
     - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
     - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
     - [_Stage 3: Take a `Snapshot` from PVC created at stage #2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
@@ -426,34 +426,16 @@ kubectl describe pvc example-fs-pvc
 
 TBD
 
-## Snapshot and Clones Examples
+## Volume Snapshot and Clones Provisioning Examples
 
 This examples is a bit more complex and is build of six different stages:
 
-- [Workload Examples Deployment Using Static Manifests](#workload-examples-deployment-using-static-manifests)
-  - [Workload Examples Using Static Manifests Content](#workload-examples-using-static-manifests-content)
-  - [Secret and StorageClass](#secret-and-storageclass)
-    - [Storing LightOS Authentication JWT in a Kubernetes Secret](#storing-lightos-authentication-jwt-in-a-kubernetes-secret)
-    - [Create StorageClass](#create-storageclass)
-  - [Dynamic Volume Provisioning Example Using StatefulSet](#dynamic-volume-provisioning-example-using-statefulset)
-    - [Deploy StatefulSet](#deploy-statefulset)
-    - [Verify StatefulSet Deployment](#verify-statefulset-deployment)
-    - [Remove StatefulSet](#remove-statefulset)
-  - [Dynamic Volume Provisioning Example Using a Pod](#dynamic-volume-provisioning-example-using-a-pod)
-    - [Filesystem Volume Mode PVC](#filesystem-volume-mode-pvc)
-      - [Deploy PVC and POD](#deploy-pvc-and-pod)
-      - [Verify Deployment](#verify-deployment)
-      - [Delete PVC and POD](#delete-pvc-and-pod)
-    - [Block Volume Mode PVC](#block-volume-mode-pvc)
-    - [Expand Volume Example](#expand-volume-example)
-  - [Pre-Provisioned Volume Example Using A Pod](#pre-provisioned-volume-example-using-a-pod)
-  - [Snapshot and Clones Examples](#snapshot-and-clones-examples)
-    - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
-    - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
-    - [_Stage 3: Take a `Snapshot` from PVC created at stage #2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
-    - [_Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
-    - [_Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-4-and-create-a-pod-that-use-it)
-    - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
+   - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
+   - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
+   - [_Stage 3: Take a `Snapshot` from PVC created at stage #2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
+   - [_Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
+   - [_Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-4-and-create-a-pod-that-use-it)
+   - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
 
 The examples are dependent on one another, so you must run them in order.
 
@@ -512,7 +494,11 @@ volumesnapshotclass.snapshot.storage.k8s.io/example-snapshot-sc   csi.lightbitsl
 
 ### _Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_
 
-Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
+After your VolumeSnapshot object is bound, you can use that object to provision a new volume that is pre-populated with data from the snapshot.
+
+The volume snapshot content object is used to restore the existing volume to a previous state.
+
+Create a `PVC` from previously taken `Snapshot` named `example-snapshot`:
 
 ```bash
 kubectl create -f examples/snaps-pvc-from-snapshot-workload.yaml 
