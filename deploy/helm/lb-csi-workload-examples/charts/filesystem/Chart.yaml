@@ -3,4 +3,3 @@ name: filesystem
 description: A Helm chart for filesystem example pod that use lb-csi-plugin
 type: application
 version: 0.1.0
-appVersion: "1.4.0"

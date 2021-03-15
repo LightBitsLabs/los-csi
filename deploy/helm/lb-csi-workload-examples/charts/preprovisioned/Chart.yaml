@@ -3,4 +3,3 @@ name: preprovisioned
 description: A Helm chart for pre-provisioned PV that use lb-csi-plugin
 type: application
 version: 0.1.0
-appVersion: "1.4.0"
