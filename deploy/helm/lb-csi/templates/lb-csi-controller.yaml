@@ -9,6 +9,8 @@ spec:
     matchLabels:
       app: lb-csi-plugin
       role: controller
+  updateStrategy:
+    type: RollingUpdate
   serviceName: "lb-csi-ctrl-svc"
   replicas: 1
   template:
