@@ -3,6 +3,12 @@ kind: Pod
 metadata:
   name: "example-fs-pod"
 spec:
+{{- if .Values.nodeSelector }}
+  nodeSelector: {{- .Values.nodeSelector | toYaml | nindent 4 }}
+{{- end }}
+{{- if .Values.nodeName }}
+  nodeName: {{ .Values.nodeName }}
+{{- end }}
   containers:
   - name: busybox-date-container
     imagePullPolicy: IfNotPresent

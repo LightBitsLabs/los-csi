@@ -17,9 +17,13 @@ global:
 storageclass:
   enabled: false  
 block:
-  enabled: false  
+  enabled: false
+  nodeSelector: {}
+  nodeName: ""
 filesystem:
   enabled: false
+  nodeSelector: {}
+  nodeName: "" # optional node name this pod will be deployed on.
 preprovisioned:
   enabled: false
   lightosVolNguid: "" # required! nguid of LightOS volume.

@@ -14,10 +14,12 @@ Helm chart ease the deployment of the provided workload examples that use the `l
       - [Uninstall Secret And StorageClasses Workload](#uninstall-secret-and-storageclasses-workload)
     - [Deploy Block PVC and POD](#deploy-block-pvc-and-pod)
       - [Deploy Block Workload](#deploy-block-workload)
+        - [Deploy POD On Specific K8S Node](#deploy-pod-on-specific-k8s-node)
       - [Verify Block Workload](#verify-block-workload)
       - [Uninstall Block Workload](#uninstall-block-workload)
     - [Filesystem PVC and POD Workload](#filesystem-pvc-and-pod-workload)
       - [Deploy Filesystem Workload](#deploy-filesystem-workload)
+        - [Deploy POD On Specific K8S Node](#deploy-pod-on-specific-k8s-node-1)
       - [Verify Filesystem Workload Deployed](#verify-filesystem-workload-deployed)
       - [Uninstall Filesystem Workload](#uninstall-filesystem-workload)
     - [Deploy StatefulSet](#deploy-statefulset)
@@ -144,9 +146,13 @@ global:
 storageclass:
   enabled: false  
 block:
-  enabled: false  
+  enabled: false
+  nodeSelector: {}
+  nodeName: ""
 filesystem:
   enabled: false
+  nodeSelector: {}
+  nodeName: ""
 preprovisioned:
   enabled: false
   lightosVolNguid: "" # required! nguid of LightOS volume.
@@ -163,21 +169,25 @@ snaps:
 
 Values Description:
 
-| name   |  description  | default         | required   |
-|--------|---------------|-----------------|------------|
-| storageclass.enable   | Deploy Secret, StorageClass | false | false |
-| block.enable          | Deploy block volume workload   | false | false |
-| filesyste.enable      | Deploy filesystem volume workload   | false | false |
-| statefulset.enable    | Deploy statefulset workload   | false | false |
-| preprovisioned.enable | Deploy preprovisioned volume workload  | false | false |
+| name   |  description   | default         | required   |
+|--------|----------------|-----------------|------------|
+| storageclass.enable     | Deploy Secret, StorageClass | false | false |
+| block.enable            | Deploy block volume workload   | false | false |
+| block.nodeSelector      | Deploy `POD` on specific node using node selectors   | {} | false |
+| block.nodeName          | Deploy `POD` on specific node using node name        | "" | false |
+| filesystem.enable       | Deploy filesystem volume workload   | false | false |
+| filesystem.nodeSelector | Deploy `POD` on specific node using node selectors   | {} | false |
+| filesystem.nodeName     | Deploy `POD` on specific node using node name        | "" | false |
+| statefulset.enable      | Deploy statefulset workload   | false | false |
+| preprovisioned.enable   | Deploy preprovisioned volume workload  | false | false |
 | preprovisioned.lightosVolNguid | NGUID of LightOS volume   | ""  | false |
 | snaps.enable  | Deploy Snapshot workloads   | false  | false |
 | snaps.pvcName | Name of the pvc for Snapshot example |  example-pvc    | false |
 | snaps.stage    | name the snapshot stage we want to execute | ""  | false |
 | global.storageClass.mgmtEndpoints | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>` | "" | true |
-| global.storageClass.projectName | Created resoures will be scoped to this project | default | false |
+| global.storageClass.projectName | Created resources will be scoped to this project | default | false |
 | global.storageClass.replicaCount | Number of replicas for each volume | 3 | false |
-| global.storageClass.compression | Rather copressions in enabled/disabled | disabled | false |
+| global.storageClass.compression | Rather compressions in enabled/disabled | disabled | false |
 | global.storageClass.secretName | Secret containing `JWT` to authenticate against LightOS API | example-secret | true |
 | global.storageClass.secretNamespace | Namespace the secret is defined at | default | true |
 
@@ -309,6 +319,58 @@ REVISION: 1
 TEST SUITE: None
 ```
 
+##### Deploy POD On Specific K8S Node
+
+You can choose to deploy the POD on a specific k8s node by specifying `nodeName` or `nodeSelector` in the template.
+
+The default values for these parameters are empty which means POD will not be limited to any POD.
+
+Examples:
+
+1. Specifying `nodeSelector`:
+
+  ```bash
+  helm template --set block.enabled=true \
+      --set block.nodeSelector."beta\.kubernetes\.io/arch"=amd64,block.nodeSelector.disktype=ssd \
+      lb-csi-workload-examples
+  ```
+
+  Will result:
+
+  ```bash
+  kind: Pod
+  apiVersion: v1
+  metadata:
+    name: example-block-pod
+  spec:
+    nodeSelector:
+      beta.kubernetes.io/arch: amd64
+      disktype: ssd
+    containers:
+    ...
+  ```
+
+2. Specifying `nodeName`:
+
+  ```bash
+  helm template --set block.enabled=true \
+      --set block.nodeName=node00.local \
+      lb-csi-workload-examples
+  ```
+
+  Will result:
+
+  ```bash
+  kind: Pod
+  apiVersion: v1
+  metadata:
+    name: example-block-pod
+  spec:
+    nodeName: node00.local
+    containers:
+    ...
+  ```
+
 #### Verify Block Workload
 
 Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
@@ -364,6 +426,58 @@ STATUS: deployed
 REVISION: 1
 TEST SUITE: None
 ```
+
+##### Deploy POD On Specific K8S Node
+
+You can choose to deploy the POD on a specific k8s node by specifying `nodeName` or `nodeSelector` in the template.
+
+The default values for these parameters are empty which means POD will not be limited to any POD.
+
+Examples:
+
+1. Specifying `nodeSelector`:
+
+  ```bash
+  helm template --set filesystem.enabled=true \
+      --set filesystem.nodeSelector."beta\.kubernetes\.io/arch"=amd64,filesystem.nodeSelector.disktype=ssd \
+      lb-csi-workload-examples
+  ```
+
+  Will result:
+
+  ```bash
+  kind: Pod
+  apiVersion: v1
+  metadata:
+    name: example-filesystem-pod
+  spec:
+    nodeSelector:
+      beta.kubernetes.io/arch: amd64
+      disktype: ssd
+    containers:
+    ...
+  ```
+
+2. Specifying `nodeName`:
+
+  ```bash
+  helm template --set filesystem.enabled=true \
+      --set filesystem.nodeName=node00.local \
+      lb-csi-workload-examples
+  ```
+
+  Will result:
+
+  ```bash
+  kind: Pod
+  apiVersion: v1
+  metadata:
+    name: example-fs-pod
+  spec:
+    nodeName: node00.local
+    containers:
+    ...
+  ```
 
 #### Verify Filesystem Workload Deployed
 
