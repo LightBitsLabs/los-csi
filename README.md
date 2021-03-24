@@ -2,12 +2,17 @@
 
 - [LightOS CSI Plugin (`lb-csi-plugin`)](#lightos-csi-plugin-lb-csi-plugin)
   - [Plugin and Workload Deployment On Kubernetes](#plugin-and-workload-deployment-on-kubernetes)
+  - [Plugin Upgrade](#plugin-upgrade)
   - [Design and architecture](#design-and-architecture)
   - [Developing The Plugin](#developing-the-plugin)
 
 ## Plugin and Workload Deployment On Kubernetes
 
 See [docs/deployment.md](./docs/deployment.md)
+
+## Plugin Upgrade
+
+See [docs/upgrade/upgrade-lb-csi.md](./docs/upgrade/upgrade-lb-csi.md)
 
 ## Design and architecture
 
