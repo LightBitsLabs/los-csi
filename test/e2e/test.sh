@@ -38,6 +38,7 @@ test() {
     local focus
     local cmd
 
+    start_time=`date +%s.%N`
     # https://github.com/kubernetes/kubernetes/issues/97993
     info "Create default storage class"
     trap cleanup EXIT
@@ -60,7 +61,11 @@ test() {
     dbg "$cmd"
     (cd $TESTDIR && eval $cmd && sed -i -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' "$LOGSDIR"/test.log)
 
-    info "Done"
+    end_time=`date +%s.%N`
+    runtime=$( echo "$end_time - $start_time" | bc -l )
+    info "=============================="
+    info "Done. Took: $runtime seconds"
+    info "=============================="
 }
 
 download() {
