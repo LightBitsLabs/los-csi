@@ -138,6 +138,51 @@ generate_deployment_yaml: deploy/k8s helm
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.19 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.19 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.20 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.20 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.21 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.21 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
 
 generate_examples_yaml: deploy/examples helm
 	helm template --set storageclass.enabled=true \
