@@ -49,11 +49,10 @@ spec:
           volumeMounts:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
-          # to inject jwt from secret using volume mount uncomment
-          # the following. Will create file under /etc/lb-csi/jwt with jwt value
-          # in secret named `los-secret`
-          # - name: lb-csi-secret-vol
-          #   mountPath: "/etc/lb-csi"
+{{- range .Values.jwtSecret }}
+          - name: {{ .name }}
+            mountPath: "/etc/lb-csi"
+{{- end }}
         - name: csi-provisioner
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
@@ -143,15 +142,17 @@ spec:
             mountPath: /var/lib/csi/sockets/pluginproxy/
 {{- end }}
       volumes:
-        - name: socket-dir
-          emptyDir: {}
-        # - name: lb-csi-secret-vol
-        #   secret:
-        #     secretName: los-secret
-        #     items:
-        #     - key: jwt
-        #       path: jwt
-        #       mode: 0777
+      - name: socket-dir
+        emptyDir: {}
+{{- range .Values.jwtSecret }}
+      - name: {{ .name }}
+        secret:
+          secretName: {{ .name }}
+          items:
+          - key: jwt
+            path: jwt
+            mode: 0777
+{{- end }}
 {{- if empty .Values.imagePullSecrets | not }}
       imagePullSecrets:
       {{- range .Values.imagePullSecrets }}

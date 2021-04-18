@@ -81,11 +81,10 @@ spec:
               mountPath: /dev
             - name: discovery-client-dir
               mountPath: /etc/discovery-client/discovery.d
-            # to inject jwt from secret using volume mount uncomment
-            # the following. Will create file under /etc/lb-csi/jwt with jwt value
-            # in secret named `los-secret`
-            # - name: lb-csi-secret-vol
-            #   mountPath: "/etc/lb-csi"
+{{- range .Values.jwtSecret }}
+            - name: {{ .name }}
+              mountPath: "/etc/lb-csi"
+{{- end }}
         - name: csi-node-driver-registrar
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
@@ -137,40 +136,42 @@ spec:
               mountPath: /etc/discovery-client/discovery.d
 {{- end }}
       volumes:
-        - name: registration-dir
-          hostPath:
-            path: {{ .Values.kubeletRootDir }}/plugins_registry/
-            type: DirectoryOrCreate
-        - name: plugin-dir
-          hostPath:
-            path: {{ .Values.kubeletRootDir }}/plugins/csi.lightbitslabs.com
-            type: DirectoryOrCreate
-        - name: pods-mount-dir
-          hostPath:
-            path: {{ .Values.kubeletRootDir }}
-            type: Directory
-        - name: device-dir
-          hostPath:
-            path: /dev
-        - name: modules-dir
-          hostPath:
-            path: /lib/modules
+      - name: registration-dir
+        hostPath:
+          path: {{ .Values.kubeletRootDir }}/plugins_registry/
+          type: DirectoryOrCreate
+      - name: plugin-dir
+        hostPath:
+          path: {{ .Values.kubeletRootDir }}/plugins/csi.lightbitslabs.com
+          type: DirectoryOrCreate
+      - name: pods-mount-dir
+        hostPath:
+          path: {{ .Values.kubeletRootDir }}
+          type: Directory
+      - name: device-dir
+        hostPath:
+          path: /dev
+      - name: modules-dir
+        hostPath:
+          path: /lib/modules
 {{- if .Values.discoveryClientInContainer }}
-        - name: discovery-client-dir
-          emptyDir: {}
+      - name: discovery-client-dir
+        emptyDir: {}
 {{- else }}
-        - name: discovery-client-dir
-          hostPath:
-            path: /etc/discovery-client/discovery.d
-            type: Directory
+      - name: discovery-client-dir
+        hostPath:
+          path: /etc/discovery-client/discovery.d
+          type: Directory
 {{- end }}
-        # - name: lb-csi-secret-vol
-        #   secret:
-        #     secretName: los-secret
-        #     items:
-        #     - key: jwt
-        #       path: jwt
-        #       mode: 0777
+{{- range .Values.jwtSecret }}
+      - name: {{ .name }}
+        secret:
+          secretName: {{ .name }}
+          items:
+          - key: jwt
+            path: jwt
+            mode: 0777
+{{- end }}
 {{- if empty .Values.imagePullSecrets | not }}
       imagePullSecrets:
       {{- range .Values.imagePullSecrets }}

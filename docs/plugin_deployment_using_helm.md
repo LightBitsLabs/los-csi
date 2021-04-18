@@ -61,6 +61,7 @@ LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
 | enableExpandVolume           | Should we allow volume expand feature support (supported for `k8s` v1.16 and above) | true            |
 | kubeletRootDir               | Kubelet root directory. (change only k8s deployment is different from default       | /var/lib/kubelet|
 | kubeVersion                  | Target k8s version for offline manifests rendering (overrides .Capabilities.Version)| ""              |
+| jwtSecret                    | LightOS API JWT to mount as volume for controller and node pods.                    | []              |
 
 ## Usage
 
