@@ -30,8 +30,9 @@ run() {
 }
 
 cleanup() {
-    info "Delete default storage class"
-    kubectl delete -f $TESTDIR/storage-class.yaml
+    info "Delete default storage class and snapshot class"
+    #kubectl delete -f $TESTDIR/storage-class.yaml
+    #kubectl delete -f $TESTDIR/snapshot-class.yaml
 }
 
 test() {
@@ -43,6 +44,7 @@ test() {
     info "Create default storage class"
     trap cleanup EXIT
     kubectl create -f $TESTDIR/storage-class.yaml
+    kubectl create -f $TESTDIR/snapshot-class.yaml
 
     info "Start $TEST tests"
     case "$TEST" in
@@ -51,9 +53,15 @@ test() {
 	        volume-expand-fs) focus='csi.lightbitslabs.com.*fs.*volume-expand' ;;
             volume-mode) focus='csi.lightbitslabs.com.*volumeMode' ;;
             volumes) focus='csi.lightbitslabs.com.*volumes' ;;
+            volume-stress) focus='csi.lightbitslabs.com.*volume-stress' ;;
             multi-volume) focus='csi.lightbitslabs.com.*multiVolume' ;;
             provisioning) focus='csi.lightbitslabs.com.*provisioning' ;;
             snapshottable) focus='csi.lightbitslabs.com.*snapshottable' ;;
+            snapshottable-stress) focus='csi.lightbitslabs.com.*snapshottable-stress' ;;
+            capacity) focus='csi.lightbitslabs.com.*capacity' ;;
+            disruptive) focus='csi.lightbitslabs.com.*disruptive' ;;
+            ephemeral) focus='csi.lightbitslabs.com.*ephemeral' ;;
+            volumeIO) focus='csi.lightbitslabs.com.*volumeIO' ;;
         *) focus='csi.lightbitslabs.com' ;;
     esac
 
@@ -96,16 +104,52 @@ parameters:
   replica-count: "$REPLICA_COUNT"
   compression: $COMPRESSION
   mgmt-scheme: $MGMT_SCHEME
+  project-name: $PROJECT_NAME
+  csi.storage.k8s.io/controller-publish-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/controller-publish-secret-namespace: $SECRET_NAMESPACE
+  csi.storage.k8s.io/node-stage-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/node-stage-secret-namespace: $SECRET_NAMESPACE
+  csi.storage.k8s.io/node-publish-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/node-publish-secret-namespace: $SECRET_NAMESPACE
+  csi.storage.k8s.io/provisioner-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/provisioner-secret-namespace: $SECRET_NAMESPACE
+  csi.storage.k8s.io/controller-expand-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/controller-expand-secret-namespace: $SECRET_NAMESPACE
 EOF
+
+    cat > $TESTDIR/snapshot-class.yaml <<EOF
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: lb-csi-snapshot-sc
+driver: csi.lightbitslabs.com
+deletionPolicy: Delete
+parameters:
+  csi.storage.k8s.io/snapshotter-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/snapshotter-secret-namespace: $SECRET_NAMESPACE
+EOF
+
     cat > $TESTDIR/test-driver.yaml <<EOF
 StorageClass:
+  FromName: false
   FromFile: $TESTDIR/storage-class.yaml
 SnapshotClass:
-  FromName: true
+  FromName: false
+  FromFile: $TESTDIR/snapshot-class.yaml
 DriverInfo:
   Name: csi.lightbitslabs.com
   SupportedSizeRange:
     Min: 1Gi
+  StressTestOptions:
+    # Number of pods to create in the test. This may also create up to 1 volume per pod.
+    NumPods: 2
+    # Number of times to restart each Pod.
+    NumRestarts: 2
+  VolumeSnapshotStressTestOptions:
+    # Number of pods to create in the test. This may also create up to 1 volume per pod.
+    NumPods: 2
+    # Number of snapshots to create for each volume.
+    NumSnapshots: 2
   Capabilities:
     persistence: true
     exec: true
@@ -114,15 +158,25 @@ DriverInfo:
     block: true
     snapshotDataSource: true
     pvcDataSource: true
+  # Volume provisioning metrics are compared to a high baseline. Failure to pass would suggest a performance regression.
+  PerformanceTestOptions:
+      ProvisioningOptions:
+      VolumeSize: "1Gi"
+      Count: 3
+      ExpectedMetrics:
+          AvgLatency: 1m
+          Throughput: 0.5
 EOF
     dbg "Generated $TESTDIR/storage-class.yaml:"
     [ "$VERBOSE" = "true" ] && cat $TESTDIR/storage-class.yaml
+    dbg "Generated $TESTDIR/snapshot-class.yaml:"
+    [ "$VERBOSE" = "true" ] && cat $TESTDIR/snapshot-class.yaml
     dbg "Generated $TESTDIR/test-driver.yaml:"
     [ "$VERBOSE" = "true" ] && cat $TESTDIR/test-driver.yaml
 }
 
 usage() {
-    echo "usage: $(basename "${0}") [-hv] [-k path_to_kubeconfig] [-m mgmt-endpoint] [-r replica-count] [-c enable-compression] [-s|--skip-test]"
+    echo "usage: $(basename "${0}") [-hv] [-k path_to_kubeconfig] [-m mgmt-endpoint] [-r replica-count] [-c enable-compression] [-s|--skip-test] [-n secret-name] [-N secret-namespace]"
     echo "  options:"
     echo "      -h|--help - show this help menu"
     echo "      -v|--verbose - verbosity on"
@@ -135,10 +189,13 @@ usage() {
     echo "      -t|--test - run a specific test. Supported tests - ${SUPPORTED_TESTS[@]} (default all)"
     echo "      -d|--test-dir - test path, where all artifacts will be stored. (default $TESTDIR)"
     echo "      -l|--logs-dir - logs path, where test.log will be stored. (default $TESTDIR)"
+    echo "      -p|--project-name - LightOS project-name to use. (default 'default')"
+    echo "      -n|--secret-name - Secret name to use. (required)"
+    echo "      -N|--secret-namespace - namespace that the secret resides. (default 'default')"
 }
 
 main() {
-    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:l:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir:,logs-dir: -n 'parse-options' -- "$@"); then
+    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:l:n:N:p:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir:,logs-dir:secret-name:secret-namespace:project-name: -n 'parse-options' -- "$@"); then
         err "Failed parsing options." >&2 ; usage; exit 1 ;
     fi
 
@@ -146,17 +203,20 @@ main() {
 
     while true; do
         case "$1" in
-            -v | --verbose)       VERBOSE=true; shift ;;
-            -h | --help)          usage; exit 0; shift ;;
-            -k | --kubeconfig)    KUBECONFIG="$2"; shift; shift ;;
-            -m | --mgmt-endpoint) MGMT_ENDPOINT="$2"; shift; shift ;;
-            -S | --mgmt-scheme)   MGMT_SCHEME="$2"; shift; shift ;;
-            -r | --replica-count) REPLICA_COUNT="$2"; shift; shift ;;
-            -c | --compression)   COMPRESSION=enabled; shift ;;
-            -s | --skip-test)     SKIP_TEST=true; shift ;;
-            -t | --test)          TEST="$2"; shift; shift ;;
-            -d | --test-dir)      TESTDIR="$(readlink -f $2)"; shift; shift ;;
-            -l | --logs-dir)      LOGSDIR="$(readlink -f $2)"; shift; shift ;;
+            -v | --verbose)             VERBOSE=true; shift ;;
+            -h | --help)                usage; exit 0; shift ;;
+            -k | --kubeconfig)          KUBECONFIG="$2"; shift; shift ;;
+            -m | --mgmt-endpoint)       MGMT_ENDPOINT="$2"; shift; shift ;;
+            -S | --mgmt-scheme)         MGMT_SCHEME="$2"; shift; shift ;;
+            -r | --replica-count)       REPLICA_COUNT="$2"; shift; shift ;;
+            -c | --compression)         COMPRESSION=enabled; shift ;;
+            -s | --skip-test)           SKIP_TEST=true; shift ;;
+            -t | --test)                TEST="$2"; shift; shift ;;
+            -d | --test-dir)            TESTDIR="$(readlink -f $2)"; shift; shift ;;
+            -l | --logs-dir)            LOGSDIR="$(readlink -f $2)"; shift; shift ;;
+            -n | --secret-name)         SECRET_NAME="$2"; shift; shift ;;
+            -N | --secret-namespace)    SECRET_NAMESPACE="$2"; shift; shift ;;
+            -p | --project-name)        PROJECT_NAME="$2"; shift; shift ;;
             -- ) shift; break ;;
             * ) err "unsupported argument $1"; usage; exit 1 ;;
         esac
@@ -174,8 +234,24 @@ main() {
         exit 1
     fi
 
+    if [ -z "$SECRET_NAME" ]; then
+        err "SECRET_NAME environment variable not set and -n|--secret-name variable not used"
+        usage
+        exit 1
+    fi
+
+    if [ -z "$SECRET_NAMESPACE" ]; then
+        info "SECRET_NAMESPACE environment variable not set and -N|--secret-namespace using default"
+        SECRET_NAMESPACE="default"
+    fi
+
+    if [ -z "$PROJECT_NAME" ]; then
+        info "PROJECT_NAME environment variable not set and -p|--project-name using default"
+        PROJECT_NAME="default"
+    fi
+
     if [ -z "$MGMT_SCHEME" ]; then
-	MGMT_SCHEME="grpcs"
+        MGMT_SCHEME="grpcs"
     fi
 
     CLUSTER_VERSION=$(kubectl --kubeconfig $KUBECONFIG version --short | grep Server | awk '{print $3}')
@@ -202,6 +278,9 @@ main() {
     dbg "MGMT_SCHEME=$MGMT_SCHEME"
     dbg "REPLICA_COUNT=$REPLICA_COUNT"
     dbg "COMPRESSION=$COMPRESSION"
+    dbg "SECRET_NAME=$SECRET_NAME"
+    dbg "SECRET_NAMESPACE=$SECRET_NAMESPACE"
+    dbg "PROJECT_NAME=$PROJECT_NAME"
 
     download
     generate
@@ -213,7 +292,7 @@ CLUSTER_VERSION=
 TESTDIR=
 LOGSDIR=
 SKIP_TEST=false
-SUPPORTED_TESTS=(all volume-expand volume-expand-block volume-expand-fs provisioning multi-volume volumes volume-mode snapshottable)
+SUPPORTED_TESTS=(all volume-expand volume-expand-block volume-expand-fs provisioning multi-volume volumes volume-mode snapshottable snapshottable-stress volumeIO capacity disruptive ephemeral volume-stress)
 TEST=all
 # storage class lb specific params
 MGMT_ENDPOINT="$LB_CSI_SC_MGMT_ENDPOINT"

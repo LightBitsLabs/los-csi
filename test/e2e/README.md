@@ -20,23 +20,23 @@ These are hardcoded in the script, once a new capability is supported, this scri
 
 # Running the tests
 
-To run tests: `./test.sh -v --kubeconfig </path/to/config> -m <endpoints> -r <replication> -t <test>`
+To run tests: `./test.sh -v --kubeconfig </path/to/config> -m <endpoints> -r <replication> -t <test> -n <secret-name> -N <secret-ns>`
 
 Examples:
 
 Run all tests
 ```
-./test.sh -v --kubeconfig ~/.kube/config -m "10.10.10.51:80,10.10.10.52:80,10.10.10.53:80" -r 3 -t all
+./test.sh -v --kubeconfig ~/.kube/config -m "10.10.10.51:80,10.10.10.52:80,10.10.10.53:80" -r 3 -t all -n system-admin-secret -N default
 ```
 
 Run all block tests
 ```
-./test.sh -v --kubeconfig=~/.kube/config -m "10.10.10.51:80,10.10.10.52:80,10.10.10.53:80" -r 3 -t block
+./test.sh -v --kubeconfig=~/.kube/config -m "10.10.10.51:80,10.10.10.52:80,10.10.10.53:80" -r 3 -t block -n system-admin-secret -N default
 ```
 
 Run all volume expand tests
 ```
-./test.sh -v --kubeconfig=~/.kube/config -m "10.10.10.51:80,10.10.10.52:80,10.10.10.53:80" -r 3 -t resize
+./test.sh -v --kubeconfig=~/.kube/config -m "10.10.10.51:80,10.10.10.52:80,10.10.10.53:80" -r 3 -t resize -n system-admin-secret -N default
 ```
 
 # Running specific test suites not covered by the script
