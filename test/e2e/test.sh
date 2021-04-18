@@ -31,8 +31,8 @@ run() {
 
 cleanup() {
     info "Delete default storage class and snapshot class"
-    #kubectl delete -f $TESTDIR/storage-class.yaml
-    #kubectl delete -f $TESTDIR/snapshot-class.yaml
+    KUBECONFIG="/root/.kube/config" kubectl delete -f $TESTDIR/storage-class.yaml
+    KUBECONFIG="/root/.kube/config" kubectl delete -f $TESTDIR/snapshot-class.yaml
 }
 
 test() {
@@ -43,14 +43,14 @@ test() {
     # https://github.com/kubernetes/kubernetes/issues/97993
     info "Create default storage class"
     trap cleanup EXIT
-    kubectl create -f $TESTDIR/storage-class.yaml
-    kubectl create -f $TESTDIR/snapshot-class.yaml
+    KUBECONFIG="/root/.kube/config" kubectl create -f $TESTDIR/storage-class.yaml
+    KUBECONFIG="/root/.kube/config" kubectl create -f $TESTDIR/snapshot-class.yaml
 
     info "Start $TEST tests"
     case "$TEST" in
             volume-expand) focus='csi.lightbitslabs.com.*volume-expand' ;;
-	        volume-expand-block) focus='csi.lightbitslabs.com.*(block volmode).*volume-expand' ;;
-	        volume-expand-fs) focus='csi.lightbitslabs.com.*fs.*volume-expand' ;;
+            volume-expand-block) focus='csi.lightbitslabs.com.*(block volmode).*volume-expand' ;;
+            volume-expand-fs) focus='csi.lightbitslabs.com.*fs.*volume-expand' ;;
             volume-mode) focus='csi.lightbitslabs.com.*volumeMode' ;;
             volumes) focus='csi.lightbitslabs.com.*volumes' ;;
             volume-stress) focus='csi.lightbitslabs.com.*volume-stress' ;;
@@ -65,15 +65,30 @@ test() {
         *) focus='csi.lightbitslabs.com' ;;
     esac
 
-    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
-    dbg "$cmd"
-    (cd $TESTDIR && eval $cmd && sed -i -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' "$LOGSDIR"/test.log)
+    # we comment the redirect to test.log cause it hides the error code of the command
+    # since we run this under systemd we have the journald log so no need to redirect
+    #cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
+    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\""
+
+    pushd $TESTDIR
+    info "Start '$TEST' tests"
+    info "$cmd"
+
+    eval $cmd
+    result=`echo ${PIPESTATUS[0]}`
+    # we comment the redirect to test.log cause it hides the error code of the command
+    # since we run this under systemd we have the journald log so no need to redirect
+    # if [[ $result -eq 0 ]]; then
+    #     sed -i -r 's/\x1B\[([0-9]{1,3}(;[0-9]{1,2})?)?[mGK]//g' "$LOGSDIR"/test.log
+    # fi
+    popd
 
     end_time=`date +%s.%N`
     runtime=$( echo "$end_time - $start_time" | bc -l )
     info "=============================="
     info "Done. Took: $runtime seconds"
     info "=============================="
+    exit $result
 }
 
 download() {
