@@ -9,5 +9,9 @@ deletionPolicy: Delete
 parameters:
   csi.storage.k8s.io/snapshotter-secret-name: {{ .Values.global.storageClass.secretName }}
   csi.storage.k8s.io/snapshotter-secret-namespace: {{ .Values.global.storageClass.secretNamespace }}
+  csi.storage.k8s.io/snapshotter-list-secret-name: {{ .Values.global.storageClass.secretName }}
+  csi.storage.k8s.io/snapshotter-list-secret-namespace: {{ .Values.global.storageClass.secretNamespace }}
+  snapshot.storage.kubernetes.io/deletion-secret-name: {{ .Values.global.storageClass.secretName }}
+  snapshot.storage.kubernetes.io/deletion-secret-namespace: {{ .Values.global.storageClass.secretNamespace }}
 {{- end }}
 {{- end }}
