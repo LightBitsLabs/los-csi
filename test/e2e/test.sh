@@ -142,6 +142,10 @@ deletionPolicy: Delete
 parameters:
   csi.storage.k8s.io/snapshotter-secret-name: $SECRET_NAME
   csi.storage.k8s.io/snapshotter-secret-namespace: $SECRET_NAMESPACE
+  csi.storage.k8s.io/snapshotter-list-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/snapshotter-list-secret-namespace: $SECRET_NAMESPACE
+  snapshot.storage.kubernetes.io/deletion-secret-name: $SECRET_NAME
+  snapshot.storage.kubernetes.io/deletion-secret-namespace: $SECRET_NAMESPACE
 EOF
 
     cat > $TESTDIR/test-driver.yaml <<EOF
