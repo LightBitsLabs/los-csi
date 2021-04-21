@@ -57,7 +57,11 @@ spec:
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
           # modify the image identifier below accordingly:
+{{- if ($kubeVersion | semverCompare ">=1.13.0 <= 1.18.0") }}
           image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-provisioner:v1.5.0
+{{- else }}
+          image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-provisioner:v2.1.2
+{{- end }}
           args:
           - "--csi-address=$(ADDRESS)"
           - "--v=4"
@@ -108,7 +112,11 @@ spec:
 {{- end }}
 {{- if and ($kubeVersion | semverCompare ">=1.16.0") ( .Values.enableExpandVolume ) }}
         - name: csi-resizer
+{{- if ($kubeVersion | semverCompare "<= 1.18.0") }}
           image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-resizer:v0.5.0
+{{- else }}
+          image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-resizer:v1.1.0
+{{- end }}
           args:
           - "--v=5"
           - "--csi-address=$(ADDRESS)"
