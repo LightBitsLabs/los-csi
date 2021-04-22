@@ -27,9 +27,9 @@ The `lb-csi-bundle` includes the following content:
 │   ├── lb-csi-workload-examples
 ```
 
-- **k8s:** Contains static manifests to deploy `lb-csi-plugin` on various Kubertnetes versions.
+- **k8s:** Contains static manifests to deploy `lb-csi-plugin` on various Kubernetes versions.
 - **examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using static manifests.
-- **helm/lb-csi:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubertnetes versions using Helm Chart.
+- **helm/lb-csi:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
 - **helm/lb-csi-workload-examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using Helm Chart.
 
 > **NOTE:** The following sections use these supplementary package files for demonstration purposes.

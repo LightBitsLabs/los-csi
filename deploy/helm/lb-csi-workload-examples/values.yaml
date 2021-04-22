@@ -27,13 +27,13 @@ filesystem:
 preprovisioned:
   enabled: false
   lightosVolNguid: "" # required! nguid of LightOS volume.
-  volumeMode: # required! one of ["Block", "Filesystem"] 
+  volumeMode: null # required! one of ["Block", "Filesystem"]
 statefulset:
   enabled: false
   statefulSetName: example-sts
 snaps:
   enabled: false
   pvcName: example-pvc
-  stage: "" # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc"]
+  stage: null # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc"]
   snapshotStorageClass:
     name: example-snapshot-sc

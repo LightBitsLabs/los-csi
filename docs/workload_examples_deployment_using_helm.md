@@ -171,19 +171,19 @@ Values Description:
 
 | name   |  description   | default         | required   |
 |--------|----------------|-----------------|------------|
-| storageclass.enable     | Deploy Secret, StorageClass | false | false |
-| block.enable            | Deploy block volume workload   | false | false |
-| block.nodeSelector      | Deploy `POD` on specific node using node selectors   | {} | false |
-| block.nodeName          | Deploy `POD` on specific node using node name        | "" | false |
-| filesystem.enable       | Deploy filesystem volume workload   | false | false |
-| filesystem.nodeSelector | Deploy `POD` on specific node using node selectors   | {} | false |
-| filesystem.nodeName     | Deploy `POD` on specific node using node name        | "" | false |
-| statefulset.enable      | Deploy statefulset workload   | false | false |
+| storageclass.enable     | Deploy Secret, StorageClass                         | false | false |
+| block.enable            | Deploy block volume workload                        | false | false |
+| block.nodeSelector      | Deploy `POD` on specific node using node selectors  | {}    | false |
+| block.nodeName          | Deploy `POD` on specific node using node name       | ""    |  false |
+| filesystem.enable       | Deploy filesystem volume workload                   | false | false |
+| filesystem.nodeSelector | Deploy `POD` on specific node using node selectors  | {}    | false |
+| filesystem.nodeName     | Deploy `POD` on specific node using node name       | ""    | false |
+| statefulset.enable      | Deploy statefulset workload                         | false | false |
 | preprovisioned.enable   | Deploy preprovisioned volume workload  | false | false |
 | preprovisioned.lightosVolNguid | NGUID of LightOS volume   | ""  | false |
-| snaps.enable  | Deploy Snapshot workloads   | false  | false |
-| snaps.pvcName | Name of the pvc for Snapshot example |  example-pvc    | false |
-| snaps.stage    | name the snapshot stage we want to execute | ""  | false |
+| snaps.enable            | Deploy Snapshot workloads   | false  | false |
+| snaps.pvcName           | Name of the pvc for Snapshot example |  example-pvc    | false |
+| snaps.stage             | Name the snapshot stage we want to execute | ""  | false |
 | global.storageClass.mgmtEndpoints | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>` | "" | true |
 | global.storageClass.projectName | Created resources will be scoped to this project | default | false |
 | global.storageClass.replicaCount | Number of replicas for each volume | 3 | false |

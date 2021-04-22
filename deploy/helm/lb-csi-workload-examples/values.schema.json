@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Values",
+  "type": "object",
+  "properties": {
+    "storageclass": {
+      "description": "Defines the Secret that holds our JWT and StorageClass we will use in our workloads.",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Deploy Secret and StorageClass to use.",
+          "type": "boolean"
+        }
+      }
+    },
+    "block": {
+      "description": "Configures Block workload parameters",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Deploy block volume workload",
+          "type": "boolean"
+        },
+        "nodeSelector": {
+          "description": "Deploy `POD` on specific node using node selectors.",
+          "type": "object"
+        },
+        "nodeName": {
+          "description": "Deploy `POD` on specific node using node name.",
+          "type": "string"
+        }
+      }
+    },
+    "filesystem": {
+      "description": "Configures Filesystem workload parameters",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Deploy filesystem volume workload",
+          "type": "boolean"
+        },
+        "nodeSelector": {
+          "description": "Deploy `POD` on specific node using node selectors.",
+          "type": "object"
+        },
+        "nodeName": {
+          "description": "Deploy `POD` on specific node using node name.",
+          "type": "string"
+        }
+      }
+    },
+    "preprovisioned": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Deploy filesystem volume workload",
+          "type": "boolean"
+        },
+        "lightosVolNguid": {
+          "description": "NGUID of the LightOS volume.",
+          "type": "string"
+        },
+        "volumeMode": {
+          "description": "Rather this volume is Block or Filesystem",
+          "type": [ "string", "null" ],
+          "enum": ["Block", "Filesystem", null]
+        }
+      }
+    },
+    "statefulset": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Deploy StatefulSet workload",
+          "type": "boolean"
+        },
+        "statefulSetName": {
+          "description": "Name of the StatefulSet",
+          "type": "string"
+        }
+      }
+    },
+    "snaps": {
+      "description": "",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Deploy Snapshot workloads",
+          "type": "boolean"
+        },
+        "pvcName": {
+          "description": "Name of the `PVC` for Snapshot example",
+          "type": "string"
+        },
+        "stage": {
+          "description": "",
+          "type": [ "string", "null" ],
+          "enum": ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc", "snapshot-class", null]
+        },
+        "snapshotStorageClass": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "Name the snapshot stage we want to execute.",
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": [
+  ]
+}
