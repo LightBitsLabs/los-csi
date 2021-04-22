@@ -49,16 +49,17 @@ LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
 
 | name                         | description                                                                         | default         |
 |------------------------------|-------------------------------------------------------------------------------------|-----------------|
-| discoveryClientInContainer   | Should we deploy lb-nvme-discovery-client as container in lb-csi-node pods          | false           |
+| discoveryClientInContainer   | Deploy lb-nvme-discovery-client as container in lb-csi-node pods                    | false           |
 | discoveryClientImage         | lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`)           | ""              |
 | image                        | lb-csi-plugin image name (string format:  `<image-name>:<tag>`)                     | ""              |
-| imageRegistry                | registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
-| sidecarImageRegistry         | registry to pull CSI sidecar images                                                 | quay.io         |
+| imageRegistry                | Registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
+| sidecarImageRegistry         | Registry to pull CSI sidecar images                                                 | quay.io         |
 | imagePullPolicy              |                                                                                     | Always          |
 | imagePullSecrets             | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | []              |
-| controllerServiceAccountName | name of controller service account                                                  | lb-csi-ctrl-sa  |
-| nodeServiceAccountName       | name of node service account                                                        | lb-csi-node-sa  |
-| enableExpandVolume           | Should we allow volume expand feature support (supported for `k8s` v1.16 and above) | true            |
+| controllerServiceAccountName | Name of controller service account                                                  | lb-csi-ctrl-sa  |
+| nodeServiceAccountName       | Name of node service account                                                        | lb-csi-node-sa  |
+| enableExpandVolume           | Allow volume expand feature support (supported for `k8s` v1.16 and above)           | true            |
+| enableExpandVolume           | Allow volume snapshot feature support (supported for `k8s` v1.17 and above)         | true            |
 | kubeletRootDir               | Kubelet root directory. (change only k8s deployment is different from default       | /var/lib/kubelet|
 | kubeVersion                  | Target k8s version for offline manifests rendering (overrides .Capabilities.Version)| ""              |
 | jwtSecret                    | LightOS API JWT to mount as volume for controller and node pods.                    | []              |

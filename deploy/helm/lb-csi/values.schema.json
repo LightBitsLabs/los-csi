@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "Values",
+  "type": "object",
+  "properties": {
+    "image": {
+      "description": "lb-csi-plugin image name (string format:  `<image-name>:<tag>`)",
+      "type": "string"
+    },
+    "enableExpandVolume": {
+      "description": "Allow volume expand feature support (supported for `k8s` v1.16 and above)",
+      "type": "boolean"
+    },
+    "enableSnapshot": {
+      "description": "Allow volume snapshot feature support (supported for `k8s` v1.17 and above)",
+      "type": "boolean"
+    },
+    "discoveryClientInContainer": {
+      "description": "Deploy lb-nvme-discovery-client as container in lb-csi-node pods",
+      "type": "boolean"
+    },
+    "imageRegistry": {
+      "description": "Registry to pull LightBits CSI images",
+      "type": "string"
+    },
+    "sidecarImageRegistry": {
+      "description": "Registry to pull CSI sidecar images",
+      "type": "string"
+    },
+    "imagePullPolicy": {
+      "description": "",
+      "type": "string"
+    },
+    "imagePullSecrets": {
+      "description": "",
+      "type": "string"
+    },
+    "discoveryClientImage": {
+      "description": "lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`)",
+      "type": "string"
+    },
+    "controllerServiceAccountName": {
+      "description": "name of controller service account",
+      "type": "string"
+    },
+    "nodeServiceAccountName": {
+      "description": "name of node service account",
+      "type": "string"
+    },
+    "kubeletRootDir": {
+      "description": "Kubelet root directory. (change only k8s deployment is different from default",
+      "type": "string"
+    },
+    "kubeVersion": {
+      "description": "Target k8s version for offline manifests rendering (overrides .Capabilities.Version)",
+      "type": "string"
+    },
+    "jwtSecret": {
+      "description": "LightOS API JWT to mount as volume for controller and node pods.",
+      "type": "array"
+    }
+  },
+  "required": [
+    "image"
+  ]
+}
