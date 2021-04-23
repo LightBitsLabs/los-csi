@@ -3,6 +3,65 @@
   "title": "Values",
   "type": "object",
   "properties": {
+    "global": {
+      "description": "Defines the Secret that holds our JWT and StorageClass we will use in our workloads.",
+      "type": "object",
+      "required": [
+      ],
+      "properties": {
+        "storageclass": {
+          "description": "Describe StorageClass we will use in our workloads.",
+          "type": "object",
+          "required": [
+            "mgmtEndpoints"
+          ],
+          "properties": {
+            "name": {
+              "description": "StorageClass name.",
+              "type": "string"
+            },
+            "projectName": {
+              "description": "Name of the LightOS project we want the plugin to target.",
+              "type": "string"
+            },
+            "mgmtEndpoints": {
+              "description": "required! comma delimited endpoints string, for example <ip>:<port>,<ip>:<port>",
+              "type": "string"
+            },
+            "replicaCount": {
+              "description": "Number of replicas for each volume provisioned by this StorageClass.",
+              "type": "string"
+            },
+            "compression": {
+              "description": "Enable/Disable data compression.",
+              "type": "string",
+              "enum": ["enabled", "disabled"]
+            }
+          }
+        },
+        "jwtSecret": {
+          "description": "Describe Secret we will use in our workloads.",
+          "type": "object",
+          "required": [
+            "jwt"
+          ],
+          "properties": {
+            "name": {
+              "description": "Secret name.",
+              "type": "string"
+            },
+            "namespace": {
+              "description": "Secret namespace.",
+              "type": "string"
+            },
+            "jwt": {
+              "description": "JWT string",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "storageclass": {
       "description": "Defines the Secret that holds our JWT and StorageClass we will use in our workloads.",
       "type": "object",
@@ -110,7 +169,5 @@
         }
       }
     }
-  },
-  "required": [
-  ]
+  }
 }

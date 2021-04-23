@@ -10,8 +10,10 @@ global:
     # Number of replicas for each volume provisioned by this StorageClass
     replicaCount: "3"
     compression: disabled
-    secretName: example-secret
-    secretNamespace: default
+  jwtSecret:
+    name: example-secret
+    namespace: default
+    jwt: "" # required!
 
 # subchart workloads:
 storageclass:

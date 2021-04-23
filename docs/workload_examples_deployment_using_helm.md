@@ -102,7 +102,6 @@ Workload examples included:
 │   │   │   └── values.yaml
 │   │   └── storageclass
 │   │       ├── Chart.yaml
-│   │       ├── lightos-jwt.toml
 │   │       ├── templates
 │   │       │   ├── secret.yaml
 │   │       │   └── storageclass.yaml
@@ -185,11 +184,12 @@ Values Description:
 | snaps.pvcName           | Name of the pvc for Snapshot example |  example-pvc    | false |
 | snaps.stage             | Name the snapshot stage we want to execute | ""  | false |
 | global.storageClass.mgmtEndpoints | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>` | "" | true |
-| global.storageClass.projectName | Created resources will be scoped to this project | default | false |
-| global.storageClass.replicaCount | Number of replicas for each volume | 3 | false |
-| global.storageClass.compression | Rather compressions in enabled/disabled | disabled | false |
-| global.storageClass.secretName | Secret containing `JWT` to authenticate against LightOS API | example-secret | true |
-| global.storageClass.secretNamespace | Namespace the secret is defined at | default | true |
+| global.storageClass.projectName | Created resources will be scoped to this project        | default | false |
+| global.storageClass.replicaCount | Number of replicas for each volume                     | 3 | false |
+| global.storageClass.compression | Rather compressions in enabled/disabled                 | disabled | false |
+| global.jwtSecret.name       | Secret name that holds LightOS API `JWT`                    | example-secret | true |
+| global.jwtSecret.namespace  | Namespace the secret is defined at                          | default | true |
+| global.jwtSecret.jwt        | `JWT` to authenticate against LightOS API                   | default | true |
 
 #### Mandatory Values To Modify
 
@@ -209,7 +209,9 @@ Following values **MUST** be modified to match target Kubernetes cluster.
   export MGMT_EP=$(lbcli get cluster -o json | jq -r '.apiEndpoints | join("\\,")')
   ```
 
-  **NOTICE:** The '\\' in the join command. When passing this value to helm we must use the escape character `\`.
+  > **NOTICE:** 
+  > 
+  > The '\\' in the join command. When passing this value to helm we must use the escape character `\`.
 
 - LightOS API JWT
 
@@ -217,9 +219,18 @@ Following values **MUST** be modified to match target Kubernetes cluster.
 
   The JWT is passed to the plugin by creating a Kubernetes Secret resource.
 
-  The Provided chart can be used to automate the process of creating this Secret by providing the JWT in `helm/lb-csi-workload-examples/charts/storageclass/lightos-jwt.toml` file.
+  Set `LIGHTOS_JWT` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running following command:
 
-  Helm will read the file and create the following `Secret`:
+  ```bash
+  export LIGHTOS_JWT=eyJhbGciOiJSUzI1NiIsImtpZCI6InN5c3RlbTpyb290IiwidHlwIjoiSldUIn0.eyJhdWQiOiJMaWdodE9TIiwiZXhwIjoxNjUwNjA4MDcwLCJpYXQiOjE2MTkwNzIwNzAsImlzcyI6InN5c3Rlc3RzIiwianRpIjoib3NFOXl0WWZZajlYTEFmZ0RRMTVUdyIsIm5iZiI6MTYxOTA3MjA3MCwicm9sZXMiOlsic3lzdGVtOmNsdXN0ZXItYWRtaW4iXSwic3ViIjoibGlnaHRvcy1jbGllbnQifQ.onPbYZ6z6kAeS9MUHYQVbUNs8a3yu44wiIoP7Bet8AZ9uBvw-WZ2ZAVqYHV-e1_FzZRfBdJdzpRywKOPNSQaTDVjb-HoJzHHcocWk8gz23C7jI7JYDoeQKvk9zqsU8jiBOKVjFFuhTXFQEfVpPK4qkCoKcSX78D5BVJsgcINgniF0S4jzfT2zlAGNlN4ACyN2iaSF2uMG24nhs6SNypwmgSYml3C5H_AaUzQu0WAWiKwjpxfORn09kPdK1rHvtBWThrpRMBSbFi86cAebNOdqBHxsruN3rU75u57F15PxLijliPC_JnnPD6U-AWcOaN2pMie0yJR0ZlMppc8U4F-KQ
+  ```
+
+  > **NOTICE:** 
+  > 
+  > K8S store the secret data base64 encoded but the chart will do
+  > the encoding for you. 
+
+  Helm will generate a `Secret` looking like:
 
   ```yaml
   # Source: lb-csi-workload-examples/templates/secret.yaml
@@ -228,7 +239,7 @@ Following values **MUST** be modified to match target Kubernetes cluster.
   metadata:
     name: example-secret
     namespace: default
-  type: kubernetes.io/lb-csi
+  type: lightbitslabs.com/jwt
   data:
     jwt: |-
       ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lTbGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5ESXdORE15TENKcFlYUWlPakUyTVRNNE9EUTBNeklzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lWRXh5VHpoSWVrTjNiek5qTlV4UlJuazVTV3BvVVNJc0ltNWlaaUk2TVRZeE16ZzRORFF6TWl3aWNtOXNaWE1pT2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpiR2xsYm5RaWZRLkpBNExwcWExRzFzZGZ3bE1zRVBWNzZCbE1uZVA1bnFzdlZOTzQ2N0l3MUNHSzFjVUNZLWk5MGpjVmdTM1YxVmlCN3J1MG5mX2JkaEdvX091WERaaHktQzVXeGVocVVtaFk0V3NhdWlHejNnQ2NHc3Roa21TbHVkNUlXeXZ4djM5ZEJPenJ0MGJDVW9ELXdVSEdUeC14eUpLWVc0MjFSM19sRW1TTm1KeDRHZUc4NV9GQkNiSU93OGF2YUl5eDJlNXFBeDBpTTdhSDZCTlo0S2tiQ0tnZmtjVl9MRDBqQUtfWUVyeThGdi1NRDU4cGVrZXVNQ0dkWTdfWVBPdG5KelIweUZ2dG9PZmNOdnAxLXRXNXNDbkUwWTliUV9FX3lzMlVYMjlia25OUTJhYmRoeU5FN0ZjeWk3QlZtVnNWYTBfUzhQMU9OaXZHODNQOVYybUdPd1czQQo=
@@ -255,6 +266,7 @@ This Chart will install the following resources:
 helm install \
   --set storageclass.enabled=true \
   --set global.storageClass.mgmtEndpoints="$MGMT_EP" \
+  --set global.jwtSecret.jwt="$LIGHTOS_JWT" \
   lb-csi-workload-examples-sc \
   helm/lb-csi-workload-examples
 ```
@@ -270,6 +282,18 @@ REVISION: 1
 TEST SUITE: None
 ```
 
+> **NOTICE:**
+> 
+> The chart will validate the required fields are provided.
+> case they are not provided an error will be presented.
+>
+> For example, case `global.jwtSecret.jwt` is not provided, we will get the following error:
+>
+> ```bash
+> Error: execution error at (lb-csi-workload-examples/charts/storageclass/templates/secret.yaml:1:85): global.jwtSecret.jwt field is required
+> ```
+> 
+
 #### Verify Secret And StorageClasses Workload
 
 Verify that all resources where created:
@@ -280,7 +304,7 @@ NAME                                     PROVISIONER             RECLAIMPOLICY  
 storageclass.storage.k8s.io/example-sc   csi.lightbitslabs.com   Delete          Immediate           true                   5m27s
 
 NAME                                                       TYPE                                  DATA   AGE
-secret/example-secret                                      kubernetes.io/lb-csi                  1      5m27s
+secret/example-secret                                      lightbitslabs.com/jwt                 1      5m27s
 ```
 
 #### Uninstall Secret And StorageClasses Workload

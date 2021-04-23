@@ -165,7 +165,7 @@ volumesnapshotclass.snapshot.storage.k8s.io/example-snapshot-sc created
 
 $ kubectl get secret,sc,VolumeSnapshotClass
 NAME                         TYPE                                  DATA   AGE
-secret/example-secret        kubernetes.io/lb-csi                  1      59s
+secret/example-secret        lightbitslabs.com/jwt                 1      59s
 
 NAME                                     PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
 storageclass.storage.k8s.io/example-sc   csi.lightbitslabs.com   Delete          Immediate           true                   59s
