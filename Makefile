@@ -251,3 +251,18 @@ helm:
 	chmod 700 /tmp/get_helm.sh
 	/tmp/get_helm.sh --version v3.5.0
 	rm /tmp/get_helm.sh
+
+build/helm/charts:
+	mkdir -p build/helm/charts
+
+helm_package: build/helm/charts helm
+	rm -rf ./build/helm/charts/*
+	helm package -d ./build/helm/charts deploy/helm/lb-csi
+	helm lint ./build/helm/charts/lb-csi-plugin-*.tgz
+	helm package -d ./build/helm/charts deploy/helm/lb-csi-workload-examples
+	helm lint ./build/helm/charts/lb-csi-workload-examples-*.tgz
+
+helm_package_upload: helm_package
+	find ./build/helm/charts -name '*.tgz' -type f -exec \
+		curl -XPOST -L -u $(HELM_CHART_REPOSITORY_USERNAME):$(HELM_CHART_REPOSITORY_PASSWORD) -T {} http://$(HELM_CHART_REPOSITORY)/api/charts \;
+	helm repo update
