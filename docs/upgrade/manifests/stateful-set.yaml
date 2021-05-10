@@ -25,7 +25,7 @@ spec:
         - name: lb-csi-plugin
           # if hosting the plugin in a different registry, e.g. a local private
           # Docker registry, modify the image identifier below accordingly:
-          image: lbdocker:5000/lb-csi-plugin:1.4.1
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.1
           args :
             - "-P"
           env:
