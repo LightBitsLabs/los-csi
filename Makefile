@@ -235,6 +235,7 @@ full_image_tag:
 
 generate_bundle: generate_deployment_yaml
 	@mkdir -p ./build
+	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	@tar -C deploy \
 		-czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
 		k8s helm examples
