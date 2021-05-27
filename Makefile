@@ -215,7 +215,7 @@ generate_examples_yaml: deploy/examples helm
 		--set snaps.stage=pvc-from-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-pvc-workload.yaml
 
-package: build generate_deployment_yaml
+package: build generate_bundle
 	@docker build $(LABELS) -t $(DOCKER_REGISTRY)/$(DOCKER_TAG) deploy
 
 push: package
@@ -235,6 +235,7 @@ full_image_tag:
 
 generate_bundle: generate_deployment_yaml
 	@mkdir -p ./build
+	rm -rf build/lb-csi-bundle-*.tar.gz
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	@tar -C deploy \
 		-czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
