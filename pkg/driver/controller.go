@@ -848,8 +848,9 @@ func (d *Driver) CreateSnapshot(
 			return nil, err // FIXME: assign ready2use = false ?
 		}
 		ready2use = true
-		log.WithField("snap-uuid", snap.UUID).Info("snapshot created")
+		log = log.WithField("snap-uuid", snap.UUID)
 	}
+	log.Info("snapshot created")
 
 	return mkSnapshotResponse(vid.mgmtEPs, req.SourceVolumeId, snap, ready2use, vid.scheme), nil
 }
