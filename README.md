@@ -2,6 +2,7 @@
 
 - [LightOS CSI Plugin (`lb-csi-plugin`)](#lightos-csi-plugin-lb-csi-plugin)
   - [LB CSI Driver Capabilities](#lb-csi-driver-capabilities)
+  - [Change Log](#change-log)
   - [Plugin and Workload Deployment On Kubernetes](#plugin-and-workload-deployment-on-kubernetes)
   - [Plugin Upgrade](#plugin-upgrade)
   - [Design and architecture](#design-and-architecture)
@@ -25,6 +26,11 @@ The CSI Drivers by Lightbits implement an interface between CSI (CSI spec v1.2) 
 | CSI Ephemeral Volume	          | yes	      | yes	      | yes	      | yes	      | yes	      | yes	      | yes	      |
 | Topology	                      | no	      | no	      | no	      | no	      | no	      | no	      | no	      |
 | Access Mode	                    | RWO       | RWO       | RWO       | RWO       | RWO       | RWO       | RWO       |
+
+## Change Log
+
+See the [CHANGELOG](./docs/CHANGELOG/README.md) for a detailed description of changes
+between `lb-csi-plugin` versions.
 
 ## Plugin and Workload Deployment On Kubernetes
 
