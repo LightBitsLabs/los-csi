@@ -219,23 +219,47 @@ curl -l -s -O https://dl.lightbitslabs.com/public/lightos-csi/raw/files/lb-csi-b
 The `lb-csi-bundle` includes the following content:
 
 ```bash
-├── k8s
+.
 ├── examples
+│   ├── block-workload.yaml
+│   ├── filesystem-workload.yaml
+│   ├── preprovisioned-workload.yaml
+│   ├── secret-and-storage-class.yaml
+│   ├── snaps-example-pvc-workload.yaml
+│   ├── snaps-example-snapshot-class.yaml
+│   ├── snaps-pvc-from-pvc-workload.yaml
+│   ├── snaps-pvc-from-snapshot-workload.yaml
+│   ├── snaps-snapshot-from-pvc-workload.yaml
+│   └── statefulset-workload.yaml
 ├── helm
-│   ├── lb-csi
-│   ├── lb-csi-workload-examples
+│   └── charts
+│       ├── lb-csi-plugin-<CHART_VERSION>.tgz
+│       └── lb-csi-workload-examples-<CHART_VERSION>.tgz
+├── k8s
+│   ├── lb-csi-plugin-k8s-v1.15.yaml
+│   ├── lb-csi-plugin-k8s-v1.16-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.16.yaml
+│   ├── lb-csi-plugin-k8s-v1.17-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.17.yaml
+│   ├── lb-csi-plugin-k8s-v1.18-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.18.yaml
+│   ├── lb-csi-plugin-k8s-v1.19-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.19.yaml
+│   ├── lb-csi-plugin-k8s-v1.20-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.20.yaml
+│   ├── lb-csi-plugin-k8s-v1.21-dc.yaml
+│   └── lb-csi-plugin-k8s-v1.21.yaml
 ```
 
 - **k8s:** Contains static manifests to deploy `lb-csi-plugin` on various Kubernetes versions.
 - **examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using static manifests.
-- **helm/lb-csi:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
-- **helm/lb-csi-workload-examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using Helm Chart.
-
+- **helm/charts:** Contain two Helm Charts:
+  - **lb-csi-plugin-<CHART_VERSION>.tgz:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
+  - **lb-csi-workload-examples-<CHART_VERSION>.tgz:** Provides various workload examples that use `lb-csi` as persistent storage backend using Helm Chart.
 
 > Note
 > 
-> The provided deployment spec files are examples only. While they include a rudimentary set of Kubernetes Service Account, Role, Binding, etc., definitions required to deploy a fully functional Lightbits CSI plugin, the plugin users are expected to significantly refine and extend them to match their production-grade deployment requirements. This is especially true of the various security-related Kubernetes features, including Pod Security Policies.
-
+> The provided deployment spec files are examples only. While they include a rudimentary set of Kubernetes Service Account, Role, Binding, etc... definitions required to deploy a fully functional Lightbits CSI plugin, the plugin users are expected to significantly refine and extend them to match their production-grade deployment requirements. This is especially true of the various security-related Kubernetes features, including Pod Security Policies.
 
 ## Accessing the Docker Registry Hosting the Lightbits CSI Plugin
 

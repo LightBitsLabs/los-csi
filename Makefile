@@ -224,7 +224,7 @@ push: package
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
-	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~ build/*
+	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~ build/* deploy/helm/charts/*
 	@git clean -f '*.orig'
 
 image_tag:
@@ -233,13 +233,12 @@ image_tag:
 full_image_tag:
 	@echo $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 
-generate_bundle: generate_deployment_yaml
+generate_bundle: generate_deployment_yaml helm_package
 	@mkdir -p ./build
 	rm -rf build/lb-csi-bundle-*.tar.gz
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
-	@tar -C deploy \
-		-czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
-		k8s helm examples
+	@tar -C deploy -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
+		k8s examples helm/charts
 
 deploy/k8s:
 	mkdir -p deploy/k8s
@@ -254,17 +253,20 @@ helm:
 	/tmp/get_helm.sh --version v3.5.0
 	rm /tmp/get_helm.sh
 
-build/helm/charts:
-	mkdir -p build/helm/charts
+deploy/helm/charts:
+	mkdir -p deploy/helm/charts
 
-helm_package: build/helm/charts helm
-	rm -rf ./build/helm/charts/*
-	helm package -d ./build/helm/charts deploy/helm/lb-csi
-	helm lint ./build/helm/charts/lb-csi-plugin-*.tgz
-	helm package -d ./build/helm/charts deploy/helm/lb-csi-workload-examples
-	helm lint ./build/helm/charts/lb-csi-workload-examples-*.tgz
+helm_package: deploy/helm/charts helm
+	rm -rf ./deploy/helm/charts/*
+	helm package -d ./deploy/helm/charts deploy/helm/lb-csi
+	helm lint ./deploy/helm/charts/lb-csi-plugin-*.tgz
+	helm package -d ./deploy/helm/charts deploy/helm/lb-csi-workload-examples
+	helm lint ./deploy/helm/charts/lb-csi-workload-examples-*.tgz
 
 helm_package_upload: helm_package
-	find ./build/helm/charts -name '*.tgz' -type f -exec \
+	@if [ -z "$(HELM_CHART_REPOSITORY)" ] ; then echo "HELM_CHART_REPOSITORY not set, can't push" ; exit 1 ; fi
+	@if [ -z "$(HELM_CHART_REPOSITORY_USERNAME)" ] ; then echo "HELM_CHART_REPOSITORY_USERNAME not set, can't push" ; exit 1 ; fi
+	@if [ -z "$(HELM_CHART_REPOSITORY_PASSWORD)" ] ; then echo "HELM_CHART_REPOSITORY_PASSWORD not set, can't push" ; exit 1 ; fi
+	find ./deploy/helm/charts -name '*.tgz' -type f -exec \
 		curl -XPOST -L -u $(HELM_CHART_REPOSITORY_USERNAME):$(HELM_CHART_REPOSITORY_PASSWORD) -T {} http://$(HELM_CHART_REPOSITORY)/api/charts \;
 	helm repo update

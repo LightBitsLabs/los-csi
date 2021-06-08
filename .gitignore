@@ -1,4 +1,5 @@
 deploy/lb-csi-plugin
+deploy/helm/charts
 .cache
 deploy/k8s/lb-csi-plugin-*.yaml
 build/
