@@ -4,8 +4,8 @@
   - [Overview](#overview)
   - [Deploying LightOS CSI Plugin On Kubernetes Cluster](#deploying-lightos-csi-plugin-on-kubernetes-cluster)
     - [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin)
-    - [CSI Plugin Removal Instructions](#csi-plugin-removal-instructions)
-      - [Before Removing the CSI Plugin](#before-removing-the-csi-plugin)
+  - [CSI Plugin Removal Instructions](#csi-plugin-removal-instructions)
+    - [Before Removing the CSI Plugin](#before-removing-the-csi-plugin)
     - [Removing LightOS CSI Plugin](#removing-lightos-csi-plugin)
   - [Deploying LB-CSI Plugin Via Helm (Optional)](#deploying-lb-csi-plugin-via-helm-optional)
   - [Next Steps](#next-steps)
@@ -16,11 +16,13 @@ LightOS CSI plugin is packaged as a standard Kubernetes workload, using a Statef
 
 The following instructions demonstrate a simplified plugin deployment flow using the sample configuration and deployment specs from the Supplementary Package. For production usage, you can refer to the provided examples and develop your deployment flows to address your requirements.
 
-**Note:**
-  
-> The scripts and spec files provided for your convenience in the Supplementary Package deploy the Lightbits CSI Plugin into the kube-system Kubernetes namespace, rather than the default one. Make sure to reference this namespace when issuing Kubernetes commands to confirm the successful installation.
-
-> There is no technical requirement to keep the CSI plugin in the kube-system namespace for actual deployments. Since kube-system is a privileged Kubernetes namespace, this can often avoid unexpected loss of service due to operator mistakes.
+> **Note:**
+>
+> The scripts and spec files provided for your convenience in the Supplementary Package deploy the Lightbits CSI Plugin into the `kube-system` Kubernetes namespace, rather than the default one.
+> 
+> Make sure to reference this namespace when issuing Kubernetes commands to confirm the successful installation.
+>
+> There is no technical requirement to keep the CSI plugin in the `kube-system` namespace for actual deployments. Since `kube-system` is a privileged Kubernetes namespace, this can often avoid unexpected loss of service due to operator mistakes.
 
 ## Deploying LightOS CSI Plugin On Kubernetes Cluster
 
@@ -32,7 +34,6 @@ We provide a manifest file for each k8s version supported:
 
 ```bash
 k8s/
-├── lb-csi-plugin-k8s-v1.13.yaml
 ├── lb-csi-plugin-k8s-v1.15-dc.yaml
 ├── lb-csi-plugin-k8s-v1.15.yaml
 ├── lb-csi-plugin-k8s-v1.16-dc.yaml
@@ -40,11 +41,17 @@ k8s/
 ├── lb-csi-plugin-k8s-v1.17-dc.yaml
 ├── lb-csi-plugin-k8s-v1.17.yaml
 ├── lb-csi-plugin-k8s-v1.18-dc.yaml
-└── lb-csi-plugin-k8s-v1.18.yaml
+├── lb-csi-plugin-k8s-v1.18.yaml
+├── lb-csi-plugin-k8s-v1.19-dc.yaml
+├── lb-csi-plugin-k8s-v1.19.yaml
+├── lb-csi-plugin-k8s-v1.20-dc.yaml
+├── lb-csi-plugin-k8s-v1.20.yaml
+├── lb-csi-plugin-k8s-v1.21-dc.yaml
+└── lb-csi-plugin-k8s-v1.21.yaml
 ```
 
-**NOTE:**
-
+>**Note:**
+>
 > Manifests with suffix `-dc.yaml` deploy discovery-client on k8s as a container in `lb-csi-node` DaemonSet.
 
 ### Deploying LightOS CSI Plugin
@@ -52,7 +59,7 @@ k8s/
 To deploy the plugin, run the following commands with examples as the current directory and with kubectl in your $PATH.
 
 ```bash
-kubectl create -f lb-csi-plugin-k8s-v1.15.yaml
+kubectl create -f lb-csi-plugin-k8s-v1.17.yaml
 ```
 
 Ideally, the output should contain no error messages. If you see any, try to determine if the problem is with the connectivity to the Kubernetes cluster, the kubelet configuration, or some other minor issue.
@@ -78,9 +85,9 @@ lb-csi-node-blc46     2/2       Running   0          1m        192.168.20.22   n
 lb-csi-node-djv7t     2/2       Running   0          1m        192.168.20.18   node2     <none>
 ```
 
-### CSI Plugin Removal Instructions
+## CSI Plugin Removal Instructions
 
-#### Before Removing the CSI Plugin
+### Before Removing the CSI Plugin
 
 Before removing the CSI plugin, you must confirm that the Lightbits CSI plugin is not in use by the Kubernetes cluster or any of the Kubernetes objects still live on that cluster. The kinds of objects of interest include:
 
@@ -95,7 +102,7 @@ Failure to confirm that the Lightbits CSI plugin is not in use can result in som
 Assuming you have deployed Lightbits CSI plugin by following the instructions in the section [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
 
 ```bash
-$ kubectl delete -f lb-csi-plugin-k8s-v1.15.yaml
+$ kubectl delete -f lb-csi-plugin-k8s-v1.17.yaml
 
 $ kubectl get --namespace=kube-system statefulset lb-csi-controller
 No resources found.
