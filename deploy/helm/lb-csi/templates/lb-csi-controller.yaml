@@ -164,7 +164,7 @@ spec:
 {{- if empty .Values.imagePullSecrets | not }}
       imagePullSecrets:
       {{- range .Values.imagePullSecrets }}
-       - name: {{ . | quote }}
+      - name: {{ . | quote }}
       {{- end }}
 {{- else }}
       # to enable seamless access to secure private Docker registries (e.g. to

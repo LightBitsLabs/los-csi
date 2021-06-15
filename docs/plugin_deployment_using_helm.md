@@ -55,7 +55,7 @@ LB-CSI plugin Helm chart is provided with `lb-csi-bundle-<version>.tar.gz`.
 | imageRegistry                | Registry to pull LightBits CSI images                           | docker.lightbitslabs.com/lightos-csi|
 | sidecarImageRegistry         | Registry to pull CSI sidecar images                                                 | quay.io         |
 | imagePullPolicy              |                                                                                     | Always          |
-| imagePullSecrets             | for more info see [here](#using-a-custom-docker-registry-with-the-helm-chart)       | []              |
+| imagePullSecrets             | Specify docker-registry secret names as an array. [example](#using-a-custom-docker-registry-with-the-helm-chart)       | [] (don't use secret)  |
 | controllerServiceAccountName | Name of controller service account                                                  | lb-csi-ctrl-sa  |
 | nodeServiceAccountName       | Name of node service account                                                        | lb-csi-node-sa  |
 | enableExpandVolume           | Allow volume expand feature support (supported for `k8s` v1.16 and above)           | true            |
@@ -78,7 +78,7 @@ helm install --namespace=kube-system lb-csi helm/lb-csi
 helm list --namespace=kube-system
 
 NAME  	NAMESPACE  	REVISION	UPDATED                                	STATUS  	CHART              	APP VERSION
-lb-csi	kube-system	1       	2021-02-11 10:41:57.605518574 +0200 IST	deployed	lb-csi-plugin-0.1.0	1.4.0
+lb-csi	kube-system	1       	2021-02-11 10:41:57.605518574 +0200 IST	deployed	lb-csi-plugin-0.3.0	1.5.0
 ```
 
 ### Uninstall LightOS CSI Plugin
@@ -127,9 +127,15 @@ helm template deploy/helm/lb-csi/ \
 
 ### Using A Custom Docker Registry
 
-A custom Docker registry may be used as the source of the operator Docker image. Before "helm install" is run, a Secret of type "docker-registry" should be created with the proper credentials.
+A custom Docker Registry may be used as the source of the container image. Before "helm install" is run, a Secret of type `docker-registry` should be created with the proper credentials.
 
-Then the `imagePullSecrets` helm value may be set to the name of the ImagePullSecret to cause the custom Docker registry to be used.
+The secret has to be created in the same namespace where the workload gets deployed.
+
+Then the `imagePullSecrets` helm value may be set to the name of the `docker-registry` Secret to cause the private Docker Registry to be used.
+
+Both `lb-csi-controller` StatefulSet and `lb-csi-node` DaemonSet uses image that might come from a private registry. 
+
+The pod authenticates with the registry using credentials stored in a Kubernetes secret called `github-docker-registry`, which is specified in spec.imagePullSecrets in the name field.
 
 #### Custom Docker registry example: Github packages
 
@@ -146,15 +152,25 @@ kubectl create secret docker-registry github-docker-registry \
   --docker-server docker.pkg.github.com
 ```
 
+To see how the secret is stored in Kubernetes, you can use this command:
+
+```bash
+kubectl get secret github-docker-registry --output="jsonpath={.data.\.dockerconfigjson}" | base64 --decode
+```
+
 Replace `USERNAME` with the github username and `ACCESSTOKEN` with the personal access token.
 
 Now we can run "helm install" with the override value for `imagePullSecrets`. This is often used with an override value for image so that a specific tag can be chosen.
 
+> NOTICE:
+>
+> imagePullSecrets is an array so it should be expressed as such with curly brackets
+
 ```bash
 helm install \
   --set imageRegistry=docker.pkg.github.com/lightbitslabs \
-  --set image=lb-csi-plugin:1.4.0 \
-  --set imagePullSecrets=github-docker-registry \
+  --set image=lb-csi-plugin:1.5.0 \
+  --set imagePullSecrets={github-docker-registry} \
   lb-csi ./helm/lb-csi
 ```
 

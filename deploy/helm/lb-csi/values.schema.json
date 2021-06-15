@@ -32,8 +32,8 @@
       "type": "string"
     },
     "imagePullSecrets": {
-      "description": "",
-      "type": "string"
+      "description": "list of secret names for container registries to pull from",
+      "type": "array"
     },
     "discoveryClientImage": {
       "description": "lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`)",
