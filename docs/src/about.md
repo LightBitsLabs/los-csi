@@ -1,26 +1,3 @@
-# LightOS CSI Plugin (`lb-csi-plugin`)
-
-- [LightOS CSI Plugin (`lb-csi-plugin`)](#lightos-csi-plugin-lb-csi-plugin)
-  - [Introduction](#introduction)
-  - [Documentation](#documentation)
-  - [Change Log](#change-log)
-  - [About Lightbits Labs™](#about-lightbits-labs)
-
-## Introduction
-
-The LightOS CSI plugin is a software module that implements management of persistent storage volumes exported by LightOS software for Container Orchestrator (CO) systems like Kubernetes and Mesos. In conjunction with the LightOS disaggregated storage solution, the CSI plugin provides a building block for the easy deployment of stateful containerized applications on CO clusters.
-
-The version of the plugin covered by this document implements version 1.2 of the [Container Storage Interface (CSI) Specification](https://github.com/container-storage-interface/spec/blob/v1.2.0/spec.md), and is compatible with LightOS version 2.3.x
-
-## Documentation
-
-Documentation can be found [here](./docs/src/SUMMARY.md)
-
-## Change Log
-
-See the [CHANGELOG](./docs/src/CHANGELOG/README.md) for a detailed description of changes
-between `lb-csi-plugin` versions.
-
 ## About Lightbits Labs™
 
 Today's storage approaches were designed for enterprises and do not meet developing cloud-scale infrastructure requirements. For instance, SAN is known for lacking performance and control. At scale, Direct-Attached SSDs (DAS) have become too complicated for smooth operations, too costly, and suffer from inefficient SSD utilization.

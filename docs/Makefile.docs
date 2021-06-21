@@ -1,0 +1,29 @@
+
+build:
+	docker run --rm -it \
+	  -v $(PWD):/src \
+	  -p 1313:1313 \
+	  klakegg/hugo:0.83.1
+
+server:
+	docker run --rm -it \
+	  --name hugo-server \
+	  -v $(PWD)/hugo:/src \
+	  -p 1313:1313 \
+	  klakegg/hugo:ext-pandoc \
+	  server
+
+mdbook-build-image:
+	docker build -t lbdocker:5000/lightbits-mdbook:v1 -f docs/Dockerfile .
+
+Mdbook-build: mdbook-build-image 
+	docker run -it --rm -v `pwd`/docs:/book lbdocker:5000/lightbits-mdbook:v1 build
+
+mdbook-serve: mdbook-build-image
+	docker run -it --rm --name=mdbook -p 3000:3000 -p 3001:3001 -v `pwd`/docs:/book lbdocker:5000/lightbits-mdbook:v1 serve --hostname 0.0.0.0
+
+emojify:
+	wget --no-verbose https://github.com/shonfeder/emojitsu/releases/download/0.1.1/gh-actions-emojitsu -O /tmp/gh-actions-emojitsu
+	chmod +x /tmp/gh-actions-emojitsu
+	find . -type f -name "*.md" -exec /tmp/gh-actions-emojitsu emojify -i {} \;
+

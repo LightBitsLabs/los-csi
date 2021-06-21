@@ -5,3 +5,4 @@ deploy/k8s/lb-csi-plugin-*.yaml
 build/
 .vscode
 test/e2e/results/*/*/*
+docs/book

@@ -1,0 +1,39 @@
+[book]
+title = "LightOS CSI Book"
+author = "Lightbits Labs"
+description = "The example book examples."
+language = "en"
+multilingual = false
+src = "src"
+
+[rust]
+edition = "2018"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[preprocessor.index]
+
+[preprocessor.links]
+
+#[preprocessor.emoji]
+
+#[preprocessor.plantuml]
+#plantuml-cmd="plantuml.exe"
+
+#[preprocessor.toc]
+#command = "mdbook-toc"
+#renderer = ["html"]
+
+[output.html]
+theme = "lightbits-theme"
+#additional-css = ["custom.css"]
+
+[output.html.search]
+enable=true
+limit-results = 15
+
+[output.html.playpen]
+# editor = "./path/to/editor"
+editable = false

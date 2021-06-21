@@ -1,4 +1,6 @@
-# LightOS CSI Plugin Deployment On Kubernetes Cluster
+<div style="page-break-after: always;"></div>
+
+## LightOS CSI Plugin Deployment On Kubernetes Cluster
 
 - [LightOS CSI Plugin Deployment On Kubernetes Cluster](#lightos-csi-plugin-deployment-on-kubernetes-cluster)
   - [Before You Begin](#before-you-begin)
@@ -12,8 +14,6 @@
   - [Accessing the Docker Registry Hosting the Lightbits CSI Plugin](#accessing-the-docker-registry-hosting-the-lightbits-csi-plugin)
     - [Deploying from the Lightbits Docker Registry](#deploying-from-the-lightbits-docker-registry)
     - [Deploying from a Local Private Docker Registry](#deploying-from-a-local-private-docker-registry)
-  - [Deploying Lightbits CSI Plugin on Kubernetes Cluster](#deploying-lightbits-csi-plugin-on-kubernetes-cluster)
-  - [Deploying Workloads Utilizing CSI Plugin Deployment (Optional)](#deploying-workloads-utilizing-csi-plugin-deployment-optional)
 
 > **Note:**
 > 
@@ -29,7 +29,7 @@
 > 
 > When deploying the Lightbits CSI plugin, only one set of version-specific instructions for every section needs to be carried out, matching the target Kubernetes environment version.
 
-## Before You Begin
+### Before You Begin
 
 To access and mount the storage volumes exported by the LightOS clusters, each of the Kubernetes cluster nodes must already have installed: 
 
@@ -53,7 +53,7 @@ Before deploying the Lightbits CSI plugin, you should verify that:
 
 Security systems like network firewalls and Linux Mandatory Access Control (MAC) systems (e.g., SELinux, AppArmor) running on the Kubernetes cluster nodes or the LightOS cluster servers can interfere with proper operation of the Lightbits CSI plugin. You should disable these security systems or configure them to allow the CSI plugin to carry out the requisite actions. For more details, see the Lightbits CSI Plugin Release Notes document appropriate to the version of the CSI plugin you are deploying.
 
-## Installing and Configuring the `kubectl` Tool
+### Installing and Configuring the `kubectl` Tool
 
 Deployment of the Lightbits CSI plugin can be carried out from any computer—including user laptops, Kubernetes cluster nodes and other servers—with network access to the Kubernetes API server and to the Kubernetes cluster control plane using the standard [kubectl](https://kubernetes.io/docs/reference/kubectl/overview/) tool. If `kubectl` is not already installed on the machine in question, please install it before proceeding to the next subsection.
 
@@ -78,7 +78,7 @@ node3     Ready     node      90d       v1.15.3
 
 If the `kubectl` output includes errors, or if `kubectl` is unable to retrieve the Kubernetes cluster nodes information, resolve the issue using standard `kubectl` troubleshooting procedures before proceeding.
 
-## Ensuring Suitable Kubernetes Cluster Configuration
+### Ensuring Suitable Kubernetes Cluster Configuration
 
 CSI plugins must be able to perform system-level operations to provide other pods running on Kubernetes with usable storage volumes - either raw block devices or file system mounts. Some of these operations, like mounting file systems or accessing the sysfs pseudo-file system, require elevated privileges not normally granted to the other pods.
 
@@ -97,7 +97,7 @@ The required modifications apply to two Kubernetes components:
 
 The following sections detail the required modifications for each component.
 
-### Configuring the Kubernetes API Server
+#### Configuring the Kubernetes API Server
 
 In many Kubernetes deployments, the Kubernetes API server itself runs as a static pod on the master node(s). The process of enabling privileged containers and feature gates in the API server requires updating the API server pod Kubernetes spec and ensuring that the Kubernetes API server restarts. Typically, the spec location is at the following path on the master node(s):
 
@@ -167,7 +167,7 @@ If you have made any changes to the `kube-apiserver.yaml` file, save and close t
 > 
 > The Kubernetes API server might become unresponsive to `kubectl` commands for several seconds while the API server pod restarts. This unresponsive status is by design, as long as `kubectl` becomes fully operational again within a minute.
 
-### Configuring `kubelet` on All Cluster Nodes
+#### Configuring `kubelet` on All Cluster Nodes
 
 In most Kubernetes deployments, `kubelet` runs as a daemon or service on each of the cluster nodes. The process of enabling privileged containers and feature gates in kubelet comprises updating the kubelet configuration on each of the Kubernetes cluster nodes and ensuring that all the relevant kubelet daemons are restarted.
 
@@ -202,11 +202,11 @@ ps aux | grep kubelet
 >
 > If you add Kubernetes nodes after the initial CSI plugin deployment process, you must ensure the correct kubelet daemon configuration on every new Kubernetes node to enable proper Lightbits CSI plugin operation.
 
-## Lightbits CSI Bundle Package
+### Lightbits CSI Bundle Package
 
 Lightbits supplies an optional supplementary package that contains the configuration files used for Lightbits CSI plugin deployment, as well as some Persistent Volume usage example files.
 
-### Download Lightbits CSI Bundle Package
+#### Download Lightbits CSI Bundle Package
 
 The link to the supplementary package should be similar to:
 
@@ -214,7 +214,7 @@ The link to the supplementary package should be similar to:
 curl -l -s -O https://dl.lightbitslabs.com/public/lightos-csi/raw/files/lb-csi-bundle-<version>.tar.gz
 ```
 
-### Lightbits CSI Bundle Package Content
+#### Lightbits CSI Bundle Package Content
 
 The `lb-csi-bundle` includes the following content:
 
@@ -261,13 +261,13 @@ The `lb-csi-bundle` includes the following content:
 > 
 > The provided deployment spec files are examples only. While they include a rudimentary set of Kubernetes Service Account, Role, Binding, etc... definitions required to deploy a fully functional Lightbits CSI plugin, the plugin users are expected to significantly refine and extend them to match their production-grade deployment requirements. This is especially true of the various security-related Kubernetes features, including Pod Security Policies.
 
-## Accessing the Docker Registry Hosting the Lightbits CSI Plugin
+### Accessing the Docker Registry Hosting the Lightbits CSI Plugin
 
 Depending on the version of Kubernetes and the deployment configuration, deploying the Lightbits CSI plugin requires a total of 5 to 8 Docker container images, which must be made available from a Docker registry during deployment time.
 
 The Lightbits CSI plugin can be deployed directly from the Lightbits Docker registry and the official Kubernetes sidecar container images Docker registry, or locally staged on a private Docker registry hosted within your organizational network. The locally staged method is typically only required if the Kubernetes cluster you are working with does not have access to the Internet.
 
-### Deploying from the Lightbits Docker Registry
+#### Deploying from the Lightbits Docker Registry
 
 As mentioned in the [Lightbits CSI Plugin Overview]() section above, the Lightbits CSI plugin itself is packaged as a single Docker container image that is deployed in pods on the Kubernetes cluster nodes. In addition, an optional stock busybox [Init Container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers) can be used to enable NVMe/TCP driver auto-loading functionality. Both of these container images are available through the following Lightbits Docker registry:
 
@@ -282,7 +282,7 @@ Furthermore, during the deployment 4-6 of the required Kubernetes sidecar contai
 quay.io
 ```
 
-### Deploying from a Local Private Docker Registry
+#### Deploying from a Local Private Docker Registry
 
 It is possible to use a local private Docker registry if you deploy the Lightbits CSI plugin on a Kubernetes cluster that does not have access to an external network. In this case, you must use standard Docker commands first to pull the Lightbits CSI plugin Docker image, as well as several of the standard Kubernetes [CSI “sidecar” container](https://kubernetes-csi.github.io/docs/sidecar-containers.html) images, to a machine with external network access. Then, using standard Docker commands, push them from that machine to the local Docker registry. 
 
@@ -363,17 +363,3 @@ metadata:
       imagePullSecrets:
       - name: lb-docker-reg-cred
 ```
-
-## Deploying Lightbits CSI Plugin on Kubernetes Cluster
-
-We provide two ways of deploying Lightbits CSI Plugin on Kubernetes:
-
-- [LightOS CSI Plugin Deployment Using Static Manifests](./plugin_deployment_static_manifests.md).
-- [LightOS CSI Plugin Deployment Using Helm](./plugin_deployment_using_helm.md).
-
-## Deploying Workloads Utilizing CSI Plugin Deployment (Optional)
-
-We provide two ways of deploying applications on Kubernetes:
-
-- [Workload Examples Deployment Using Static Manifests](./workload_examples_deployment_using_static_manifests.md).
-- [Workload Examples Deployment Using Helm](./workload_examples_deployment_using_helm.md).
