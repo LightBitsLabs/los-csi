@@ -1,3 +1,5 @@
+<div style="page-break-after: always;"></div>
+
 ## v1.4.2
 
 Date: 2021-06-02
