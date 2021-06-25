@@ -35,7 +35,7 @@ Upgrade strategy for the clusters should be in the following order:
 
 1. Upgrade LightOS to v2.2.2.
 2. Verify LightOS cluster is fully upgraded and functioning.
-3. Upgrade `lb-csi-plugin` from v1.2.0 to v1.4.1
+3. Upgrade `lb-csi-plugin` from v1.2.0 to v1.4.2
 
 ## LightOS Cluster Upgrade
 
@@ -115,7 +115,7 @@ The only difference between the two `DaemonSet`s is the `lb-csi-plugin` image:
    ```bash
    <  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.2.0
    ---
-   >  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.1
+   >  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
    ```
 
 In case the discovery-client is deployed as a container in `lb-csi-node` POD we should add the following difference as well:
@@ -123,7 +123,7 @@ In case the discovery-client is deployed as a container in `lb-csi-node` POD we 
    ```bash
    <  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.2.0
    ---
-   >  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.1
+   >  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
    ```
 
 > **Note:**
@@ -153,13 +153,13 @@ lb-csi-node-rwrz6     3/3     Running   0          5m10s   192.168.20.61    rack
 ##### Updating only the container image, use `kubectl set image`
 
 ```bash
-kubectl set image ds/lb-csi-node -n kube-system lb-csi-plugin=docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.1
+kubectl set image ds/lb-csi-node -n kube-system lb-csi-plugin=docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
 ```
 
 In case discovery-client is deployed as a container in `lb-csi-node` POD, run the following command as well:
 
 ```bash
-kubectl set image ds/lb-csi-node -n kube-system lb-nvme-discovery-client=docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.1
+kubectl set image ds/lb-csi-node -n kube-system lb-nvme-discovery-client=docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
 ```
 
 ##### Delete the POD running on our selected server
@@ -185,14 +185,14 @@ pod "lb-csi-node-rwrz6" deleted
 
    ```bash
    kubectl get pods lb-csi-node-g47z2 -n kube-system -o jsonpath='{.spec.containers[?(@.name=="lb-csi-plugin")].image}' ; echo
-   docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.1
+   docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
    ```
 
    In case discovery-client is deployed as a container in `lb-csi-node` POD, verify it's image was updated as well with the following command:
 
    ```bash
    kubectl get pods lb-csi-node-tpd7d -n kube-system -o jsonpath='{.spec.containers[?(@.name=="lb-nvme-discovery-client")].image}' ; echo
-   docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.1
+   docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
    ```
 
 #### Stage #3: Verify Upgraded `lb-csi-node` `POD` Functioning Properly
@@ -486,14 +486,14 @@ For controller pod:
 ```bash
 kubectl logs -n kube-system lb-csi-controller-0 -c lb-csi-plugin | grep version-rel
 time="2021-03-21T18:50:54.410655+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.ctrl Endpoint:unix:///var/lib/csi/sockets/pluginproxy/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:controller LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.ctrl role=controller version-build-id= version-git$
-v1.4.1-0-gaf08f7e0 version-hash=1.4.1 version-rel=1.4.1
+v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
 
 Same for each node pod:
 
 ```bash
 kubectl logs -n kube-system lb-csi-node-k4bzk -c lb-csi-plugin | grep version-rel
-time="2021-03-21T18:41:18.750957+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.node Endpoint:unix:///csi/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:node LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.node role=node version-build-id= version-git=v1.4.1-0-gaf08f7e0 version-hash=1.4.1 version-rel=1.4.1
+time="2021-03-21T18:41:18.750957+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.node Endpoint:unix:///csi/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:node LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.node role=node version-build-id= version-git=v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
 
 ---
@@ -563,14 +563,14 @@ For controller pod:
 ```bash
 kubectl logs -n kube-system lb-csi-controller-0 -c lb-csi-plugin | grep version-rel
 time="2021-03-21T18:50:54.410655+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.ctrl Endpoint:unix:///var/lib/csi/sockets/pluginproxy/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:controller LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.ctrl role=controller version-build-id= version-git$
-v1.4.1-0-gaf08f7e0 version-hash=1.4.1 version-rel=1.4.1
+v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
 
 Same for each node pod:
 
 ```bash
 kubectl logs -n kube-system lb-csi-node-k4bzk -c lb-csi-plugin | grep version-rel
-time="2021-03-21T18:41:18.750957+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.node Endpoint:unix:///csi/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:node LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.node role=node version-build-id= version-git=v1.4.1-0-gaf08f7e0 version-hash=1.4.1 version-rel=1.4.1
+time="2021-03-21T18:41:18.750957+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.node Endpoint:unix:///csi/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:node LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.node role=node version-build-id= version-git=v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
 
 #### Rollback DaemonSet
