@@ -13,13 +13,9 @@ rules:
   - apiGroups: ["storage.k8s.io"]
     resources: ["volumeattachments"]
     verbs: ["get", "list", "watch", "update", "patch"]
-{{- if ($kubeVersion | semverCompare ">= 1.15.0")}}
+{{- if ($kubeVersion | semverCompare ">= 1.16.0")}}
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
-    verbs: ["get", "list", "watch"]
-{{- else if ($kubeVersion | semverCompare ">=1.13.0 < 1.14.0")}}
-  - apiGroups: ["csi.storage.k8s.io"]
-    resources: ["csinodeinfos"]
     verbs: ["get", "list", "watch"]
 {{end}}
 

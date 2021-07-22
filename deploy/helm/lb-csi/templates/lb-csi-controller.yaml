@@ -57,7 +57,7 @@ spec:
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
           # modify the image identifier below accordingly:
-{{- if ($kubeVersion | semverCompare ">=1.13.0 <= 1.18.0") }}
+{{- if ($kubeVersion | semverCompare ">=1.16.0 <= 1.18.0") }}
           image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-provisioner:v1.5.0
 {{- else }}
           image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-provisioner:v2.1.2
@@ -75,7 +75,7 @@ spec:
           # if hosting the K8s CSI plugin sidecar container images in a
           # different registry, e.g. a local private Docker registry,
           # modify the image identifier below accordingly:
-{{- if ($kubeVersion | semverCompare ">=1.13.0 < 1.14.0") }}
+{{- if ($kubeVersion | semverCompare ">=1.16.0 < 1.14.0") }}
           image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-attacher:v1.2.0
 {{- else }}
           image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-attacher:v2.1.0
@@ -89,27 +89,6 @@ spec:
           volumeMounts:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
-{{- if ($kubeVersion | semverCompare ">=1.13.0 < 1.14.0") }}
-        - name: csi-cluster-driver-registrar
-          # if hosting the K8s CSI plugin sidecar container images in a
-          # different registry, e.g. a local private Docker registry,
-          # modify the image identifier below accordingly:
-          image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-cluster-driver-registrar:v1.0.1
-          env:
-          - name: ADDRESS
-            value: /var/lib/csi/sockets/pluginproxy/csi.sock
-          args:
-          - "--v=4"
-          - "--csi-address=$(ADDRESS)"
-          - "--pod-info-mount-version=v1"
-          volumeMounts:
-          - name: socket-dir
-            mountPath: /var/lib/csi/sockets/pluginproxy/
-          lifecycle:
-            preStop:
-              exec:
-                command: [ "/bin/sh", "-c", "/usr/bin/killall -INT cluster-driver-registrar" ]
-{{- end }}
 {{- if and ($kubeVersion | semverCompare ">=1.16.0") ( .Values.enableExpandVolume ) }}
         - name: csi-resizer
 {{- if ($kubeVersion | semverCompare "<= 1.18.0") }}

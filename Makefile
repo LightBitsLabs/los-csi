@@ -81,20 +81,6 @@ build:
 generate_deployment_yaml: deploy/k8s helm
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=false \
-		--set enableSnapshot=false \
-		--set kubeVersion=v1.13 \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.13.yaml
-	helm template deploy/helm/lb-csi/ \
-		--namespace=kube-system \
-		--set allowExpandVolume=false \
-		--set enableSnapshot=false \
-		--set kubeVersion=v1.15 \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.15.yaml
-	helm template deploy/helm/lb-csi/ \
-		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=false \
 		--set kubeVersion=v1.16 \

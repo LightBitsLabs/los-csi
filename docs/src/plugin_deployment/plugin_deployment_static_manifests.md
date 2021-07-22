@@ -34,8 +34,6 @@ We provide a manifest file for each k8s version supported:
 
 ```bash
 k8s/
-├── lb-csi-plugin-k8s-v1.15-dc.yaml
-├── lb-csi-plugin-k8s-v1.15.yaml
 ├── lb-csi-plugin-k8s-v1.16-dc.yaml
 ├── lb-csi-plugin-k8s-v1.16.yaml
 ├── lb-csi-plugin-k8s-v1.17-dc.yaml

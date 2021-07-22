@@ -25,7 +25,7 @@
 > 
 > The instructions below cover deployment flows for the following environments:
 > 
-> * Deployment on Kubernetes versions between v1.15.0 and v1.21.x, inclusive.
+> * Deployment on Kubernetes versions between v1.16 and v1.21.x, inclusive.
 > 
 > When deploying the Lightbits CSI plugin, only one set of version-specific instructions for every section needs to be carried out, matching the target Kubernetes environment version.
 
@@ -86,7 +86,7 @@ Therefore, to successfully deploy any CSI storage plugin—including the Lightbi
 
 > Note:
 > 
-> Different Kubernetes versions can have different security settings and different “feature gates” enabled or disabled by default. In the upstream Kubernetes v1.15 software distribution and later, no changes to the cluster configuration are required to deploy the Lightbits CSI plugin.
+> Different Kubernetes versions can have different security settings and different “feature gates” enabled or disabled by default.
 
 Additionally, different methods of deploying Kubernetes clusters may enable or disable feature gates or security features in non-standard ways, and some Kubernetes users modify some of the relevant settings of their clusters after deployment. You must confirm that the settings described in this section are set to the correct values on the Kubernetes cluster in question.
 
@@ -123,7 +123,7 @@ To enable privileged containers and feature gates in the Kubernetes API server, 
 
     - If this parameter is absent - do not add it, it will take on the value of true by default, as it should.
 
-  - In all supported Kubernetes versions (v1.15 and later), the below five --feature-gates parameter entries are enabled by default. If this parameter is present and includes any of the following feature gates, they must be set to a value of true or removed from the list:
+  - In all supported Kubernetes versions (v1.16 and later), the below five --feature-gates parameter entries are enabled by default. If this parameter is present and includes any of the following feature gates, they must be set to a value of true or removed from the list:
 
     ```bash
     BlockVolume=true
@@ -236,7 +236,6 @@ The `lb-csi-bundle` includes the following content:
 │       ├── lb-csi-plugin-<CHART_VERSION>.tgz
 │       └── lb-csi-workload-examples-<CHART_VERSION>.tgz
 ├── k8s
-│   ├── lb-csi-plugin-k8s-v1.15.yaml
 │   ├── lb-csi-plugin-k8s-v1.16-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.16.yaml
 │   ├── lb-csi-plugin-k8s-v1.17-dc.yaml

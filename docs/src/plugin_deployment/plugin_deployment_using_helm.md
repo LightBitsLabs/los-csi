@@ -97,22 +97,22 @@ helm uninstall --namespace=kube-system lb-csi
 
 ### Rendering Manifests Using Templates
 
-Render manifests to folder `/tmp/helm/lb-csi-plugin-k8s-v1.15` run following command:
+Render manifests to folder `/tmp/helm/lb-csi-plugin-k8s-v1.17` run following command:
 
 ```bash
 helm template deploy/helm/lb-csi/ \
   --set enableExpandVolume=true \
-  --set kubeVersion=v1.15 \
-  --output-dir=/tmp/helm/lb-csi-plugin-k8s-v1.15
+  --set kubeVersion=v1.17 \
+  --output-dir=/tmp/helm/lb-csi-plugin-k8s-v1.17
 ```
 
-Render manifests to file `lb-csi-plugin-k8s-v1.15.yaml` run following command:
+Render manifests to file `lb-csi-plugin-k8s-v1.17.yaml` run following command:
 
 ```bash
 helm template deploy/helm/lb-csi/ \
   --set enableExpandVolume=true \
-  --set kubeVersion=v1.15 \
-  --set enableSnapshot=true > lb-csi-plugin-k8s-v1.15.yaml
+  --set kubeVersion=v1.17 \
+  --set enableSnapshot=true > lb-csi-plugin-k8s-v1.17.yaml
 ```
 
 Render manifest not on k8s cluster to target specific kubernetes version:
