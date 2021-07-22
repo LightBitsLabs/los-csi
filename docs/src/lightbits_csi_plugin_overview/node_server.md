@@ -2,7 +2,7 @@
 
 ### Node Server
 
-The Lightbits CSI plugin's Node Server is a pod that includes the lb-csi-plugin and a standard Kubernetes sidecar container.  A single Node Server instance is deployed per Kubernetes cluster node using a DaemonSet. As such, the Node Server pod can optionally include a busybox-based [Init Container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers) to auto-load the NVMe/TCP driver after the Kubernetes node reboots, though this functionality can be eschewed if an OS-level driver auto-loading mechanism is used instead.
+The Lightbits CSI plugin's Node Server is a POD that includes the `lb-csi-plugin` and a standard Kubernetes sidecar container. A single Node Server instance is deployed per Kubernetes cluster node using a DaemonSet. As such, the Node Server pod can optionally auto-load the NVMe/TCP driver after the Kubernetes node reboots, though this functionality can be eschewed if an OS-level driver auto-loading mechanism is used instead.
 
 Each Node Server pod communicates with the local kubelet daemon on its respective Kubernetes cluster node, as well as the LightOS management API service instances on the LightOS cluster servers. Their responsibilities include: 
 

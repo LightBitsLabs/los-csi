@@ -12,7 +12,7 @@
     - [Download Lightbits CSI Bundle Package](#download-lightbits-csi-bundle-package)
     - [Lightbits CSI Bundle Package Content](#lightbits-csi-bundle-package-content)
   - [Accessing the Docker Registry Hosting the Lightbits CSI Plugin](#accessing-the-docker-registry-hosting-the-lightbits-csi-plugin)
-    - [Deploying from the Lightbits Docker Registry](#deploying-from-the-lightbits-docker-registry)
+    - [Deploying from the Lightbits Image Registry](#deploying-from-the-lightbits-image-registry)
     - [Deploying from a Local Private Docker Registry](#deploying-from-a-local-private-docker-registry)
 
 > **Note:**
@@ -267,15 +267,16 @@ Depending on the version of Kubernetes and the deployment configuration, deployi
 
 The Lightbits CSI plugin can be deployed directly from the Lightbits Docker registry and the official Kubernetes sidecar container images Docker registry, or locally staged on a private Docker registry hosted within your organizational network. The locally staged method is typically only required if the Kubernetes cluster you are working with does not have access to the Internet.
 
-#### Deploying from the Lightbits Docker Registry
+#### Deploying from the Lightbits Image Registry
 
-As mentioned in the [Lightbits CSI Plugin Overview]() section above, the Lightbits CSI plugin itself is packaged as a single Docker container image that is deployed in pods on the Kubernetes cluster nodes. In addition, an optional stock busybox [Init Container](https://kubernetes.io/docs/concepts/workloads/pods/init-containers) can be used to enable NVMe/TCP driver auto-loading functionality. Both of these container images are available through the following Lightbits Docker registry:
+The Lightbits CSI plugin itself is packaged as a single container image that is deployed in pods on the Kubernetes cluster nodes. This container image is available through the following Lightbits Image Registry:
 
 ```bash
 docker.lightbitslabs.com/lightos-csi
 ```
 
 If you cannot access the Lightbits Docker registry, contact Lightbits support to obtain the latest Lightbits Docker registry address and access credentials.
+
 Furthermore, during the deployment 4-6 of the required Kubernetes sidecar container images will be obtained from the Quay registry:
 
 ```bash
@@ -298,7 +299,7 @@ Deployment using sidecar container images of versions other than those specified
   docker.lightbitslabs.com/lightos-csi/lb-csi-plugin
   ```
 
-- For deployment on Kubernetes versions between v1.15.0 and v1.16.x, the required Kubernetes sidecar containers are:
+- For deployment on Kubernetes version v1.16.x, the required Kubernetes sidecar containers are:
 
   ```bash
   quay.io/k8scsi/csi-node-driver-registrar
@@ -307,7 +308,7 @@ Deployment using sidecar container images of versions other than those specified
   quay.io/k8scsi/csi-resizer
   ```
 
-- For deployment on Kubernetes versions between v1.17.0 and v1.18.x, the required Kubernetes sidecar containers are:
+- For deployment on Kubernetes versions between v1.17.0 and v1.21.x, since Snapshot support was added, the required Kubernetes sidecar containers are:
 
   ```bash
   quay.io/k8scsi/csi-node-driver-registrar
@@ -318,13 +319,7 @@ Deployment using sidecar container images of versions other than those specified
   quay.io/k8scsi/csi-snapshotter
   ```
 
-- For deployments that include plugin-side NVMe/TCP driver autoloading (see section 3.2.Node Server for details), an additional container image is required from the Lightbits Docker registry:
-
-  ```bash
-  docker.lightbitslabs.com/lightos-csi/busybox
-  ```
-
-Once all the relevant container images are staged in the local Docker registry, you must modify the Lightbits CSI plugin deployment spec file that you obtained as part of the Supplementary Package. Specifically:
+Once all the relevant container images are staged in the local Image registry, you must modify the Lightbits CSI plugin deployment spec file that you obtained as part of the Supplementary Package. Specifically:
 
 - Update the image locations highlighted in the following spec snippets to point to your local Docker registry.
 - Remove or modify the imagePullSecrets spec entry to match the local Docker registry credentials, if any are used.
