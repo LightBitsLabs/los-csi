@@ -6,7 +6,7 @@
 > - `JWT`
 > - `mgmt-endpoints`
 >
-> Without modifing these parameters, the workloads will likely fail.
+> Without modifying these parameters, the workloads will likely fail.
 
 ### Storing LightOS Authentication JWT in a Kubernetes Secret
 
@@ -38,7 +38,7 @@ YS1USHNVdXR0dmFIc1hUS3FzREFkOHRvbEphZUNUN0NWRFFHX0xUQ1hYZ3dudUI3c0ZRaHJHbHhR
 Mkw3V3BlNzczdw==
 ```
 
-In file `examples/secret-and-storage-class.yaml`, edit `Secret.data.jwt` value with the base64 encoded `JWT` string.
+In the file `examples/secret-and-storage-class.yaml`, edit the `Secret.data.jwt` value with the base64 encoded `JWT` string.
 
 ### Create StorageClass
 
@@ -71,18 +71,18 @@ parameters:
 
 You will need to replace the highlighted placeholders (removing the angle brackets in the process) with the actual field values as indicated in the table below. See the LightOS® Administrator's Guide for more information on the LightOS management API service and volume replica counts.
 
-| Placeholder  | Description   |
-|--------------|-----------------|
-| `<sc-name>` |The name of the StorageClass you want to define. This name will be referenced from other Kubernetes object specs (e.g.: StatefulSet, PersistentVolumeClaim) to use a volume that will be provisioned from a LightOS storage cluster mentioned below, with the corresponding volume characteristics.|
-| `<true\|false>`<br>(allowVolumeExpansion) |Kubernetes PersistentVolume-s can be configured to be expandable and LightOS supports volume expansion. If set to true, it will be possible to expand the volumes created from this StorageClass by editing the corresponding PVC Kubernetes objects.<br>**Note:**<br>CSI volumes expansion is enabled in Kubernetes v1.16 and above. CSI volume expansion in older Kubernetes versions is not supported by the Lightbits CSI plugin.|
-| `<lb-mgmt-address>` |One of the LightOS management API service endpoint IP addresses of the LightOS cluster on which the volumes belonging to this StorageClass will be created.<br>The mgmt-endpoint entry of the StorageClass spec accepts a comma-separated list of `<lb-mgmt-address>:<lb-mgmt-port>` pairs.<br>For high availability, specify the management API service endpoints of all the LightOS cluster servers, or at least the majority of the servers.|
-| `<lb-mgmt-port>` |The port number on which the LightOS management API service is running. Typically, this is port 443 and port 80 for encrypted and encrypted communications, respectively - but LightOS servers can be configured to serve the management interface on other ports as well.|
-| `<grpc\|grpcs>` | The protocol to use for communication with the LightOS management API service. LightOS clusters with multi-tenancy support enabled can be accessed only over the TLS-protected grpcs protocol for enhanced security. LightOS clusters with multi-tenancy support disabled may be accessed using the legacy unencrypted grpc protocol.|
-| `<proj-name>` | The name of the LightOS project to which the volumes from this StorageClass will belong. The JWT specified using `<secret-name>` below must have sufficient permissions to carry out the necessary actions in that project. |
-| `<num-replicas>` | The desired number of replicas for volumes dynamically provisioned for this StorageClass. Valid values are: 1, 2 or 3. The number must be specified in ASCII double quotes (e.g.: "2").|
-| `<enabled\|disabled>`| Specifies whether the volumes created for this StorageClass should have compression enabled or disabled. The compression line of the StorageClass spec can be omitted altogether, in which case the LightOS storage cluster default setting for compression will be used. However, if it is present, it must contain one of the following two values: enabled or disabled.|
-| `<secret-name>` | The name of the Kubernetes Secret that holds the JWT to be used while making requests pertaining to this StorageClass to the LightOS management API service. See also `<secret-namespace>` below.<br>Typically the JWT used for all the different types of operations (5 in the examples below) will be the same JWT, but there is no requirement for that to be the case.|
-| `<secret-namespace>`| The namespace in which the Secret referred to in `<secret-name>` above resides.|
+| Placeholder                     | Description                                                                               |
+|---------------------------------|-------------------------------------------------------------------------------------------|
+| `<sc-name>`              | The name of the StorageClass you want to define. This name will be referenced from other Kubernetes object specs (e.g.: StatefulSet, PersistentVolumeClaim) to use a volume that will be provisioned from a LightOS storage cluster mentioned below, with the corresponding volume characteristics.|
+| `<true\|false>`<br>(allowVolumeExpansion) | Kubernetes PersistentVolume-s can be configured to be expandable and LightOS supports volume expansion. If set to true, it will be possible to expand the volumes created from this StorageClass by editing the corresponding PVC Kubernetes objects.<br>**Note:**<br>CSI volumes expansion is enabled in Kubernetes v1.16 and above. CSI volume expansion in older Kubernetes versions is not supported by the Lightbits CSI plugin.|
+| `<lb-mgmt-address>`     | One of the LightOS management API service endpoint IP addresses of the LightOS cluster on which the volumes belonging to this StorageClass will be created.<br>The mgmt-endpoint entry of the StorageClass spec accepts a comma-separated list of `<lb-mgmt-address>:<lb-mgmt-port>` pairs.<br>For high availability, specify the management API service endpoints of all the LightOS cluster servers, or at least the majority of the servers.|
+| `<lb-mgmt-port>`        | The port number on which the LightOS management API service is running. Typically, this is port 443 and port 80 for encrypted and encrypted communications, respectively - but LightOS servers can be configured to serve the management interface on other ports as well.|
+| `<grpc\|grpcs>`         | The protocol to use for communication with the LightOS management API service. LightOS clusters with multi-tenancy support enabled can be accessed only over the TLS-protected grpcs protocol for enhanced security. LightOS clusters with multi-tenancy support disabled can be accessed using the legacy unencrypted grpc protocol.|
+| `<proj-name>`           | The name of the LightOS project to which the volumes from this StorageClass will belong. The JWT specified using `<secret-name>` below must have sufficient permissions to carry out the necessary actions in that project. |
+| `<num-replicas>`        | The desired number of replicas for volumes dynamically provisioned for this StorageClass. Valid values are: 1, 2 or 3. The number must be specified in ASCII double quotes (e.g.: "2").|
+| `<enabled\|disabled>`   | Specifies whether the volumes created for this StorageClass should have compression enabled or disabled. The compression line of the StorageClass spec can be omitted altogether, in which case the LightOS storage cluster default setting for compression will be used. However, if it is present, it must contain one of the following two values: enabled or disabled.|
+| `<secret-name>`         | The name of the Kubernetes Secret that holds the JWT to be used while making requests pertaining to this StorageClass to the LightOS management API service. See also `<secret-namespace>` below.<br>Typically the JWT used for all the different types of operations (5 in the examples below) will be the same JWT, but there is no requirement for that to be the case.|
+| `<secret-namespace>`    | The namespace in which the Secret referred to in `<secret-name>` above resides.|
 
 Kubernetes passes the values from the parameters section of the spec verbatim to the Lightbits CSI plugin to inform it of the necessary provisioning actions. Here is an example of a complete StorageClass definition (also available in the file `examples/secret-and-storage-class.yaml` from the Supplementary Package):
 

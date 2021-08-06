@@ -1,9 +1,9 @@
 
 ## Deploy Block PVC and POD
 
-This Chart will install the following resources:
+This chart will install the following resources:
 
-- A `PVC` named `example-block-pvc` referencing previous defined `StorageClass`
+- A `PVC` named `example-block-pvc` referencing the previous defined `StorageClass`
 - A `POD` named `example-block-pod` using `example-block-pvc`  
 
 ### Deploy Block Workload
@@ -28,9 +28,9 @@ TEST SUITE: None
 
 ### Deploy POD On Specific K8S Node
 
-You can choose to deploy the POD on a specific k8s node by specifying `nodeName` or `nodeSelector` in the template.
+You can choose to deploy the POD on a specific K8s node by specifying `nodeName` or `nodeSelector` in the template.
 
-The default values for these parameters are empty which means POD will not be limited to any POD.
+The default values for these parameters are empty, which means the POD will not be limited to any POD.
 
 Examples:
 
@@ -80,7 +80,7 @@ Examples:
 
 ### Verify Block Workload
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
+Verify that `PV`, `PVC` are created and in `Bounded` state and `POD` is in `Running` state.
 
 ```bash
 kubectl get pv,pvc,pods
@@ -100,7 +100,7 @@ pod/example-block-pod   1/1     Running   0          2m56s
 helm uninstall lb-csi-workload-block
 ```
 
-Verify all resources are gone
+Verify that all resources are gone.
 
 ```bash
 kubectl get pv,pvc,pods

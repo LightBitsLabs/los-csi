@@ -1,19 +1,20 @@
 <div style="page-break-after: always;"></div>
+\pagebreak
 
-## LightOS CSI Plugin Deployment On Kubernetes Cluster
+# LightOS CSI Plugin Deployment
 
-- [LightOS CSI Plugin Deployment On Kubernetes Cluster](#lightos-csi-plugin-deployment-on-kubernetes-cluster)
-  - [Before You Begin](#before-you-begin)
-  - [Installing and Configuring the `kubectl` Tool](#installing-and-configuring-the-kubectl-tool)
-  - [Ensuring Suitable Kubernetes Cluster Configuration](#ensuring-suitable-kubernetes-cluster-configuration)
-    - [Configuring the Kubernetes API Server](#configuring-the-kubernetes-api-server)
-    - [Configuring `kubelet` on All Cluster Nodes](#configuring-kubelet-on-all-cluster-nodes)
-  - [Lightbits CSI Bundle Package](#lightbits-csi-bundle-package)
-    - [Download Lightbits CSI Bundle Package](#download-lightbits-csi-bundle-package)
-    - [Lightbits CSI Bundle Package Content](#lightbits-csi-bundle-package-content)
-  - [Accessing the Docker Registry Hosting the Lightbits CSI Plugin](#accessing-the-docker-registry-hosting-the-lightbits-csi-plugin)
-    - [Deploying from the Lightbits Image Registry](#deploying-from-the-lightbits-image-registry)
-    - [Deploying from a Local Private Docker Registry](#deploying-from-a-local-private-docker-registry)
+- [LightOS CSI Plugin Deployment](#lightos-csi-plugin-deployment)
+    - [Before You Begin](#before-you-begin)
+    - [Installing and Configuring the `kubectl` Tool](#installing-and-configuring-the-kubectl-tool)
+    - [Ensuring Suitable Kubernetes Cluster Configuration](#ensuring-suitable-kubernetes-cluster-configuration)
+      - [Configuring the Kubernetes API Server](#configuring-the-kubernetes-api-server)
+      - [Configuring `kubelet` on All Cluster Nodes](#configuring-kubelet-on-all-cluster-nodes)
+    - [Lightbits CSI Bundle Package](#lightbits-csi-bundle-package)
+      - [Download Lightbits CSI Bundle Package](#download-lightbits-csi-bundle-package)
+      - [Lightbits CSI Bundle Package Content](#lightbits-csi-bundle-package-content)
+    - [Accessing the Docker Registry Hosting the Lightbits CSI Plugin](#accessing-the-docker-registry-hosting-the-lightbits-csi-plugin)
+      - [Deploying from the Lightbits Image Registry](#deploying-from-the-lightbits-image-registry)
+      - [Deploying from a Local Private Docker Registry](#deploying-from-a-local-private-docker-registry)
 
 > **Note:**
 > 
@@ -31,11 +32,12 @@
 
 ### Before You Begin
 
-To access and mount the storage volumes exported by the LightOS clusters, each of the Kubernetes cluster nodes must already have installed: 
+To access and mount the storage volumes exported by the LightOS clusters, each of the Kubernetes cluster nodes MUST already have installed: 
 
-- The appropriate Linux kernel 
-- The NVMe/TCP transport kernel module
-- The Discovery Client service.
+- The appropriate Linux kernel.
+- The NVMe/TCP transport kernel module.
+
+The `Discovery-Client` service SHOULD be deployed if we want to run it on the host and not inside the `lb-csi-node` POD.
 
 To ensure smooth access to the storage volumes exported by the LightOS clusters, the Kubernetes cluster nodes should be configured to automatically load the NVMe/TCP kernel module on Kubernetes node restart.
 
@@ -49,7 +51,7 @@ Before deploying the Lightbits CSI plugin, you should verify that:
 - The LightOS storage cluster is in a "Healthy" state according to its management API service or CLI.
 - It is possible to manually mount volumes exported over NVMe/TCP by each of the appropriate LightOS storage cluster servers on each of the Kubernetes cluster nodes.
 - It is possible to manually access the LightOS management API service instances running on each of the appropriate LightOS storage cluster servers from each of the Kubernetes cluster nodes; e.g., using curl.
-- The Discovery-Client service is started and enabled on each Kubernetes worker node.
+- The Discovery-Client service is started and enabled on each Kubernetes worker node, in case we chose to run it on the host.
 
 Security systems like network firewalls and Linux Mandatory Access Control (MAC) systems (e.g., SELinux, AppArmor) running on the Kubernetes cluster nodes or the LightOS cluster servers can interfere with proper operation of the Lightbits CSI plugin. You should disable these security systems or configure them to allow the CSI plugin to carry out the requisite actions. For more details, see the Lightbits CSI Plugin Release Notes document appropriate to the version of the CSI plugin you are deploying.
 
@@ -71,9 +73,9 @@ To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 
 $ kubectl get nodes
 NAME      STATUS    ROLES     AGE       VERSION
-node1     Ready     master    90d       v1.15.3
-node2     Ready     node      90d       v1.15.3
-node3     Ready     node      90d       v1.15.3
+node1     Ready     master    90d       v1.17.5
+node2     Ready     node      90d       v1.17.5
+node3     Ready     node      90d       v1.17.5
 ```
 
 If the `kubectl` output includes errors, or if `kubectl` is unable to retrieve the Kubernetes cluster nodes information, resolve the issue using standard `kubectl` troubleshooting procedures before proceeding.
@@ -157,7 +159,7 @@ spec:
     - --allow-privileged=true
     ...
     - --feature-gates=CSIDriverRegistry=true,CSINodeInfo=true
-    image: lbdocker:5000/kube-apiserver:v1.15.12
+    image: lbdocker:5000/kube-apiserver:v1.17.5
     ...
 ```
 
@@ -173,7 +175,7 @@ In most Kubernetes deployments, `kubelet` runs as a daemon or service on each of
 
 Unfortunately, the method of passing command-line parameters to the `kubelet` daemon depends to a significant degree on the OS running on the Kubernetes cluster nodes, the “init” system used to manage services on those nodes, and the method used to deploy the Kubernetes cluster. The following instructions are for one sample way to update the `kubelet` configuration. You will need to consult the documentation for the tool used to deploy your Kubernetes cluster for instructions pertinent to your Kubernetes cluster. If you require further assistance, contact Lightbits support.
 
-To perform this configuration update, you need to connect to each of the Kubernetes cluster nodes; e.g., using ssh, and ensuring that the kubelet startup script or configuration file passes in the relevant command-line flags. As indicated in the preceding note, the exact location of such a startup script or configuration can vary. Often the kubelet parameters are controlled by a number of environment variables that can be set in one or more of the files that are picked up by the OS component used to launch the kubelet service.
+To perform this configuration update, you need to connect to each of the Kubernetes cluster nodes; e.g., using SSH, and ensuring that the kubelet startup script or configuration file passes in the relevant command-line flags. As indicated in the preceding note, the exact location of such a startup script or configuration can vary. Often the kubelet parameters are controlled by a number of environment variables that can be set in one or more of the files that are picked up by the OS component used to launch the kubelet service.
 
 For instance, many RHEL/CentOS v7.x based deployments using `systemd` use one or more of the following files to configure kubelet:
 
@@ -258,7 +260,9 @@ The `lb-csi-bundle` includes the following content:
 
 > Note
 > 
-> The provided deployment spec files are examples only. While they include a rudimentary set of Kubernetes Service Account, Role, Binding, etc... definitions required to deploy a fully functional Lightbits CSI plugin, the plugin users are expected to significantly refine and extend them to match their production-grade deployment requirements. This is especially true of the various security-related Kubernetes features, including Pod Security Policies.
+> The provided deployment spec files are examples only. While they include a rudimentary set of Kubernetes Service Account, Role, Binding, etc... definitions required to deploy a fully functional Lightbits CSI plugin, the plugin users are expected to significantly refine and extend them to match their production-grade deployment requirements.
+>
+> This is especially true of the various security-related Kubernetes features, including Pod Security Policies.
 
 ### Accessing the Docker Registry Hosting the Lightbits CSI Plugin
 

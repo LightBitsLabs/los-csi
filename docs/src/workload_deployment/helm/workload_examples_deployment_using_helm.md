@@ -2,7 +2,7 @@
 
 ## Workload Examples Deployment Using Helm
 
-Helm chart ease the deployment of the provided workload examples that use the `lb-csi-plugin` as a persistent storage backend.
+The Helm chart eases the deployment of the provided workload examples that use the `lb-csi-plugin` as a persistent storage backend.
 
 - [Workload Examples Deployment Using Helm](#workload-examples-deployment-using-helm)
   - [Overview](#overview)
@@ -16,17 +16,17 @@ Helm chart ease the deployment of the provided workload examples that use the `l
 
 We provide some workload deployment examples that use `lb-csi-plugin` for storage provisioning.
 
-To ease the deployment of these workloads and to make them easily customizable we provide an Helm Chart as part of the `lb-csi-bundle-<version>.tar.gz`.
+To ease the deployment of these workloads and to make them easily customizable we provide a Helm Chart as part of the `lb-csi-bundle-<version>.tar.gz`.
 
-This Helm Chart is comprized of six sub-chart. Each sub-chart defines a workload manifest.
+This Helm Chart is comprised of six sub-charts. Each sub-chart defines a workload manifest.
 
 All sub-charts are dependent on the storageclass chart.
 
 This chart should be created first and deleted last.
 
-Without this Chart no other chart can be deployed and all deployments will fail.
+Without this chart no other chart can be deployed and all deployments will fail.
 
-Workload examples included:
+Workload examples include:
 
 - StorageClass
 - Block
@@ -97,8 +97,8 @@ All examples share the same `StorageClass` and `Secret` templates.
 
 To override values in these templates you can:
 
-- Modify field in `values.yaml` file.
-- Use the `--set` flag on helm install command.
+- Modify fields in the `values.yaml` file.
+- Use the `--set` flag on the helm install command.
 
 Example provided `values.yaml` file:
 
@@ -143,66 +143,66 @@ snaps:
 
 Values Description:
 
-| name   |  description   | default         | required   |
-|--------|----------------|-----------------|------------|
-| storageclass.enable     | Deploy Secret, StorageClass                         | false | false |
-| block.enable            | Deploy block volume workload                        | false | false |
-| block.nodeSelector      | Deploy `POD` on specific node using node selectors  | {}    | false |
-| block.nodeName          | Deploy `POD` on specific node using node name       | ""    |  false |
-| filesystem.enable       | Deploy filesystem volume workload                   | false | false |
-| filesystem.nodeSelector | Deploy `POD` on specific node using node selectors  | {}    | false |
-| filesystem.nodeName     | Deploy `POD` on specific node using node name       | ""    | false |
-| statefulset.enable      | Deploy statefulset workload                         | false | false |
-| preprovisioned.enable   | Deploy preprovisioned volume workload  | false | false |
-| preprovisioned.lightosVolNguid | NGUID of LightOS volume   | ""  | false |
-| snaps.enable            | Deploy Snapshot workloads   | false  | false |
-| snaps.pvcName           | Name of the pvc for Snapshot example |  example-pvc    | false |
-| snaps.stage             | Name the snapshot stage we want to execute | ""  | false |
-| global.storageClass.mgmtEndpoints | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>` | "" | true |
-| global.storageClass.projectName | Created resources will be scoped to this project        | default | false |
-| global.storageClass.replicaCount | Number of replicas for each volume                     | 3 | false |
-| global.storageClass.compression | Rather compressions in enabled/disabled                 | disabled | false |
-| global.jwtSecret.name       | Secret name that holds LightOS API `JWT`                    | example-secret | true |
-| global.jwtSecret.namespace  | Namespace the secret is defined at                          | default | true |
-| global.jwtSecret.jwt        | `JWT` to authenticate against LightOS API                   | default | true |
+| name                                   |  description                                                       | default | required   |
+|----------------------------------------|--------------------------------------------------------------------|---------|------------|
+| storageclass.enable                    | Deploy Secret, StorageClass                                        | false   | false |
+| block.enable                           | Deploy block volume workload                                       | false   | false |
+| block.nodeSelector                     | Deploy `POD` on specific node using node selectors                 | {}      | false |
+| block.nodeName                         | Deploy `POD` on specific node using node name                      | ""      | false |
+| filesystem.enable                      | Deploy filesystem volume workload                                  | false   | false |
+| filesystem.nodeSelector                | Deploy `POD` on specific node using node selectors                 | {}      | false |
+| filesystem.nodeName                    | Deploy `POD` on specific node using node name                      | ""      | false |
+| statefulset.enable                     | Deploy statefulset workload                                        | false   | false |
+| preprovisioned.enable                  | Deploy preprovisioned volume workload                              | false   | false |
+| preprovisioned.lightosVolNguid         | NGUID of LightOS volume                                            | ""      | false |
+| snaps.enable                           | Deploy snapshot workloads                                          | false   | false |
+| snaps.pvcName                          | Name of the pvc for snapshot example                               | example-pvc | false |
+| snaps.stage                            | Name the snapshot stage we want to execute                         | ""  | false |
+| global.storageClass.mgmtEndpoints      | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>`        | "" | true |
+| global.storageClass.projectName        | Created resources will be scoped to this project                   | default | false |
+| global.storageClass.replicaCount       | Number of replicas for each volume                                 | 3 | false |
+| global.storageClass.compression        | Rather compressions in enabled/disabled                            | disabled | false |
+| global.jwtSecret.name                  | Secret name that holds LightOS API `JWT`                           | example-secret | true |
+| global.jwtSecret.namespace             | Namespace the secret is defined at                                 | default | true |
+| global.jwtSecret.jwt                   | `JWT` to authenticate against LightOS API                          | default | true |
 
 ##### Mandatory Values To Modify
 
-Following values **MUST** be modified to match target Kubernetes cluster.
+The following values **MUST** be modified to match the target Kubernetes cluster.
 
 - LightOS Cluster API Endpoints (`mgmt-endpoint`)
 
-  Before we deploy a workload we to fetch some information from LightOS cluster
+  Before we deploy a workload we need to fetch some information from the LightOS cluster.
 
   `lb-cs-plugin` needs to be informed about LightOS management API endpoints.
 
-  These endpoints are passed as a comma delimited string in `StorageClass.Parameters.mgmt-endpoints`.
+  These endpoints are passed as a comma-delimited string in `StorageClass.Parameters.mgmt-endpoints`.
 
-  set `MGMT_EP` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running following command:
+  set `MGMT_EP` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running the following command:
 
   ```bash
   export MGMT_EP=$(lbcli get cluster -o json | jq -r '.apiEndpoints | join("\\,")')
   ```
 
-  > **NOTICE:** 
+  > **NOTE:** 
   > 
-  > The '\\' in the join command. When passing this value to helm we must use the escape character `\`.
+  > The '\\' in the join command. When passing this value to Helm we must use the escape character `\`.
 
 - LightOS API JWT
 
-  Each API call to LightOS require a JWT for authentication and authorization.
+  Each API call to LightOS requires a JWT for authentication and authorization.
 
   The JWT is passed to the plugin by creating a Kubernetes Secret resource.
 
-  Set `LIGHTOS_JWT` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running following command:
+  Set the `LIGHTOS_JWT` environment variable, by fetching `mgmtEndpoints` from `lbcli` by running the following command:
 
   ```bash
-  export LIGHTOS_JWT=eyJhbGciOiJSUzI1NiIsImtpZCI6InN5c3RlbTpyb290IiwidHlwIjoiSldUIn0.eyJhdWQiOiJMaWdodE9TIiwiZXhwIjoxNjUwNjA4MDcwLCJpYXQiOjE2MTkwNzIwNzAsImlzcyI6InN5c3Rlc3RzIiwianRpIjoib3NFOXl0WWZZajlYTEFmZ0RRMTVUdyIsIm5iZiI6MTYxOTA3MjA3MCwicm9sZXMiOlsic3lzdGVtOmNsdXN0ZXItYWRtaW4iXSwic3ViIjoibGlnaHRvcy1jbGllbnQifQ.onPbYZ6z6kAeS9MUHYQVbUNs8a3yu44wiIoP7Bet8AZ9uBvw-WZ2ZAVqYHV-e1_FzZRfBdJdzpRywKOPNSQaTDVjb-HoJzHHcocWk8gz23C7jI7JYDoeQKvk9zqsU8jiBOKVjFFuhTXFQEfVpPK4qkCoKcSX78D5BVJsgcINgniF0S4jzfT2zlAGNlN4ACyN2iaSF2uMG24nhs6SNypwmgSYml3C5H_AaUzQu0WAWiKwjpxfORn09kPdK1rHvtBWThrpRMBSbFi86cAebNOdqBHxsruN3rU75u57F15PxLijliPC_JnnPD6U-AWcOaN2pMie0yJR0ZlMppc8U4F-KQ
+  export LIGHTOS_JWT=eyJhbGciOiJSUzI1NiIsIm...ie0yJR0ZlMppc8U4F-KQ
   ```
 
   > **NOTICE:** 
   > 
-  > K8S store the secret data base64 encoded but the chart will do
+  > K8S stores the secret data base64 encoded but the chart will do
   > the encoding for you. 
 
   Helm will generate a `Secret` looking like:
@@ -217,13 +217,24 @@ Following values **MUST** be modified to match target Kubernetes cluster.
   type: lightbitslabs.com/jwt
   data:
     jwt: |-
-      ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lTbGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5ESXdORE15TENKcFlYUWlPakUyTVRNNE9EUTBNeklzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lWRXh5VHpoSWVrTjNiek5qTlV4UlJuazVTV3BvVVNJc0ltNWlaaUk2TVRZeE16ZzRORFF6TWl3aWNtOXNaWE1pT2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpiR2xsYm5RaWZRLkpBNExwcWExRzFzZGZ3bE1zRVBWNzZCbE1uZVA1bnFzdlZOTzQ2N0l3MUNHSzFjVUNZLWk5MGpjVmdTM1YxVmlCN3J1MG5mX2JkaEdvX091WERaaHktQzVXeGVocVVtaFk0V3NhdWlHejNnQ2NHc3Roa21TbHVkNUlXeXZ4djM5ZEJPenJ0MGJDVW9ELXdVSEdUeC14eUpLWVc0MjFSM19sRW1TTm1KeDRHZUc4NV9GQkNiSU93OGF2YUl5eDJlNXFBeDBpTTdhSDZCTlo0S2tiQ0tnZmtjVl9MRDBqQUtfWUVyeThGdi1NRDU4cGVrZXVNQ0dkWTdfWVBPdG5KelIweUZ2dG9PZmNOdnAxLXRXNXNDbkUwWTliUV9FX3lzMlVYMjlia25OUTJhYmRoeU5FN0ZjeWk3QlZtVnNWYTBfUzhQMU9OaXZHODNQOVYybUdPd1czQQo=
+      ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lT
+      bGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5UQTNOemcyTENKcFlY
+      UWlPakUyTVRNNU56RTNPRFlzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lhWFJ5UjNN
+      Mk1sTk1hMmxhY2xKdlNuWjNXazFhZHlJc0ltNWlaaUk2TVRZeE16azNNVGM0Tml3aWNtOXNaWE1p
+      T2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpi
+      R2xsYm5RaWZRLlc5QXMwdTJQZnFudTIzZ3U0YXFYcTBKMXZETUJ6bkVfT3dkZkxGeEgzMUdZZVAx
+      WHFqbUNLUWlZS3pJcXlmcTgweTdCZC02azZvZlVXbzlRZ0FDb1J6LUhRWTJjc1pYdHVHTGRpRzN3
+      YUF3aEs3QjRIQnhROFAzSnpSeno4TzJLOVg1Z3dRY19xYnpjYTBNaUlrWTZVVjVTOWNEMTROTHNQ
+      RExwUjdvOFRMbFozbm9kSDZiRlNNVjlPeF9GRXBvTGVidzRWLUlvaURiTV9NdTFDSzZCOUJGeFpN
+      RTV6NmJIMXlkSDZFWnRuUFlRaUVrRVdlUzFHMUJSTVNfR0hGN3Nja2NYU0c3Q1pkSFFqOHY1b0Y1
+      YS1USHNVdXR0dmFIc1hUS3FzREFkOHRvbEphZUNUN0NWRFFHX0xUQ1hYZ3dudUI3c0ZRaHJHbHhR
+      Mkw3V3BlNzczdw==
   ```
 
 #### Install in different namespace
 
 You can install the workloads in a different namespace (ex: `lb-csi-ns`)
-by creating a namespace your self or using the shortcut to let helm create a namespace for you:
+by creating a namespace yourself or using the shortcut to let Helm create a namespace for you:
 
 ```bash
 helm install -n lb-csi-ns --create-namespace \
@@ -231,7 +242,7 @@ helm install -n lb-csi-ns --create-namespace \
   helm/lb-csi-workload-examples/
 ```
 
-#### Rendering Manifests Using Helm Chart
+#### Rendering Manifests Using the Helm Chart
 
 Render manifests to file `/tmp/filesystem-workload.yaml` run following command:
 
@@ -241,7 +252,7 @@ helm template \
 	lb-csi-workload-examples > /tmp/filesystem-workload.yaml
 ```
 
-The chart enable to render multiple workload in the same time using the following command:
+The chart enables rendering multiple workloads at the same time using the following command:
 
 ```bash
 helm template \

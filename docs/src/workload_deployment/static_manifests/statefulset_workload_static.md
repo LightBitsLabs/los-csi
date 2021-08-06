@@ -4,7 +4,7 @@ Dynamic PV provisioning is the easiest and most popular way of consuming persist
 
 To consume PVs created for a particular StorageClass, the  StorageClass name (not the YAML spec file name) must be referenced within a definition of another Kubernetes object.
 
-For instance, to configure a StatefulSet to provide its pods with 10GiB persistent storage volumes from the StorageClass described above, you would enter something similar to the following into the `StatefulSet.spec.volumeClaimTemplates` section:
+For instance, to configure a StatefulSet to provide its pods with 10GB of persistent storage volumes from the StorageClass described above, you would enter something similar to the following into the `StatefulSet.spec.volumeClaimTemplates` section:
 
 ```yaml
     ...
@@ -40,7 +40,7 @@ statefulset.apps/example-sts created
 
 ### Verify StatefulSet Deployment
 
-Verify all resources are created and in `READY` state.
+Verify that all resources are created and in `READY` state.
 
 ```bash
 kubectl get statefulset example-sts

@@ -23,7 +23,7 @@ TEST SUITE: None
 
 ### Verify StatefulSet Workload
 
-Verify following conditions are met:
+Verify that the following conditions are met:
 
 - `PV` and `PVC` is `Bound`
 - `POD`s status is `Running`
@@ -56,7 +56,7 @@ statefulset.apps/example-sts   3/3     2m5s
 helm uninstall lb-csi-workload-sts
 ```
 
-Verify `StatefulSet` and `POD`s resources are gone:
+Verify that `StatefulSet` and `POD`s resources are gone:
 
 ```bash
 kubectl get pv,pvc,pods,sts
@@ -73,7 +73,7 @@ persistentvolumeclaim/test-mnt-example-sts-2   Bound    pvc-945f0393-e711-4c75-b
 
 Since the default `StorageClass.reclaimPolicy` is `Retain` the `PVC`s and `PV`s will remain and not be deleted.
 
-In order to delete them run the following:
+In order to delete them, run the following:
 
 ```bash
 kubectl delete \
@@ -86,7 +86,7 @@ persistentvolumeclaim "test-mnt-example-sts-1" deleted
 persistentvolumeclaim "test-mnt-example-sts-2" deleted
 ```
 
-Verify all resources are gone:
+Verify that all resources are gone:
 
 ```bash
 kubectl get pv,pvc,pods

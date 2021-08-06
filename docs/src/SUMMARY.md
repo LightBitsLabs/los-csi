@@ -1,10 +1,8 @@
-# Table Of Content 
+# Table Of Contents
 
-[Cover Page](cover_page.md) 
+[Abbreviations and Terms](abbreviations_and_terms.md)
 
-[Abbreviations and Terms](abbreviations_and_terms.md) 
-
-- [Introduction](introduction.md) 
+- [Introduction](introduction.md)
 - [Prerequisites](prerequisites.md)
 - [Lightbits CSI Plugin Overview](lightbits_csi_plugin_overview/README.md)
   - [Controller Server](lightbits_csi_plugin_overview/controller_server.md)
@@ -12,6 +10,7 @@
 - [CHANGELOG](CHANGELOG/README.md)
   - [CHANGELOG-1.4.2](CHANGELOG/CHANGELOG-1.4.2.md)
   - [CHANGELOG-1.5.0](CHANGELOG/CHANGELOG-1.5.0.md)
+  - [CHANGELOG-1.6.0](CHANGELOG/CHANGELOG-1.6.0.md)
 - [Plugin Deployment](plugin_deployment/deployment.md)
   - [Static Manifests](plugin_deployment/plugin_deployment_static_manifests.md)
   - [Helm](plugin_deployment/plugin_deployment_using_helm.md)
@@ -28,7 +27,9 @@
     - [Filesystem PVC and POD](workload_deployment/helm/filesystem_workload_helm.md)
     - [StatefulSet](workload_deployment/helm/statefulset_workload_helm.md)
     - [Snapshots And Clones](workload_deployment/helm/snapshot_and_clones_workload_helm.md)
-- [Upgrade](upgrade/upgrade-lb-csi.md)
+- [Upgrade](upgrade/upgrade.md)
+  - [Upgrade LightOS](upgrade/upgrade-lightos.md)
+  - [Upgrade LB CSI](upgrade/upgrade-lb-csi.md)
 - [External References](external_references.md)
 ---
 [About Lightbits Labs](about.md)

@@ -1,6 +1,6 @@
 <div style="page-break-after: always;"></div>
 
-## LightOS CSI Plugin Deployment Using Static Manifests
+## Static Manifests
 
 - [LightOS CSI Plugin Deployment Using Static Manifests](#lightos-csi-plugin-deployment-using-static-manifests)
   - [Overview](#overview)
@@ -12,7 +12,7 @@
 
 ### Overview
 
-LightOS CSI plugin is packaged as a standard Kubernetes workload, using a StatefulSet and a DaemonSet. Therefore, the deployment process is as simple as a regular Kubernetes workload deployment, using regular Kubernetes manifests.
+The LightOS CSI plugin is packaged as a standard Kubernetes workload, using a StatefulSet and a DaemonSet. Therefore, the deployment process is as simple as a regular Kubernetes workload deployment, using regular Kubernetes manifests.
 
 The following instructions demonstrate a simplified plugin deployment flow using the sample configuration and deployment specs from the Supplementary Package. For production usage, you can refer to the provided examples and develop your deployment flows to address your requirements.
 
@@ -28,9 +28,9 @@ The following instructions demonstrate a simplified plugin deployment flow using
 
 Provided manifests create the required `ServiceAccount` and RBAC `ClusterRole`/`ClusterRoleBinding` Kubernetes objects.
 
-Some of the features are not supported for some of the k8s versions. For example `Extend Volume` feature is supported for k8s v1.16 and above.
+Some of the features are not supported for some of the K8s versions. For example `Extend Volume` feature is supported for K8s v1.16 and above.
 
-We provide a manifest file for each k8s version supported:
+We provide a manifest file for each K8s version supported:
 
 ```bash
 k8s/
@@ -50,7 +50,7 @@ k8s/
 
 >**Note:**
 >
-> Manifests with suffix `-dc.yaml` deploy discovery-client on k8s as a container in `lb-csi-node` DaemonSet.
+> Manifests with suffix `-dc.yaml` deploy discovery-client on K8s as a container in `lb-csi-node` DaemonSet.
 
 #### Deploying LightOS CSI Plugin
 
@@ -95,9 +95,9 @@ Before removing the CSI plugin, you must confirm that the Lightbits CSI plugin i
 
 Failure to confirm that the Lightbits CSI plugin is not in use can result in some Kubernetes objects remaining stuck in “Terminating” or similar states, and require intrusive manual administrative intervention.
 
-#### Removing LightOS CSI Plugin
+#### Removing the LightOS CSI Plugin
 
-Assuming you have deployed Lightbits CSI plugin by following the instructions in the section [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
+Assuming you have deployed the Lightbits CSI plugin by following the instructions in the section [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
 
 ```bash
 $ kubectl delete -f lb-csi-plugin-k8s-v1.17.yaml
@@ -116,4 +116,4 @@ No resources found.
 
 The “No resources found” errors for the last three commands are expected and confirm the successful removal of the CSI plugin from the Kubernetes cluster.
 
-After Lightbits CSI plugin is removed from the Kubernetes cluster, some volumes created by Kubernetes using the CSI plugin may remain on the LightOS storage cluster and may need to be manually deleted using the LightOS management API or CLI.
+After the Lightbits CSI plugin is removed from the Kubernetes cluster, some volumes created by Kubernetes using the CSI plugin may remain on the LightOS storage cluster and may need to be manually deleted using the LightOS management API or CLI.

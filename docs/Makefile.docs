@@ -1,29 +1,34 @@
+all: build
 
-build:
-	docker run --rm -it \
-	  -v $(PWD):/src \
-	  -p 1313:1313 \
-	  klakegg/hugo:0.83.1
+TAG=v1
+DOCKER_REGISTRY := $(or $(DOCKER_REGISTRY),lbdocker:5000)
+REPOSITORY=${DOCKER_REGISTRY}/lightbits-mdbook
+IMAGE=${REPOSITORY}:${TAG}
 
-server:
-	docker run --rm -it \
-	  --name hugo-server \
-	  -v $(PWD)/hugo:/src \
-	  -p 1313:1313 \
-	  klakegg/hugo:ext-pandoc \
-	  server
+override DEFAULT_REL := 0.0.0
+override VERSION_RELEASE := $(or $(shell cat VERSION 2>/dev/null),$(DEFAULT_REL))
+override RELEASE := $(if $(BUILD_ID),$(VERSION_RELEASE).$(BUILD_ID),$(VERSION_RELEASE))
 
-mdbook-build-image:
-	docker build -t lbdocker:5000/lightbits-mdbook:v1 -f docs/Dockerfile .
+.PHONY: push-image build-image mdbook-build pandoc-pdf mdbook-serve
+push-image:
+	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
+	docker push ${IMAGE}
 
-Mdbook-build: mdbook-build-image 
-	docker run -it --rm -v `pwd`/docs:/book lbdocker:5000/lightbits-mdbook:v1 build
+build-image:
+	docker build -t ${IMAGE} -f docs/Dockerfile .
 
-mdbook-serve: mdbook-build-image
-	docker run -it --rm --name=mdbook -p 3000:3000 -p 3001:3001 -v `pwd`/docs:/book lbdocker:5000/lightbits-mdbook:v1 serve --hostname 0.0.0.0
+mdbook-build: build-image
+	docker run --rm -v `pwd`/docs:/mdbook ${IMAGE} -c "mdbook build" || /bin/true
+	
+pandoc-pdf: mdbook-build
+	docker run --rm -v `pwd`/docs:/mdbook ${IMAGE} \
+		-c "pandoc --pdf-engine=xelatex --toc \
+		--from=markdown+grid_tables+pipe_tables+multiline_tables ./book/latex/'LightOS CSI Plugin Deployment Guide.md' \
+		--to latex -o ./book/latex/lb-csi-plugin-deployment-guide-${RELEASE}.pdf \
+		-V block-headings --preserve-tabs --metadata-file=metadata.md \
+		--template=src/templates/default.latex --listings \
+		--lua-filter ./lua-support-yaml-lang.lua"
 
-emojify:
-	wget --no-verbose https://github.com/shonfeder/emojitsu/releases/download/0.1.1/gh-actions-emojitsu -O /tmp/gh-actions-emojitsu
-	chmod +x /tmp/gh-actions-emojitsu
-	find . -type f -name "*.md" -exec /tmp/gh-actions-emojitsu emojify -i {} \;
-
+mdbook-serve: build-image
+	docker run -it --rm --name=mdbook -p 3000:3000 -p 3001:3001 -v `pwd`/docs:/mdbook ${IMAGE} \
+		-c "mdbook serve --hostname 0.0.0.0"

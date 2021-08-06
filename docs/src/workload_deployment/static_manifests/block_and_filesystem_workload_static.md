@@ -1,3 +1,5 @@
+<div style="page-break-after: always;"></div>
+
 ## Dynamic Volume Provisioning Example Using a Pod
 
 A PersistentVolumeClaim is a request for abstract storage resources by a user.
@@ -55,5 +57,5 @@ The file `examples/block-workload.yaml` provided with the Supplementary Package 
 1. PVC named `example-block-pvc` referencing `example-sc` StorageClass created above.
 2. POD named `example-block-pod` binding to `example-block-pvc`.
 
-You can follow the same flow described in [Filesystem Volume Mode PVC](#filesystem-volume-mode-pvc) to deploy block volume-mode example.
+You can follow the same flow described in [Filesystem Volume Mode PVC](#filesystem-volume-mode-pvc) to deploy the block volume-mode example.
 

@@ -1,7 +1,7 @@
 [book]
-title = "LightOS CSI Book"
+title = "LightOS CSI Plugin Deployment Guide"
 author = "Lightbits Labs"
-description = "The example book examples."
+description = "LightOS CSI Plugin Deployment Guide."
 language = "en"
 multilingual = false
 src = "src"
@@ -37,3 +37,9 @@ limit-results = 15
 [output.html.playpen]
 # editor = "./path/to/editor"
 editable = false
+
+[output.latex]
+latex    = true  # default = true
+pdf      = true  # default = false
+markdown = true  # default = false
+

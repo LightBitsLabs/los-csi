@@ -1,8 +1,8 @@
 ## Filesystem PVC and POD Workload
 
-This Chart will install the following resources:
+This chart will install the following resources:
 
-- A `PVC` named `example-fs-pvc` referencing previous defined `StorageClass`
+- A `PVC` named `example-fs-pvc` referencing the previous defined `StorageClass`
 - A `POD` named `example-fs-pod` using `example-fs-pvc`  
 
 ### Deploy Filesystem Workload
@@ -27,9 +27,9 @@ TEST SUITE: None
 
 ### Deploy POD On Specific K8S Node
 
-You can choose to deploy the POD on a specific k8s node by specifying `nodeName` or `nodeSelector` in the template.
+You can choose to deploy the POD on a specific K8s node by specifying `nodeName` or `nodeSelector` in the template.
 
-The default values for these parameters are empty which means POD will not be limited to any POD.
+The default values for these parameters are empty, which means the POD will not be limited to any POD.
 
 Examples:
 
@@ -79,7 +79,7 @@ Examples:
 
 ### Verify Filesystem Workload Deployed
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state:
+Verify that `PV`, `PVC` are created and in `Bounded` state, and that `POD` is in `Running` state:
 
 ```bash
 kubectl get pv,pvc,pods
@@ -99,7 +99,7 @@ pod/example-fs-pod   1/1     Running   0          34s
 helm uninstall lb-csi-workload-filesystem
 ```
 
-Verify all resources are gone:
+Verify that all resources are gone:
 
 ```bash
 kubectl get pv,pvc,pods

@@ -1,6 +1,6 @@
 <div style="page-break-after: always;"></div>
 
-## LightOS CSI Plugin (`lb-csi-plugin`)
+# LightOS CSI Plugin (`lb-csi-plugin`)
 
 - [LightOS CSI Plugin (`lb-csi-plugin`)](#lightos-csi-plugin-lb-csi-plugin)
 - [Introduction](#introduction)
@@ -10,7 +10,7 @@
 
 ## Introduction
 
-The LightOS CSI plugin is a software module that implements management of persistent storage volumes exported by LightOS software for Container Orchestrator (CO) systems like Kubernetes and Mesos. In conjunction with the LightOS disaggregated storage solution, the CSI plugin provides a building block for the easy deployment of stateful containerized applications on CO clusters.
+The LightOS CSI plugin is a software module that implements the management of persistent storage volumes exported by LightOS software for Container Orchestrator (CO) systems such as Kubernetes and Mesos. In conjunction with the LightOS disaggregated storage solution, the CSI plugin provides a building block for the easy deployment of stateful containerized applications on CO clusters.
 
 The version of the plugin covered by this document implements version 1.2 of the [Container Storage Interface (CSI) Specification](https://github.com/container-storage-interface/spec/blob/v1.2.0/spec.md), and is compatible with LightOS version 2.3.x
 
@@ -27,13 +27,14 @@ Unless you are already familiar with these topics, we recommend that you review 
 - [Secrets](https://kubernetes.io/docs/concepts/configuration/secret)
 - [Managing Secret using kubectl](https://kubernetes.io/docs/tasks/configmap-secret/managing-secret-using-kubectl)
 
-Kubernetes supports provisioning PVs either [dynamically]() or [statically](); i.e. using pre-provisioned volumes. The Lightbits CSI plugin supports both methods.
+Kubernetes supports provisioning PVs either [dynamically]() or [statically](); i.e., using pre-provisioned volumes. The Lightbits CSI plugin supports both methods.
 
 ###	Lightbits™ Support
 
 If you have any questions about the deployment, usage, or functionality of the Lightbits CSI plugin, contact Lightbits™ support by email `support@lightbitslabs.com` or visit our [customer support portal](https://lightbitslabs.atlassian.net/servicedesk/customer/portals).
 
 <div style="page-break-after: always;"></div>
+\pagebreak
 
 ## LB CSI Driver Capabilities
 

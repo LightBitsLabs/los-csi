@@ -1,6 +1,9 @@
+<div style="page-break-after: always;"></div>
+\pagebreak
+
 ## Deploy Snapshot and Clones Workloads
 
-This examples is a bit more complex and is build of six different stages:
+This example is a bit more complex and is composed of six different stages:
 
 - [Deploy Snapshot and Clones Workloads](#deploy-snapshot-and-clones-workloads)
   - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
@@ -10,10 +13,10 @@ This examples is a bit more complex and is build of six different stages:
   - [_Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
   - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
 
-The examples are dependent on one another, so you must to run them in order.
+The examples are dependent on one another, so you must run them in order.
 
-For Helm to deploy the `snaps` Chart in stages we introduce the mandatory variable `snaps.stage`
-The Chart support four stages:
+For Helm to deploy the `snaps` chart in stages, we introduce the mandatory variable `snaps.stage`
+The chart support the following stages:
 
 - snapshot-class
 - example-pvc
@@ -57,7 +60,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
+Verify that `PV`, `PVC` are created and in `Bounded` state, and that `POD` is in `Running` state.
 
 ```bash
 kubectl get pv,pvc,pods
@@ -73,7 +76,7 @@ pod/example-pod   1/1     Running   0          58s
 
 ### _Stage 3: Take a `Snapshot` from PVC created at stage 2_
 
-Create a snapshot from previously created `PVC` named `example-pvc`
+Create a snapshot from the previously created `PVC` named `example-pvc`
 
 ```bash
 helm install \
@@ -94,7 +97,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-Verify `VolumeSnapshot` and `VolumeSnapshotContent` were created, and `READYTOUSE` status is `true`
+Verify that `VolumeSnapshot` and `VolumeSnapshotContent` were created, and `READYTOUSE` status is `true`
 
 ```bash
 kubectl get VolumeSnapshot,VolumeSnapshotContent
@@ -106,9 +109,9 @@ NAME                                                                            
 volumesnapshotcontent.snapshot.storage.k8s.io/snapcontent-b710e398-eaa5-45be-bbdc-db74d799e5cc   true         10737418240   Delete           csi.lightbitslabs.com   example-snapshot-sc   example-snapshot   3m49s
 ```
 
-### _Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that use it_
+### _Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that uses it_
 
-Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
+Create a `PVC` from the previously taken `Snapshot` named `example-snapshot`
 
 ```bash
 helm install \
@@ -129,7 +132,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
+Verify that `PV`, `PVC` are created and in `Bounded` state, and that `POD` is in `Running` state.
 
 ```bash
 kubectl get pv,pvc,pod
@@ -150,9 +153,9 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          2m25s
 >
 > We see the `PV`, `PVC` and `POD`s from the Stage #2 as well.
 
-### _Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_
+### _Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that uses it_
 
-Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
+Create a `PVC` from the previously taken `Snapshot` named `example-snapshot`
 
 ```bash
 helm install \
@@ -173,7 +176,7 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
+Verify that `PV`, `PVC` were created and in `Bounded` state, and that `POD` is in `Running` state.
 
 ```bash
 kubectl get pv,pvc,pod
@@ -213,7 +216,7 @@ lb-csi-workload-snaps-snapshot-from-pvc default         1               2021-02-
 
 Installation must be in reverse order of the deployment.
 
-After each uninstall we need to verify that all related resources were released before continue to next uninstall.
+After each uninstall we need to verify that all related resources were released before continue to the next uninstall.
 
 Uninstall `pvc-from-pvc`:
 
@@ -221,7 +224,7 @@ Uninstall `pvc-from-pvc`:
 helm uninstall lb-csi-workload-snaps-pvc-from-pvc
 ```
 
-In order to verify that all resources are deleted the following command should return no entry:
+In order to verify that all resources are deleted, the following command should return no entry:
 
 ```bash
 kubectl get pv,pvc,pod | grep pvc-from-pvc
@@ -233,7 +236,7 @@ Uninstall `pvc-from-snapshot`:
 helm uninstall lb-csi-workload-snaps-pvc-from-snapshot
 ```
 
-In order to verify that all resources are deleted the following command should return no entry:
+In order to verify that all resources are deleted, the following command should return no entry:
 
 ```bash
 kubectl get pv,pvc,pod | grep pvc-from-snapshot
@@ -245,7 +248,7 @@ Uninstall `snapshot-from-pvc`:
 helm uninstall lb-csi-workload-snaps-snapshot-from-pvc
 ```
 
-In order to verify that all resources are deleted the following command should return no entry:
+In order to verify that all resources are deleted, the following command should return no entry:
 
 ```bash
 kubectl get VolumeSnapshot,VolumeSnapshotContent | grep snapshot-from-pvc
@@ -257,7 +260,7 @@ Uninstall `example-pvc`:
 helm uninstall lb-csi-workload-snaps-example-pvc
 ```
 
-Verify all resources are gone:
+Verify that all resources are gone:
 
 ```bash
 kubectl get pv,pvc,pods

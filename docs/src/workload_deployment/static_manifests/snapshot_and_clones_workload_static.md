@@ -1,12 +1,12 @@
 ## Volume Snapshot and Clones Provisioning Examples
 
-This examples is a bit more complex and is build of six different stages:
+This example is a bit more complex and is composed of six different stages:
 
    - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
    - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
    - [_Stage 3: Take a `Snapshot` from PVC created at stage #2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
-   - [_Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
-   - [_Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-4-and-create-a-pod-that-use-it)
+   - [_Stage 4: Create a `PVC` from Snapshot created at stage #3 and create a `POD` that uses it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
+   - [_Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that uses it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-4-and-create-a-pod-that-use-it)
    - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
 
 The examples are dependent on one another, so you must run them in order.
@@ -45,14 +45,14 @@ pod/example-pod   1/1     Running   0          58s
 
 ### _Stage 3: Take a `Snapshot` from PVC created at stage #2_
 
-Create a snapshot from previously created `PVC` named `example-pvc`
+Create a snapshot from the previously created `PVC` named `example-pvc`
 
 ```bash
 kubectl create -f examples/snaps-snapshot-from-pvc-workload.yaml 
 volumesnapshot.snapshot.storage.k8s.io/example-snapshot created
 ```
 
-Verify `VolumeSnapshot` and `VolumeSnapshotContent` were created, and `READYTOUSE` status is `true`
+Verify `VolumeSnapshot` and `VolumeSnapshotContent` were created, and that `READYTOUSE` status is `true`
 
 ```bash
 kubectl get VolumeSnapshot,VolumeSnapshotContent
@@ -70,7 +70,7 @@ After your VolumeSnapshot object is bound, you can use that object to provision 
 
 The volume snapshot content object is used to restore the existing volume to a previous state.
 
-Create a `PVC` from previously taken `Snapshot` named `example-snapshot`:
+Create a `PVC` from the previously taken `Snapshot` named `example-snapshot`:
 
 ```bash
 kubectl create -f examples/snaps-pvc-from-snapshot-workload.yaml 
@@ -78,7 +78,7 @@ persistentvolumeclaim/example-pvc-from-snapshot created
 pod/example-pvc-from-snapshot-pod created
 ```
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
+Verify that `PV`, `PVC` were created and in `Bounded` state, and that `POD` is in `Running` state.
 
 ```bash
 kubectl get pv,pvc,pod
@@ -101,7 +101,7 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          2m25s
 
 ### _Stage 5: Create a `PVC` from the `PVC` we created at stage #4 and create a `POD` that use it_
 
-Create a `PVC` from previously taken `Snapshot` named `example-snapshot`
+Create a `PVC` from the previously taken `Snapshot` named `example-snapshot`
 
 ```bash
 kubectl create -f examples/snaps-pvc-from-pvc-workload.yaml 
@@ -109,7 +109,7 @@ persistentvolumeclaim/example-pvc-from-pvc created
 pod/example-pvc-from-pvc-pod created
 ```
 
-Verify that `PV`, `PVC` created and in `Bounded` state and `POD` is in `Running` state.
+Verify that `PV`, `PVC` were created and in `Bounded` state, and that `POD` is in `Running` state.
 
 ```bash
 kubectl get pv,pvc,pod
@@ -137,7 +137,7 @@ pod/example-pvc-from-snapshot-pod   1/1     Running   0          5h36m
 
 Installation MUST be in reverse order of the deployment.
 
-After each uninstall we need to verify that all related resources were released before continue to next uninstall.
+After each uninstall we need to verify that all related resources were released before continuing to the next uninstall.
 
 Uninstall `pvc-from-pvc`:
 
@@ -188,7 +188,7 @@ persistentvolumeclaim "example-pvc" deleted
 pod "example-pod" deleted
 ```
 
-Verify all resources are gone:
+Verify that all resources are gone:
 
 ```bash
 kubectl get pv,pvc,pods

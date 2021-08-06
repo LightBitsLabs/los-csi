@@ -1,90 +1,58 @@
-# Upgrade Flow
-
-- [Upgrade Flow](#upgrade-flow)
-  - [LightOS Cluster Upgrade](#lightos-cluster-upgrade)
-  - [Upgrade CSI Plugin Procedure](#upgrade-csi-plugin-procedure)
-    - [Overview](#overview)
-    - [Applying Manual Upgrade](#applying-manual-upgrade)
-      - [Stage #1: Modify DaemonSet's `spec.updateStrategy` to `OnDelete`](#stage-1-modify-daemonsets-specupdatestrategy-to-ondelete)
-      - [Stage #2: Select One Node And Apply Upgrade](#stage-2-select-one-node-and-apply-upgrade)
-        - [List all the `lb-csi-plugin` pods in the cluster:](#list-all-the-lb-csi-plugin-pods-in-the-cluster)
-        - [Updating only the container image, use `kubectl set image`](#updating-only-the-container-image-use-kubectl-set-image)
-        - [Delete the POD running on our selected server](#delete-the-pod-running-on-our-selected-server)
-        - [Verify `lb-csi-node` POD Upgraded](#verify-lb-csi-node-pod-upgraded)
-      - [Stage #3: Verify Upgraded `lb-csi-node` `POD` Functioning Properly](#stage-3-verify-upgraded-lb-csi-node-pod-functioning-properly)
-        - [Verify Upgraded Node Using Static Manifests](#verify-upgraded-node-using-static-manifests)
-        - [Verify Upgraded Node Using Helm](#verify-upgraded-node-using-helm)
-      - [Stage #4: Upgrade Remaining `lb-csi-node` `POD`s](#stage-4-upgrade-remaining-lb-csi-node-pods)
-      - [Stage #5: Modify DaemonSet's `spec.updateStrategy` back to `RollinUpdate`](#stage-5-modify-daemonsets-specupdatestrategy-back-to-rollinupdate)
-      - [Stage #6: Upgrade StatefulSet](#stage-6-upgrade-statefulset)
-        - [Deploy ClusterRole and ClusterRoleBindings](#deploy-clusterrole-and-clusterrolebindings)
-        - [Deploy Snapshot CRDs](#deploy-snapshot-crds)
-        - [Upgrade `lb-csi-controller` `StatefulSet`](#upgrade-lb-csi-controller-statefulset)
-      - [Verify StatefulSet And DaemonSet Version As Expected](#verify-statefulset-and-daemonset-version-as-expected)
-    - [Applying RollingUpgrade (Automated Deployment)](#applying-rollingupgrade-automated-deployment)
-      - [Checking DaemonSet Update Strategy](#checking-daemonset-update-strategy)
-      - [Checking StatefulSet Update Strategy](#checking-statefulset-update-strategy)
-      - [Rollout History](#rollout-history)
-      - [Rollout Status](#rollout-status)
-      - [Verify StatefulSet And DaemonSet Version As Expected](#verify-statefulset-and-daemonset-version-as-expected-1)
-      - [Rollback DaemonSet](#rollback-daemonset)
-      - [Rollback StatefulSet](#rollback-statefulset)
-    - [Verify Upgraded Cluster Is Working](#verify-upgraded-cluster-is-working)
-
-Upgrade strategy for the clusters should be in the following order:
-
-1. Upgrade LightOS to v2.2.2.
-2. Verify LightOS cluster is fully upgraded and functioning.
-3. Upgrade `lb-csi-plugin` from v1.2.0 to v1.4.2
-
-## LightOS Cluster Upgrade
-
-1. There is a bug that we limit the yum install for `5m`. It might not be enough. In case this happens we should 
-   upgrade the UM manually using the following flow:
-
-   ```bash
-   cat > /etc/yum.repos.d/lightos-2.2.1.repo << EOF
-   [lightos-2.2.1]
-   name=lightos-2.2.1
-   Baseurl=http://repo00:80/pulp/content/build06/yogev/workspace_duros/rpm/
-   gpgcheck=0
-   enabled=1
-   sslverify=false
-   EOF
-
-   yum update --disablerepo=* --enablerepo=lightos-2.2.1 management-upgrade-manager
-   systemctl daemon-reload
-   systemctl stop upgrade-manager.service
-   systemctl start upgrade-manager.service
-   ```
-
-2. We should notice the MLP HTTP Proxy. We should address the issue of configuring the yum repo to work behind a proxy.
+<div style="page-break-after: always;"></div>
+\pagebreak
 
 ## Upgrade CSI Plugin Procedure
 
-NOTE:
-> since we specify `spec.template.spec.priorityClassName = system-cluster-critical` we should get rescheduled 
+- [Upgrade CSI Plugin Procedure](#upgrade-csi-plugin-procedure)
+  - [Upgrade Overview](#upgrade-overview)
+  - [Applying Manual Upgrade](#applying-manual-upgrade)
+    - [Stage #1: Modify DaemonSet's `spec.updateStrategy` to `OnDelete`](#stage-1-modify-daemonsets-specupdatestrategy-to-ondelete)
+    - [Stage #2: Update DaemonSet `lb-csi-plugin` Image](#stage-2-update-daemonset-lb-csi-plugin-image)
+    - [Stage #3: Select One Node Apply Upgrade And Verify](#stage-3-select-one-node-apply-upgrade-and-verify)
+    - [Stage #4: Verify Upgraded `lb-csi-node` `POD` Functioning Properly](#stage-4-verify-upgraded-lb-csi-node-pod-functioning-properly)
+      - [Verify Upgraded Node Using Static Manifests](#verify-upgraded-node-using-static-manifests)
+      - [Verify Upgraded Node Using Helm](#verify-upgraded-node-using-helm)
+    - [Stage #5: Upgrade Remaining `lb-csi-node` `POD`s](#stage-5-upgrade-remaining-lb-csi-node-pods)
+    - [Stage #6: Modify DaemonSet's `spec.updateStrategy` back to `RollinUpdate`](#stage-6-modify-daemonsets-specupdatestrategy-back-to-rollinupdate)
+    - [Stage #7: Upgrade StatefulSet](#stage-7-upgrade-statefulset)
+    - [Verify StatefulSet And DaemonSet Version As Expected](#verify-statefulset-and-daemonset-version-as-expected)
+  - [Applying RollingUpgrade (Automated Deployment)](#applying-rollingupgrade-automated-deployment)
+    - [Checking DaemonSet Update Strategy](#checking-daemonset-update-strategy)
+    - [Checking StatefulSet Update Strategy](#checking-statefulset-update-strategy)
+    - [Rollout History](#rollout-history)
+    - [Rollout Status](#rollout-status)
+    - [Verify StatefulSet And DaemonSet Version As Expected](#verify-statefulset-and-daemonset-version-as-expected-1)
+    - [Rollback DaemonSet](#rollback-daemonset)
+    - [Rollback StatefulSet](#rollback-statefulset)
+  - [Verify Upgraded Cluster Is Working](#verify-upgraded-cluster-is-working)
+
+
+> NOTE:
+> 
+> Since we specify `spec.template.spec.priorityClassName = system-cluster-critical` we should get rescheduled 
 > even if the server is low on resources. [see here](https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/)
 > 
-> from [pod-priority-preemption](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption), we can see that the priority-class is instructing the server to preempt lower priority PODs if needed
+> From [pod-priority-preemption](https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption), we can see that the priority-class is instructing the server to preempt lower priority PODs if needed.
 
-On MLP deployment we would want to do node upgrade manually:
+> NOTE:
+> 
+> On Production deployments we would want to do a node upgrade manually, to verify that there is no service loss.
 
-### Overview
+### Upgrade Overview
 
-K8s support two ways for upgrade resources:
+K8s supports two ways for upgrading resources:
 
 - `OnDelete` - once a `POD` is deleted the new scheduled `POD` will be running with upgraded spec. Using this strategy we can choose which `POD` will be upgraded and we have mode control over the flow.
-- `RollingUpgrade` - Once applied k8s will do the upgrade of the DaemonSet one by one on it's own, without ability to intervene if something goes wrong.
+- `RollingUpgrade` - Once applied K8s will do the upgrade of the DaemonSet one by one on its own, without the ability to intervene if something goes wrong.
 
 We will prefer the manual approach to make sure there is no service loss while upgrading.
 
-This is the flow we recommend for upgrading csi plugin:
+This is the flow we recommend for upgrading the CSI plugin:
 
 1. Upgrade the `lb-csi-node` DaemonSet `POD`s manually, one by one.
-2. Verify upgraded node still working.
+2. Verify that the upgraded node is still working.
 3. Upgrade the `lb-csi-controller` StatefulSet.
-4. Verify entire cluster is working.
+4. Verify that the entire cluster is working.
 
 ### Applying Manual Upgrade
 
@@ -108,68 +76,70 @@ kubectl get ds/lb-csi-node -o go-template='{{.spec.updateStrategy.type}}{{"\n"}}
 OnDelete
 ```
 
-#### Stage #2: Select One Node And Apply Upgrade
+#### Stage #2: Update DaemonSet `lb-csi-plugin` Image
 
 The only difference between the two `DaemonSet`s is the `lb-csi-plugin` image:
 
-   ```bash
-   <  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.2.0
-   ---
-   >  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
-   ```
+  ```bash
+  <  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.2.0
+  ---
+  >  image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
+  ```
 
 In case the discovery-client is deployed as a container in `lb-csi-node` POD we should add the following difference as well:
 
-   ```bash
-   <  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.2.0
-   ---
-   >  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
-   ```
+  ```bash
+  <  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.2.0
+  ---
+  >  image: docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
+  ```
 
 > **Note:**
 >
-> docker registry prefix may vary between deployments
+> The Docker registry prefix may vary between deployments.
+
+Updating only the container image, use `kubectl set image`
+
+  ```bash
+  kubectl set image ds/lb-csi-node -n kube-system lb-csi-plugin=docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
+  ```
+
+  In case discovery-client is deployed as a container in `lb-csi-node` POD, run the following command as well:
+
+  ```bash
+  kubectl set image ds/lb-csi-node -n kube-system lb-nvme-discovery-client=docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
+  ```
+
+#### Stage #3: Select One Node Apply Upgrade And Verify
 
 We will specify how to manually upgrade the image in each of the PODs:
 
-##### List all the `lb-csi-plugin` pods in the cluster:
+1. List all the `lb-csi-plugin` pods in the cluster:
 
-```bash
-kubectl get pods -n kube-system -l app=lb-csi-plugin -o wide
-NAME                  READY   STATUS    RESTARTS   AGE     IP               NODE                   NOMINATED NODE   READINESS GATES
-lb-csi-controller-0   4/4     Running   0          117m    10.244.3.7       rack06-server63-vm04   <none>           <none>
-lb-csi-node-rwrz6     3/3     Running   0          5m10s   192.168.20.61    rack06-server63-vm04   <none>           <none>
-lb-csi-node-stzg6     3/3     Running   0          5m      192.168.20.84    rack06-server67-vm03   <none>           <none>
-lb-csi-node-wc46m     3/3     Running   0          17h     192.168.16.114   rack09-server69-vm01   <none>           <none>
-```
+  ```bash
+  kubectl get pods -n kube-system -l app=lb-csi-plugin -o wide
+  NAME                  READY   STATUS    RESTARTS   AGE     IP               NODE                   NOMINATED NODE   READINESS GATES
+  lb-csi-controller-0   4/4     Running   0          117m    10.244.3.7       rack06-server63-vm04   <none>           <none>
+  lb-csi-node-rwrz6     3/3     Running   0          5m10s   192.168.20.61    rack06-server63-vm04   <none>           <none>
+  lb-csi-node-stzg6     3/3     Running   0          5m      192.168.20.84    rack06-server67-vm03   <none>           <none>
+  lb-csi-node-wc46m     3/3     Running   0          17h     192.168.16.114   rack09-server69-vm01   <none>           <none>
+  ```
 
-For this example Select the first `lb-csi-node`:
+  For this example, select the first `lb-csi-node`:
 
-```bash
-NAME                  READY   STATUS    RESTARTS   AGE     IP               NODE                   NOMINATED NODE   READINESS GATES
-lb-csi-node-rwrz6     3/3     Running   0          5m10s   192.168.20.61    rack06-server63-vm04   <none>           <none>
-```
+  ```bash
+  NAME                  READY   STATUS    RESTARTS   AGE     IP               NODE                   NOMINATED NODE   READINESS GATES
+  lb-csi-node-rwrz6     3/3     Running   0          5m10s   192.168.20.61    rack06-server63-vm04   <none>           <none>
+  ```
 
-##### Updating only the container image, use `kubectl set image`
+1. Delete the POD running on our selected server.
 
-```bash
-kubectl set image ds/lb-csi-node -n kube-system lb-csi-plugin=docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
-```
+  ```bash
+  kubectl delete pods/lb-csi-node-rwrz6 -n kube-system 
+  pod "lb-csi-node-rwrz6" deleted
+  ```
 
-In case discovery-client is deployed as a container in `lb-csi-node` POD, run the following command as well:
-
-```bash
-kubectl set image ds/lb-csi-node -n kube-system lb-nvme-discovery-client=docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
-```
-
-##### Delete the POD running on our selected server
-
-```bash
-kubectl delete pods/lb-csi-node-rwrz6 -n kube-system 
-pod "lb-csi-node-rwrz6" deleted
-```
-
-##### Verify `lb-csi-node` POD Upgraded
+4. Verify that the `lb-csi-node` POD is upgraded.
 
   Listing the PODs again will show that one of them has a very short Age and it would have a different name:
 
@@ -188,18 +158,18 @@ pod "lb-csi-node-rwrz6" deleted
    docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.4.2
    ```
 
-   In case discovery-client is deployed as a container in `lb-csi-node` POD, verify it's image was updated as well with the following command:
+   In case discovery-client is deployed as a container in the `lb-csi-node` POD, verify that its image was updated as well with the following command:
 
    ```bash
    kubectl get pods lb-csi-node-tpd7d -n kube-system -o jsonpath='{.spec.containers[?(@.name=="lb-nvme-discovery-client")].image}' ; echo
    docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
    ```
 
-#### Stage #3: Verify Upgraded `lb-csi-node` `POD` Functioning Properly
+#### Stage #4: Verify Upgraded `lb-csi-node` `POD` Functioning Properly
 
-We will run a simple verification test that our node is still functioning before we move to the next node.
+We will run a simple verification test to see that our node is still functioning before we move to the next node.
 
-By deploy a simple workload **on the upgraded node** we can verify that the `lb-csi-node` node is functioning properly.
+By deploy a simple workload **on the upgraded node**, we can verify that the `lb-csi-node` node is functioning properly.
 
 We provide two ways to run the verification test:
 
@@ -210,8 +180,8 @@ We provide two ways to run the verification test:
 
 Our verification test is very simple and has the following steps:
 
-1. Create example `PVC`.
-2. Deploy a `POD` consuming this `PVC` **on upgraded node**.
+  1. Create an example `PVC`.
+  2. Deploy a `POD` consuming this `PVC` **on upgraded node**.
 
 Create a manifest file named `fs-workload.yaml` containing the two kinds we want to deploy - `PVC` and `POD`:
 
@@ -263,7 +233,7 @@ Make sure you modify the following fields that are cluster specific:
 - `nodeName`: name of the node we want to deploy on.
 - `Pod.spec.image`: name of the busybox image. docker registry prefix may vary between deployments.
 
-In order to get this run the following commands:
+In order to get this, run the following commands:
 
 ```bash
 kubectl get pods -n kube-system -l app=lb-csi-plugin -o wide
@@ -274,7 +244,7 @@ lb-csi-node-stzg6     3/3     Running   0          5m      192.168.20.84    rack
 lb-csi-node-wc46m     3/3     Running   0          17h     192.168.16.114   rack09-server69-vm01   <none>           <none>
 ```
 
-We can see that POD `lb-csi-node-stzg6` was the one that had restarted and was updated so we will set `nodeName` to be `rack06-server67-vm03`.
+We can see that POD `lb-csi-node-stzg6` was the one that had restarted and was updated, so we will set `nodeName` to be `rack06-server67-vm03`.
 
 Apply the following command:
 
@@ -291,7 +261,7 @@ rack08-server52: 2021-05-23.08-03-30
 61afe45d31f826f5b7e54e6bd92ec07d  /mnt/test/hostname
 ```
 
-After successful workload on the upgraded node, delete the tmp workload by running:
+After a successful workload on the upgraded node, delete the tmp workload by running:
 
 ```bash
 kubectl delete -f fs-workload.yaml
@@ -299,12 +269,12 @@ kubectl delete -f fs-workload.yaml
 
 ##### Verify Upgraded Node Using Helm
 
-We will use the workload helm chart provided with the bundle for this:
+We will use the workload Helm chart provided with the bundle for this:
 
 ```bash
 kubectl get storageclass
-NAME               PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
-lb-sc              csi.lightbitslabs.com   Delete          Immediate           false                  2d12h
+NAME  PROVISIONER            RECLAIMPOLICY  BINDINGMODE ALLOWVOLUMEEXPANSION AGE
+lb-sc csi.lightbitslabs.com  Delete         Immediate   false                2d12h
 ```
 
 We will use the name of the `StorageClass` and the name of the upgraded node (`rack06-server63-vm04`) to deploy the FS pod workload.
@@ -317,15 +287,15 @@ helm install --set filesystem.enabled=true \
    lb-csi-workload-examples
 ```
 
-Now we need to verify that the PVC was `Bound` and the `POD` is in `Ready` status.
+Now we need to verify that the PVC was `Bound` and that the `POD` is in `Ready` status.
 
 ```bash
 kubectl get pv,pvc,pod
-NAME                                                        CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                       STORAGECLASS       REASON   AGE
-persistentvolume/pvc-6b26b875-fafd-4abe-95bb-2f5305b61a29   10Gi       RWO            Delete           Bound    default/example-fs-pvc      lb-sc                       12m
+NAME                                                       STATUS CLAIM                  SC    AGE
+persistentvolume/pvc-6b26b875-fafd-4abe-95bb-2f5305b61a29  Bound  default/example-fs-pvc lb-sc 12m
 
-NAME                                      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS       AGE
-persistentvolumeclaim/example-fs-pvc      Bound    pvc-6b26b875-fafd-4abe-95bb-2f5305b61a29   10Gi       RWO            lb-sc              12m
+NAME                                  STATUS  VOLUME                                    SC    AGE
+persistentvolumeclaim/example-fs-pvc  Bound   pvc-6b26b875-fafd-4abe-95bb-2f5305b61a29  lb-sc 12m
 
 NAME                    READY   STATUS    RESTARTS   AGE
 pod/example-fs-pod      1/1     Running   0          12m
@@ -339,15 +309,14 @@ Now we will uninstall the workload using the command:
 helm delete fs-workload
 ```
 
-#### Stage #4: Upgrade Remaining `lb-csi-node` `POD`s
+#### Stage #5: Upgrade Remaining `lb-csi-node` `POD`s
 
-Repeat following steps:
+Repeat the following steps:
 
-* [stage #2 - delete POD running on selected server](#delete-the-pod-running-on-our-selected-server)
-* [stage #2 - verify lb-csi-node POD upgraded](#verify-lb-csi-node-pod-upgraded)
-* [Stage #3 - Verify Upgraded `POD` Functioning Properly](#stage-3-verify-upgraded-pod-functioning-properly)
+* [Stage #3: Select One Node Apply Upgrade And Verify](#stage-3-select-one-node-apply-upgrade-and-verify)
+* [Stage #4: Verify Upgraded `lb-csi-node` `POD` Functioning Properly](#stage-4-verify-upgraded-lb-csi-node-pod-functioning-properly)
 
-#### Stage #5: Modify DaemonSet's `spec.updateStrategy` back to `RollinUpdate`
+#### Stage #6: Modify DaemonSet's `spec.updateStrategy` back to `RollinUpdate`
 
 ```bash
 kubectl patch ds/lb-csi-node -n kube-system -p '{"spec":{"updateStrategy":{"type":"RollingUpdate"}}}'
@@ -358,113 +327,113 @@ kubectl get ds/lb-csi-node -o go-template='{{.spec.updateStrategy.type}}{{"\n"}}
 RollingUpdate
 ```
 
-#### Stage #6: Upgrade StatefulSet
+#### Stage #7: Upgrade StatefulSet
 
 Since we have only one replica in the `lb-csi-controller` `StatefulSet` there is no need to do a rolling upgrade.
 
 Between the two spoken versions there were many modifications to the StatefulSet, since we added Snapshots.
 
-Snapshot require the following resources to be deployed on k8s cluster:
+Snapshot requires the following resources to be deployed on the K8s cluster:
 
 1. Snapshot RBAC `ClusterRole` and `ClusterRoleBinding`s.
-2. custom resource definitions:
+2. Custom resource definitions:
    1. kind: VolumeSnapshot (version: `v0.4.0`, apiVersion: `apiextensions.k8s.io/v1`)
    2. kind: VolumeSnapshotClass (version: `v0.4.0`, apiVersion: `apiextensions.k8s.io/v1`)
    3. VolumeSnapshotContent (version: `v0.4.0`, apiVersion: `apiextensions.k8s.io/v1`)
-3. two additional containers in the `lb-csi-controller` POD:
+3. Two additional containers in the `lb-csi-controller` POD:
    1. name: snapshot-controller  (v4.0.0)
    2. name: csi-snapshotter      (v4.0.0)
 
-##### Deploy ClusterRole and ClusterRoleBindings
+1. Deploy ClusterRole and ClusterRoleBindings
 
-> **NOTE:**
->
-> We assume k8s cluster admin will know what is deployed on the system.
+  > **NOTE:**
+  >
+  > We assume that the K8s cluster admin will know what is deployed on the system.
+  
+  The following steps allow us to validate if we have the Roles and Bindings to work with snapshots.
+  
+  If resources are not present on the cluster, these steps will guide you how to add them.
+  
+  1. Verify if we have `ClusterRole`s for snapshots:
+  
+    ```bash
+    kubectl get clusterrole  | grep snap
+    ```
+  
+    If we get empty response we will need to deploy the ClusterRoles, see step #3.
+  
+    If we get the following output:
+  
+    ```bash
+    external-snapshotter-runner       2d15h
+    snapshot-controller-runner        2d15h
+    ```
+  
+    It means that the roles are deployed and the Cluster-Admin need to make sure that the granted permissions are enough.
+  
+  2. The same should be done with the ClusterRoleBindings:
+  
+    ```bash
+    kubectl get clusterrolebindings | grep snap
+    ```
+  
+    If we get empty response we will need to deploy the ClusterRoleBindings, see step #3.
+  
+    If we get the following output:
+  
+    ```bash
+    csi-snapshotter-role        2d15h
+    snapshot-controller-role    2d15h
+    ```
+  
+    It means that the roles are deployed and the Cluster-Admin need to make `ClusterRoleBinding`s are assigned to the correct `ServiceAccount`.
+  
+  3. Deploy `ClusterRoles` and `ClusterRoleBinding` using the following command
+  
+    ```bash
+    kubectl create -f snapshot-rbac.yaml 
+    clusterrole.rbac.authorization.k8s.io/snapshot-controller-runner created
+    clusterrole.rbac.authorization.k8s.io/external-snapshotter-runner created
+    clusterrolebinding.rbac.authorization.k8s.io/snapshot-controller-role created
+    clusterrolebinding.rbac.authorization.k8s.io/csi-snapshotter-role created
+    ```
 
-Following steps allow us to validate if we have the Roles and Bindings to work with snapshots.
+2. Deploy Snapshot CRDs
 
-If resources are not present on the cluster, these steps will guide you how to add them.
-
-1. Verify if we have `ClusterRole`s for snapshots:
-
+  We need to understand if we have the snapshot `CRD`s deployed already on the cluster.
+  
   ```bash
-  kubectl get clusterrole  | grep snap
+  kubectl get crd -o jsonpath='{range .items[*]}{@.spec.names.kind}{" , "}{@.apiVersion}{" , "}{@.metadata.annotations.controller-gen\.kubebuilder\.io/version}{"\n"}{end}' ;echo
+  ```
+  
+  If we see output like this, we already have `CRD` deployed on the cluster and we can skip adding them:
+  
+  ```bash
+  VolumeSnapshotClass , apiextensions.k8s.io/v1 , v0.4.0
+  VolumeSnapshotContent , apiextensions.k8s.io/v1 , v0.4.0
+  VolumeSnapshot , apiextensions.k8s.io/v1 , v0.4.0
+  ```
+  
+  If we get no output it means that we do not have CRDs deployed and we need to deploy them as follows:
+  
+  ```bash
+  kubectl create -f snapshot-crds.yaml 
+  customresourcedefinition.apiextensions.k8s.io/volumesnapshotclasses.snapshot.storage.k8s.io created
+  customresourcedefinition.apiextensions.k8s.io/volumesnapshotcontents.snapshot.storage.k8s.io created
+  customresourcedefinition.apiextensions.k8s.io/volumesnapshots.snapshot.storage.k8s.io created
   ```
 
-  If we get empty response we will need to deploy the ClusterRoles, see step #3.
+3. Upgrade `lb-csi-controller` `StatefulSet`
 
-  If we get the following output:
-
+  > **Note:**
+  >
+  > The Docker registry prefix may vary between deployments. Please verify the image prefix before running.
+  
   ```bash
-  external-snapshotter-runner       2d15h
-  snapshot-controller-runner        2d15h
+  kubectl apply -f stateful-set.yaml
+  Warning: kubectl apply should be used on resource created by either kubectl create --save-config or kubectl apply
+  statefulset.apps/lb-csi-controller configured
   ```
-
-  It means that the roles are deployed and the Cluster-Admin need to make sure that the granted permissions are enough.
-
-2. Same should be done with the ClusterRoleBindings:
-
-  ```bash
-  kubectl get clusterrolebindings | grep snap
-  ```
-
-  If we get empty response we will need to deploy the ClusterRoleBindings, see step #3.
-
-  If we get the following output:
-
-  ```bash
-  csi-snapshotter-role        2d15h
-  snapshot-controller-role    2d15h
-  ```
-
-  It means that the roles are deployed and the Cluster-Admin need to make `ClusterRoleBinding`s are assigned to the correct `ServiceAccount`.
-
-3. Deploy `ClusterRoles` and `ClusterRoleBinding` using the following command
-
-  ```bash
-  kubectl create -f snapshot-rbac.yaml 
-  clusterrole.rbac.authorization.k8s.io/snapshot-controller-runner created
-  clusterrole.rbac.authorization.k8s.io/external-snapshotter-runner created
-  clusterrolebinding.rbac.authorization.k8s.io/snapshot-controller-role created
-  clusterrolebinding.rbac.authorization.k8s.io/csi-snapshotter-role created
-  ```
-
-##### Deploy Snapshot CRDs
-
-We need to understand if we have the snapshot `CRD`s deployed already on the cluster.
-
-```bash
-kubectl get crd -o jsonpath='{range .items[*]}{@.spec.names.kind}{" , "}{@.apiVersion}{" , "}{@.metadata.annotations.controller-gen\.kubebuilder\.io/version}{"\n"}{end}' ;echo
-```
-
-If we see output like this, we already have `CRD` deployed on the cluster and we can skip adding them
-
-```bash
-VolumeSnapshotClass , apiextensions.k8s.io/v1 , v0.4.0
-VolumeSnapshotContent , apiextensions.k8s.io/v1 , v0.4.0
-VolumeSnapshot , apiextensions.k8s.io/v1 , v0.4.0
-```
-
-If we get no output it means that we don't have CRDs deployed and we need to deploy them as follows:
-
-```bash
-kubectl create -f snapshot-crds.yaml 
-customresourcedefinition.apiextensions.k8s.io/volumesnapshotclasses.snapshot.storage.k8s.io created
-customresourcedefinition.apiextensions.k8s.io/volumesnapshotcontents.snapshot.storage.k8s.io created
-customresourcedefinition.apiextensions.k8s.io/volumesnapshots.snapshot.storage.k8s.io created
-```
-
-##### Upgrade `lb-csi-controller` `StatefulSet`
-
-> **Note:**
->
-> docker registry prefix may vary between deployments. please verify image prefix before running.
-
-```bash
-kubectl apply -f stateful-set.yaml
-Warning: kubectl apply should be used on resource created by either kubectl create --save-config or kubectl apply
-statefulset.apps/lb-csi-controller configured
-```
 
 #### Verify StatefulSet And DaemonSet Version As Expected
 
@@ -481,7 +450,7 @@ lb-csi-node-z7lpr     3/3     Running   0          13m
 
 Verify that the `version-rel` matches the expected version.
 
-For controller pod: 
+For the controller pod: 
 
 ```bash
 kubectl logs -n kube-system lb-csi-controller-0 -c lb-csi-plugin | grep version-rel
@@ -489,14 +458,12 @@ time="2021-03-21T18:50:54.410655+00:00" level=info msg=starting config="{NodeID:
 v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
 
-Same for each node pod:
+The same for each node pod:
 
 ```bash
 kubectl logs -n kube-system lb-csi-node-k4bzk -c lb-csi-plugin | grep version-rel
 time="2021-03-21T18:41:18.750957+00:00" level=info msg=starting config="{NodeID:rack06-server63-vm04.node Endpoint:unix:///csi/csi.sock DefaultFS:ext4 LogLevel:debug LogRole:node LogTimestamps:true LogFormat:text BinaryName: Transport:tcp SquelchPanics:true PrettyJson:false}" driver-name=csi.lightbitslabs.com node=rack06-server63-vm04.node role=node version-build-id= version-git=v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
-
----
 
 ### Applying RollingUpgrade (Automated Deployment)
 
@@ -524,7 +491,7 @@ REVISION  CHANGE-CAUSE
 1         <none>
 ```
 
-Same can be seen for ReplicaSet resources:
+The same can be seen for ReplicaSet resources:
 
 ```bash
 kubectl rollout history statefulset lb-csi-controller -n kube-system
@@ -558,7 +525,7 @@ lb-csi-node-z7lpr     2/2     Running   0          13m
 
 Verify that the `version-rel` matches the expected version.
 
-For controller pod: 
+For the controller pod: 
 
 ```bash
 kubectl logs -n kube-system lb-csi-controller-0 -c lb-csi-plugin | grep version-rel
@@ -566,7 +533,7 @@ time="2021-03-21T18:50:54.410655+00:00" level=info msg=starting config="{NodeID:
 v1.4.2-0-gaf08f7e0 version-hash=1.4.2 version-rel=1.4.2
 ```
 
-Same for each node pod:
+The same for each node pod:
 
 ```bash
 kubectl logs -n kube-system lb-csi-node-k4bzk -c lb-csi-plugin | grep version-rel
@@ -575,14 +542,14 @@ time="2021-03-21T18:41:18.750957+00:00" level=info msg=starting config="{NodeID:
 
 #### Rollback DaemonSet
 
-In case we get into a problem and nothing works we can rollback.
+In case nothing works, we can roll back.
 
 ```bash
 kubectl rollout undo daemonset lb-csi-node -n kube-system 
 daemonset.apps/lb-csi-node rolled back
 ```
 
-Now we can see again that the rollout has changed and that we got a new ControllerRevision (Always incrementing)
+Now we can see again that the rollout has changed and that we got a new ControllerRevision (Always incrementing):
 
 ```bash
 kubectl rollout history daemonset lb-csi-node -n kube-system daemonset.apps lb-csi-node
@@ -608,7 +575,7 @@ REVISION
 
 ### Verify Upgraded Cluster Is Working
 
-Once we are done with all operations for upgrade we should run different workloads to verify all is functioning properly:
+Once we are done with all operations for the upgrade, we should run different workloads to verify that all is functioning properly:
 
 1. Create block PVC,POD
 2. Create filesystem PVC,POD

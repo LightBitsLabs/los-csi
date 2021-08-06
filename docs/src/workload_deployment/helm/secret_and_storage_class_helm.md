@@ -1,7 +1,7 @@
 
 ## Secret and StorageClass Chart
 
-This Chart will install the following resources:
+This shart will install the following resources:
 
 - A `Secret` containing the lightos JWT
 - A `StorageClass` referencing the secret and configured with all values needed to provision volumes on LightOS.
@@ -30,10 +30,10 @@ TEST SUITE: None
 
 > **NOTICE:**
 > 
-> The chart will validate the required fields are provided.
-> case they are not provided an error will be presented.
+> The chart will validate that the required fields are provided.
+> If they are not provided an error will be presented.
 >
-> For example, case `global.jwtSecret.jwt` is not provided, we will get the following error:
+> For example, if `global.jwtSecret.jwt` is not provided, we will get the following error:
 >
 > ```bash
 > Error: execution error at (lb-csi-workload-examples/charts/storageclass/templates/secret.yaml:1:85): global.jwtSecret.jwt field is required
