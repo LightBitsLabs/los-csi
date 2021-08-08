@@ -19,6 +19,11 @@
       "description": "Deploy lb-nvme-discovery-client as container in lb-csi-node pods",
       "type": "boolean"
     },
+    "maxIOQueues": {
+      "description": "Overrides the default number of I/O queues create by the driver. Zero value means no override (default driver value is number of cores).",
+      "type": "integer",
+      "default": 0
+    },
     "imageRegistry": {
       "description": "Registry to pull LightBits CSI images",
       "type": "string"

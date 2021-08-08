@@ -129,6 +129,11 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
+{{- if .Values.maxIOQueues }}
+          env:
+          - name: DC_MAXIOQUEUES
+            value: "{{ .Values.maxIOQueues }}"
+{{- end }}
           volumeMounts:
             - name: device-dir
               mountPath: /dev
