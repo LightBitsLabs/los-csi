@@ -68,7 +68,7 @@ test() {
     # we comment the redirect to test.log cause it hides the error code of the command
     # since we run this under systemd we have the journald log so no need to redirect
     #cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
-    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\""
+    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" -ginkgo.noColor  | tee $LOGSDIR/test-$TEST.log"
 
     pushd $TESTDIR
     info "Start '$TEST' tests"
@@ -120,6 +120,7 @@ parameters:
   compression: $COMPRESSION
   mgmt-scheme: $MGMT_SCHEME
   project-name: $PROJECT_NAME
+  csi.storage.k8s.io/fstype: $FS_TYPE
   csi.storage.k8s.io/controller-publish-secret-name: $SECRET_NAME
   csi.storage.k8s.io/controller-publish-secret-namespace: $SECRET_NAMESPACE
   csi.storage.k8s.io/node-stage-secret-name: $SECRET_NAME
@@ -155,6 +156,10 @@ StorageClass:
 SnapshotClass:
   FromName: false
   FromFile: $TESTDIR/snapshot-class.yaml
+SupportedFsType:
+  "": {}
+  xfs: {}
+  ext4: {}
 DriverInfo:
   Name: csi.lightbitslabs.com
   SupportedSizeRange:
@@ -195,7 +200,7 @@ EOF
 }
 
 usage() {
-    echo "usage: $(basename "${0}") [-hv] [-k path_to_kubeconfig] [-m mgmt-endpoint] [-r replica-count] [-c enable-compression] [-s|--skip-test] [-n secret-name] [-N secret-namespace]"
+    echo "usage: $(basename "${0}") [-hv] [-k path_to_kubeconfig] [-m mgmt-endpoint] [-r replica-count] [-c enable-compression] [-s|--skip-test] [-n secret-name] [-N secret-namespace] [-f fs-type]"
     echo "  options:"
     echo "      -h|--help - show this help menu"
     echo "      -v|--verbose - verbosity on"
@@ -211,10 +216,11 @@ usage() {
     echo "      -p|--project-name - LightOS project-name to use. (default 'default')"
     echo "      -n|--secret-name - Secret name to use. (required)"
     echo "      -N|--secret-namespace - namespace that the secret resides. (default 'default')"
+    echo "      -f|--fs-type - fs-type to place in the StorageClass generated for the test. (default '')"
 }
 
 main() {
-    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:l:n:N:p:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir:,logs-dir:secret-name:secret-namespace:project-name: -n 'parse-options' -- "$@"); then
+    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:l:n:N:p:f:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir:,logs-dir:,secret-name:,secret-namespace:,project-name:,fs-type: -n 'parse-options' -- "$@"); then
         err "Failed parsing options." >&2 ; usage; exit 1 ;
     fi
 
@@ -236,6 +242,7 @@ main() {
             -n | --secret-name)         SECRET_NAME="$2"; shift; shift ;;
             -N | --secret-namespace)    SECRET_NAMESPACE="$2"; shift; shift ;;
             -p | --project-name)        PROJECT_NAME="$2"; shift; shift ;;
+            -f | --fs-type)             FS_TYPE="$2"; shift; shift ;;
             -- ) shift; break ;;
             * ) err "unsupported argument $1"; usage; exit 1 ;;
         esac
@@ -269,6 +276,11 @@ main() {
         PROJECT_NAME="default"
     fi
 
+    if [ -z "$FS_TYPE" ]; then
+        info "FS_TYPE environment variable not set and -f|--fs-type using empty string which means ext4"
+        FS_TYPE=""
+    fi
+
     if [ -z "$MGMT_SCHEME" ]; then
         MGMT_SCHEME="grpcs"
     fi
@@ -300,6 +312,7 @@ main() {
     dbg "SECRET_NAME=$SECRET_NAME"
     dbg "SECRET_NAMESPACE=$SECRET_NAMESPACE"
     dbg "PROJECT_NAME=$PROJECT_NAME"
+    dbg "FS_TYPE=$FS_TYPE"
 
     download
     generate

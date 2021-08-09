@@ -9,7 +9,7 @@ spec:
     storage: 10Gi       
   csi:
     driver: csi.lightbitslabs.com       
-    fsType: ext4
+    fsType: {{ .Values.global.storageClass.fsType }}
     controllerExpandSecretRef:  
       name: {{ .Values.global.storageClass.secretName }}
       namespace: {{ .Values.global.storageClass.secretNamespace }}

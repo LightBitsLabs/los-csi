@@ -17,7 +17,9 @@ global:
 
 # subchart workloads:
 storageclass:
-  enabled: false  
+  enabled: false
+  # The csi.storage.k8s.io/fstype parameter is optional. The values allowed are ext4 or xfs. The default value is ext4.
+  fstype: ""
 block:
   enabled: false
   nodeSelector: {}

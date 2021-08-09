@@ -328,10 +328,10 @@ func (d *Driver) validateVolumeCapability(c *csi.VolumeCapability) error {
 	switch volCap := accessType.(type) {
 	case *csi.VolumeCapability_Mount:
 		mntCap := volCap.Mount
-		// TODO: currently we only support 'ext4'. additional FSes may require
+		// TODO: currently we only support 'ext4' and 'xfs'. additional FSes may require
 		// mount opts validation, etc., so will likely require a bit of
 		// scaffolding (TBD)... not to mention packaging the utils!
-		if mntCap.FsType != "" && mntCap.FsType != "ext4" {
+		if mntCap.FsType != "" && mntCap.FsType != "ext4" && mntCap.FsType != "xfs" {
 			return mkEinvalf("volume_capability.mount.fs_type",
 				"unsupported FS: %s", mntCap.FsType)
 		}
@@ -357,7 +357,7 @@ func (d *Driver) nodeExpansionRequired(c *csi.VolumeCapability) bool {
 	switch volCap := accessType.(type) {
 	case *csi.VolumeCapability_Mount:
 		mntCap := volCap.Mount
-		if mntCap.FsType == "ext4" {
+		if mntCap.FsType == "ext4" || mntCap.FsType == "xfs" {
 			return true
 		}
 		return false

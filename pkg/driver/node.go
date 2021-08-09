@@ -174,6 +174,40 @@ func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	return devPath, nil
 }
 
+// ConstructMountOptions returns only unique mount options in slice.
+func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
+	if m := volCap.GetMount(); m != nil {
+		hasOption := func(options []string, opt string) bool {
+			for _, o := range options {
+				if o == opt {
+					return true
+				}
+			}
+
+			return false
+		}
+		for _, f := range m.MountFlags {
+			if !hasOption(mountOptions, f) {
+				mountOptions = append(mountOptions, f)
+			}
+		}
+	}
+
+	return mountOptions
+}
+
+// IsVolumeReadOnly checks the access mode in Volume Capability and decides
+// if volume is readonly or not.
+func IsVolumeReadOnly(capability *csi.VolumeCapability) bool {
+	accMode := capability.GetAccessMode().GetMode()
+	ro := false
+	if accMode == csi.VolumeCapability_AccessMode_SINGLE_NODE_READER_ONLY ||
+		accMode == csi.VolumeCapability_AccessMode_MULTI_NODE_READER_ONLY {
+		ro = true
+	}
+	return ro
+}
+
 // CSI Node service: ---------------------------------------------------------
 
 // NodeStageVolume obtains the necessary NVMe-oF target(s) endpoints from the
@@ -305,6 +339,16 @@ func (d *Driver) NodeStageVolume(
 	// TODO: actually, derive them from `mntCap.MountFlags` and `wantRO`
 	// above, if any.
 	mntOpts := []string{}
+	mntOpts = ConstructMountOptions(mntOpts, req.GetVolumeCapability())
+	ro := IsVolumeReadOnly(req.GetVolumeCapability())
+
+	if ro {
+		mntOpts = append(mntOpts, "ro")
+	}
+
+	if wantFSType == "xfs" {
+		mntOpts = append(mntOpts, "nouuid")
+	}
 
 	// theoretically, FormatAndMount() will only "Format" if the volume has
 	// no FS yet, but... additionally, "safe" though it claims to be, it is

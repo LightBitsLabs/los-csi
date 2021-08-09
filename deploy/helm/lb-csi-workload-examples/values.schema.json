@@ -37,6 +37,11 @@
               "description": "Enable/Disable data compression.",
               "type": "string",
               "enum": ["enabled", "disabled"]
+            },
+            "csi.storage.k8s.io/fstype": {
+              "description": "The csi.storage.k8s.io/fstype parameter is optional. The values allowed are ext4 or xfs. The default value is ext4.",
+              "type": "string",
+              "default": "ext4"
             }
           }
         },
