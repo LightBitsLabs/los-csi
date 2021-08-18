@@ -36,6 +36,6 @@ statefulset:
 snaps:
   enabled: false
   pvcName: example-pvc
-  stage: null # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc"]
+  stage: "" # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc", "snapshot-class", ""]
   snapshotStorageClass:
     name: example-snapshot-sc

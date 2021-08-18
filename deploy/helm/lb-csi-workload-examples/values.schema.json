@@ -22,7 +22,8 @@
             },
             "projectName": {
               "description": "Name of the LightOS project we want the plugin to target.",
-              "type": "string"
+              "type": "string",
+	      "default": "default"
             },
             "mgmtEndpoints": {
               "description": "required! comma delimited endpoints string, for example <ip>:<port>,<ip>:<port>",
@@ -155,8 +156,8 @@
         },
         "stage": {
           "description": "",
-          "type": [ "string", "null" ],
-          "enum": ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc", "snapshot-class", null]
+          "type": "string",
+          "enum": ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc", "snapshot-class", ""]
         },
         "snapshotStorageClass": {
           "type": "object",
