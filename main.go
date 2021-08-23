@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -44,12 +45,22 @@ Supported environment variables:
         entries. May be redundant in some monitoring environments that
         automatically timestamp log entries. (default: {{.LogTimestamps}})
   LB_CSI_LOG_FMT    - one of: {text, json}. (default: {{.LogFormat}})
-  LB_CSI_JWT        - JWT used to communicate to LightOS.
+  LB_CSI_JWT_PATH   - path to the file storing a JWT to be used for authN/authZ
+        with LightOS. this JWT will only be used as a fallback if a per-call JWT
+        is not specified through the CSI API, e.g. in global, plugin-wide
+        authentication configuration. (default: {{.JWTPath}})
 
 Command line flags:
 `
 
+const (
+	defaultCfgDirPath  = "/etc/lb-csi"
+	defaultJWTFileName = "jwt"
+)
+
 var defaults = driver.Config{
+	JWTPath: filepath.Join(defaultCfgDirPath, defaultJWTFileName),
+
 	NodeID:   "",
 	Endpoint: "unix:///tmp/csi.sock",
 
@@ -82,8 +93,8 @@ var (
 		"Add timestamps to log entries, see $LB_CSI_LOG_TIME.")
 	logFormat = flag.StringP("log-fmt", "f", "",
 		"Log entry format, see $LB_CSI_LOG_FMT.")
-	jwt = flag.StringP("jwt", "j", "",
-		"JWT for LightOS API, see $LB_CSI_JWT.")
+	jwtPath = flag.StringP("jwt-path", "j", "",
+		"Path to global LightOS API auth JWT, see $LB_CSI_JWT_PATH.")
 	version = flag.Bool("version", false, "Print the version and exit.")
 	help    = flag.BoolP("help", "h", false, "Print help and exit.")
 
@@ -167,6 +178,7 @@ func main() {
 	}
 
 	cfg := driver.Config{
+		JWTPath:       pickStr(*jwtPath, "LB_CSI_JWT_PATH", defaults.JWTPath),
 		NodeID:        pickStr(*nodeID, "LB_CSI_NODE_ID", defaults.NodeID),
 		Endpoint:      pickStr(*endpoint, "CSI_ENDPOINT", defaults.Endpoint),
 		DefaultFS:     pickStr(*defaultFS, "LB_CSI_DEFAULT_FS", defaults.DefaultFS),
