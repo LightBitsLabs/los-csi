@@ -69,6 +69,8 @@ func GetFullVersionStr() string {
 }
 
 type Config struct {
+	JWTPath string
+
 	NodeID   string
 	Endpoint string // must be a Unix Domain Socket URI
 
@@ -87,7 +89,8 @@ type Config struct {
 }
 
 type Driver struct {
-	sockPath  string // control UDS path
+	sockPath  string // control UDS path.
+	jwtPath   string // LightOS API authN/authZ JWT.
 	nodeID    string
 	hostNQN   string
 	defaultFS string
@@ -119,8 +122,15 @@ type Driver struct {
 	// single huge lock is unfortunate, but safety first...
 	bdl sync.Mutex
 
-	// a string passed in by environment variable LB_CSI_JWT
-	// used to access LightOS API
+	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
+	// used for authN/authZ when communicating with the LightOS API service.
+	//
+	// the path is monitored for changes, in which case the file contents
+	// are auto-reloaded and `jwt` is updated. this is useful for JWT
+	// rotation using both the traditional FS files (where a JWT might be
+	// exposed to the LB CSI plugin from the host FS) and using special CO
+	// mechanisms (e.g. K8s Secrets that can be exposed to the LB CSI plugin
+	// as files through the pod volumes mechanism).
 	jwt string
 }
 
@@ -243,6 +253,7 @@ func New(cfg Config) (*Driver, error) {
 
 	d := &Driver{
 		sockPath:      u.Path,
+		jwtPath:       cfg.JWTPath,
 		nodeID:        cfg.NodeID,
 		hostNQN:       nodeIDToHostNQN(cfg.NodeID),
 		log:           log,
@@ -298,36 +309,39 @@ func (d *Driver) Run() error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	jwtFilePath := "/etc/lb-csi/jwt"
-	if err := d.monitorJWTVariable(ctx, jwtFilePath); err != nil {
-		d.log.WithError(err).Errorf("failed to watch %q. will not ba able to read jwt from task.", jwtFilePath)
+	if err := d.monitorJWTVariable(ctx, d.jwtPath); err != nil {
+		// TODO: this is just wrong and it prevents reasonable usage:
+		// K8s secrets or host JWT file deployment becomes racy.
+		// the watcher should watch the parent dir of the path, instead,
+		// and trigger JWT reload on creations of the specified file.
+		d.log.WithError(err).Errorf("failed to watch path '%s', "+
+			"global JWT file monitoring disabled", d.jwtPath)
 	}
 
 	d.log.WithField("addr", d.sockPath).Info("server started")
 	return d.srv.Serve(listener)
 }
 
-func (d *Driver) setJWT(jwt string) {
-	d.log.Infof("jwt set via file with length: %d", len(jwt))
-	d.jwt = jwt
-}
-
-func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
-	jwtFromFile := func(filename string) string {
-		b, err := ioutil.ReadFile(filename)
-		if err != nil {
-			d.log.WithError(err).Error("failed to read jwt from file")
-			return ""
-		}
-		jwt := strings.TrimSpace(string(b))
-		return jwt
+func (d *Driver) setJWT(jwtPath string) {
+	log := d.log.WithField("jwt-path", jwtPath)
+	b, err := ioutil.ReadFile(jwtPath)
+	if err != nil {
+		log.WithError(err).Warn("failed to load global JWT, clearing it")
+		d.jwt = ""
+		return
 	}
 
+	jwt := strings.TrimSpace(string(b))
+	d.jwt = jwt
+	log.Infof("loaded global JWT, size: %d bytes", len(jwt))
+}
+
+func (d *Driver) monitorJWTVariable(ctx context.Context, jwtPath string) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
-	err = watcher.Add(jwtFile)
+	err = watcher.Add(jwtPath)
 	if err != nil {
 		return err
 	}
@@ -342,12 +356,12 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
 					// remove the watcher since the file is removed
 					watcher.Remove(event.Name)
 					// add a new watcher pointing to the new symlink/file
-					watcher.Add(jwtFile)
-					d.setJWT(jwtFromFile(jwtFile))
+					watcher.Add(jwtPath)
+					d.setJWT(jwtPath)
 				}
 				// also allow normal files to be modified and reloaded.
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					d.setJWT(jwtFromFile(jwtFile))
+					d.setJWT(jwtPath)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -359,7 +373,7 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
 			}
 		}
 	}()
-	d.setJWT(jwtFromFile(jwtFile))
+	d.setJWT(jwtPath)
 	return nil
 }
 
