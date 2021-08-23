@@ -19,7 +19,7 @@ require (
 	github.com/stretchr/testify v1.2.2
 	google.golang.org/genproto v0.0.0-20191114150713-6bbd007550de
 	google.golang.org/grpc v1.29.1
-	gopkg.in/yaml.v2 v2.2.5
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/apimachinery v0.0.0-20181108192626-90473842928c // indirect
 	k8s.io/kubernetes v1.11.10
 	k8s.io/utils v0.0.0-20180726175726-66066c83e385 // indirect
