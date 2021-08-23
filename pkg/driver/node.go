@@ -14,14 +14,15 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gofsutil"
-	"github.com/google/uuid"
-	"github.com/lightbitslabs/los-csi/pkg/lb"
-	"github.com/lightbitslabs/los-csi/pkg/util/wait"
+	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/resizefs"
+
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
 // lbVolEligible() allows to rule out impossible scenarios early on. it
@@ -105,10 +106,10 @@ func (d *Driver) getDeviceUUID(device string) (string, error) {
 	return "", nil
 }
 
-func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
+func (d *Driver) GetDevPathByUUID(uuid guuid.UUID) (string, error) {
 	// first try to get by-id device symlink, but ignore the error as older
 	// kernels might not have that yet.
-	linkPath := filepath.Join("/dev/disk/by-id","nvme-uuid." + uuid.String())
+	linkPath := filepath.Join("/dev/disk/by-id", "nvme-uuid."+uuid.String())
 	devicePath, err := filepath.EvalSymlinks(linkPath)
 	if err == nil {
 		return filepath.Abs(devicePath)
@@ -135,7 +136,7 @@ func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
 		devUUID, err := d.getDeviceUUID(filepath.Base(dev))
 		if err != nil {
 			// ignoring errors to get device UUID
-			// because apperantly some unexpected device
+			// because apparently some unexpected device
 			// identifications were found in the wild
 			// between kernel backport quirks and old
 			// devices that expose outdated identifications.
@@ -152,7 +153,7 @@ func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
 	return "", nil
 }
 
-func (d *Driver) getDevicePath(uuid uuid.UUID) (string, error) {
+func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	devPath := ""
 	var err error = nil
 	err = wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
@@ -625,7 +626,6 @@ func (d *Driver) NodeGetVolumeStats(
 func (d *Driver) NodeExpandVolume(
 	ctx context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
-
 	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())

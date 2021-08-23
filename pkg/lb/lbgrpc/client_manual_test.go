@@ -34,7 +34,7 @@ func TestPollRemoteOk(t *testing.T) {
 		if !outStart.IsZero() {
 			outage := time.Now().Sub(outStart)
 			msg := fmt.Sprintf("spotted outage of %s, %d queries failed",
-					outage, missed)
+				outage, missed)
 			if outage > maxOutage {
 				t.Errorf("BUG: %s", msg)
 			} else {

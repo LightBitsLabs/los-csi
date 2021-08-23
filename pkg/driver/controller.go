@@ -11,12 +11,13 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
-	"github.com/lightbitslabs/los-csi/pkg/lb"
-	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
-	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
 )
 
 const (
@@ -163,7 +164,6 @@ func (d *Driver) validateSnapshot(ctx context.Context, clnt lb.Client, req lb.Vo
 }
 
 func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volume) (bool, error) {
-
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "validateVolume",
 		"vol-name": vol.Name,
@@ -691,7 +691,6 @@ func (d *Driver) ListVolumes(
 func (d *Driver) GetCapacity(
 	ctx context.Context, req *csi.GetCapacityRequest,
 ) (*csi.GetCapacityResponse, error) {
-
 	if caps := req.GetVolumeCapabilities(); caps != nil {
 		if err := d.validateVolumeCapabilities(caps); err != nil {
 			return nil, err
@@ -722,7 +721,6 @@ func (d *Driver) GetCapacity(
 func (d *Driver) ControllerExpandVolume(
 	ctx context.Context, req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
-
 	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())

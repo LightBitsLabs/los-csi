@@ -20,10 +20,6 @@ import (
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
-	"github.com/lightbitslabs/los-csi/pkg/lb"
-	"github.com/lightbitslabs/los-csi/pkg/lb/lbgrpc"
-	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -31,6 +27,11 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
+
+	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/lb/lbgrpc"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
 
 const (
@@ -50,7 +51,6 @@ var (
 	supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 	}
-	accessModesCache []*csi.VolumeCapability_AccessMode
 )
 
 func GetVersion() string {
@@ -175,7 +175,7 @@ func hostNQNToNodeID(hostNQN string) string {
 	return ""
 }
 
-func New(cfg Config) (*Driver, error) {
+func New(cfg Config) (*Driver, error) { // nolint:gocritic
 	if err := checkNodeID(cfg.NodeID); err != nil {
 		return nil, errors.Wrapf(err, "bad node ID '%s'", cfg.NodeID)
 	}
@@ -247,7 +247,9 @@ func New(cfg Config) (*Driver, error) {
 		Exec:      mount.NewOsExec(),
 	}
 
-	lbdialer := func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+	lbdialer := func(
+		ctx context.Context, targets endpoint.Slice, mgmtScheme string,
+	) (lb.Client, error) {
 		return lbgrpc.Dial(ctx, log, targets, mgmtScheme)
 	}
 
@@ -280,7 +282,7 @@ func (d *Driver) Run() error {
 	// cmd line switch or env var). though by now, the whole driver relies
 	// pretty heavily on requests/replies being logged at gRPC level...
 	ctxTagOpts := []grpc_ctxtags.Option{
-		//TODO: consider replacing with custom narrow field extractor
+		// TODO: consider replacing with custom narrow field extractor
 		// just for the stuff of interest:
 		grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor),
 	}
@@ -397,7 +399,9 @@ func (d *Driver) mungeLBErr(
 // GetLBClient conjures up a functional LB mgmt API client by whatever means
 // necessary. the errors it returns are gRPC-grade and can be returned directly
 // to the remote CSI API clients.
-func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+func (d *Driver) GetLBClient(
+	ctx context.Context, mgmtEPs endpoint.Slice, mgmtScheme string,
+) (lb.Client, error) {
 	clnt, err := d.lbclients.GetClient(ctx, mgmtEPs, mgmtScheme)
 	if err != nil {
 		msg := fmt.Sprintf("failed to connect to LBs at '%s': %s", mgmtEPs, err.Error())
@@ -411,11 +415,12 @@ func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice, mgmtSc
 		case codes.Canceled,
 			codes.DeadlineExceeded:
 			return nil, err
+		default:
+			// if we failed to connect to a LB for an external, presumably
+			// net-related reason, just try to cause the CO to retry the
+			// whole thing at a later time:
+			return nil, mkEagain(msg)
 		}
-		// if we failed to connect to a LB for an external, presumably
-		// net-related reason, just try to cause the CO to retry the
-		// whole thing at a later time:
-		return nil, mkEagain(msg)
 	}
 
 	err = clnt.RemoteOk(ctx)
@@ -444,8 +449,10 @@ func (d *Driver) cloneCtxWithCreds(ctx context.Context, secrets map[string]strin
 	if jwt != "" {
 		// many times we see a user passing a jwt with `\n` at the end.
 		// this will result in the following error:
-		//  code = Internal desc = stream terminated by RST_STREAM with error code: PROTOCOL_ERROR
-		// a JWT will never contain '\n' so we will protect the user from such an error.
+		//   code = Internal desc = stream terminated by RST_STREAM with
+		//       error code: PROTOCOL_ERROR
+		// a JWT will never contain '\n' so we will protect the user
+		// from such an error.
 		jwt = strings.Trim(jwt, "\n")
 		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", "Bearer "+jwt)
 	}

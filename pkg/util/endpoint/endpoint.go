@@ -145,7 +145,7 @@ func canonicalize(targets []string, parser func(string) (EP, error)) (Slice, err
 	}
 
 	res := make([]EP, 0, len(uniq))
-	for k, _ := range uniq {
+	for k := range uniq {
 		res = append(res, k)
 	}
 	sort.Sort(Slice(res))
