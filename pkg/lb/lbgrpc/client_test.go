@@ -21,14 +21,15 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/lightbitslabs/los-csi/pkg/lb"
 	"github.com/lightbitslabs/los-csi/pkg/lb/lbgrpc"
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
 	"github.com/lightbitslabs/los-csi/pkg/util/wait"
-	"github.com/sirupsen/logrus"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -598,7 +599,7 @@ func TestVolume(t *testing.T) {
 	clnt := mkClient(t)
 	defer clnt.Close()
 
-	var volCap uint64 = 4 * 1024 * 1024 * 1024 - 4096
+	var volCap uint64 = 4*1024*1024*1024 - 4096
 	var numReplicas uint32 = 3
 	volName := mkVolName()
 	bogusName := fmt.Sprintf("lb-csi-ut-bogus-%08x", prng.Uint32())
@@ -611,11 +612,11 @@ func TestVolume(t *testing.T) {
 	}
 	if !strlist.AreEqual(defACL, vol.ACL) {
 		t.Errorf("BUG: CreateVolume(%s) messed up ACL:\nEXP: %#q\nGOT: %#q",
-		volName, defACL, vol.ACL)
+			volName, defACL, vol.ACL)
 	} else {
 		t.Logf("OK: CreateVolume(%s) set default ACL workaround correctly", volName)
 	}
-	if (volCap + GiB - 1) / GiB * GiB != vol.Capacity {
+	if (volCap+GiB-1)/GiB*GiB != vol.Capacity {
 		t.Errorf("BUG: CreateVolume(%s) unexpected capacity: %d for %d request",
 			volName, vol.Capacity, volCap)
 	} else {

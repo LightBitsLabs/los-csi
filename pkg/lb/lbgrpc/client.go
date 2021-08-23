@@ -17,12 +17,6 @@ import (
 	guuid "github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
-	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
-	"github.com/lightbitslabs/los-csi/pkg/lb"
-	mgmt "github.com/lightbitslabs/los-csi/pkg/lb/management"
-	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
-	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
-	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
@@ -33,6 +27,13 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
+
+	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	mgmt "github.com/lightbitslabs/los-csi/pkg/lb/management"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
+	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
 const (
@@ -1132,7 +1133,6 @@ func (c *Client) UpdateVolume(
 		lbVol, err = c.doUpdateVolume(ctx, uuid, projectName, hook)
 		return err == nil && lbVol != nil, err
 	})
-
 	if err != nil {
 		// NOTE: may include hook-specific errors that are NOT grpc.Status!
 		return nil, err
