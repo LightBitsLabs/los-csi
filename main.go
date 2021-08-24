@@ -49,17 +49,27 @@ Supported environment variables:
         with LightOS. this JWT will only be used as a fallback if a per-call JWT
         is not specified through the CSI API, e.g. in global, plugin-wide
         authentication configuration. (default: {{.JWTPath}})
+  LB_CSI_BE_CONFIG_PATH     - path to the NVMe-oF host backend configuration
+        file, in YAML format. the value of the top-level 'backend' key in this
+        file determines which backend to use, the rest of the keys/values are
+        a backend-specific configuration. if the specified file does not exist -
+        the '{{.DefaultBackend}}' backend with default configuration will be used.
+        runtime backend configuration changes are not supported, to reload the
+        config - restart the plugin. (default: {{.BackendCfgPath}})
 
 Command line flags:
 `
 
 const (
-	defaultCfgDirPath  = "/etc/lb-csi"
-	defaultJWTFileName = "jwt"
+	defaultCfgDirPath         = "/etc/lb-csi"
+	defaultJWTFileName        = "jwt"
+	defaultBackendCfgFileName = "backend.yaml"
 )
 
 var defaults = driver.Config{
-	JWTPath: filepath.Join(defaultCfgDirPath, defaultJWTFileName),
+	DefaultBackend: "dsc",
+	BackendCfgPath: filepath.Join(defaultCfgDirPath, defaultBackendCfgFileName),
+	JWTPath:        filepath.Join(defaultCfgDirPath, defaultJWTFileName),
 
 	NodeID:   "",
 	Endpoint: "unix:///tmp/csi.sock",
@@ -95,6 +105,8 @@ var (
 		"Log entry format, see $LB_CSI_LOG_FMT.")
 	jwtPath = flag.StringP("jwt-path", "j", "",
 		"Path to global LightOS API auth JWT, see $LB_CSI_JWT_PATH.")
+	backendCfgPath = flag.StringP("be-cfg-path", "b", "",
+		"Backend config path, see $LB_CSI_BE_CONFIG_PATH.")
 	version = flag.Bool("version", false, "Print the version and exit.")
 	help    = flag.BoolP("help", "h", false, "Print help and exit.")
 
@@ -178,6 +190,9 @@ func main() {
 	}
 
 	cfg := driver.Config{
+		DefaultBackend: defaults.DefaultBackend, // not user configurable.
+		BackendCfgPath: pickStr(*backendCfgPath, "LB_CSI_BE_CONFIG_PATH",
+			defaults.BackendCfgPath),
 		JWTPath:       pickStr(*jwtPath, "LB_CSI_JWT_PATH", defaults.JWTPath),
 		NodeID:        pickStr(*nodeID, "LB_CSI_NODE_ID", defaults.NodeID),
 		Endpoint:      pickStr(*endpoint, "CSI_ENDPOINT", defaults.Endpoint),

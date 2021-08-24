@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/url"
+	neturl "net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -20,7 +20,6 @@ import (
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,6 +27,8 @@ import (
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 
+	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
+	_ "github.com/lightbitslabs/los-csi/pkg/driver/backend/dsc" // register backend
 	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
 	"github.com/lightbitslabs/los-csi/pkg/lb"
 	"github.com/lightbitslabs/los-csi/pkg/lb/lbgrpc"
@@ -69,7 +70,9 @@ func GetFullVersionStr() string {
 }
 
 type Config struct {
-	JWTPath string
+	DefaultBackend string
+	BackendCfgPath string // if valid - contents override DefaultBackend.
+	JWTPath        string
 
 	NodeID   string
 	Endpoint string // must be a Unix Domain Socket URI
@@ -101,6 +104,8 @@ type Driver struct {
 	lbclients *lb.ClientPool
 
 	mounter *mount.SafeFormatAndMount
+
+	be backend.Backend
 
 	// only 'tcp' is properly supported, 'rdma' is a dev/test-only hack
 	transport string
@@ -175,18 +180,53 @@ func hostNQNToNodeID(hostNQN string) string {
 	return ""
 }
 
-func New(cfg Config) (*Driver, error) { // nolint:gocritic
-	if err := checkNodeID(cfg.NodeID); err != nil {
-		return nil, errors.Wrapf(err, "bad node ID '%s'", cfg.NodeID)
+func createBackend(
+	log *logrus.Entry, hostNQN, cfgPath, defaultBackend string,
+) (backend.Backend, error) {
+	beType := defaultBackend
+	rawCfg, err := ioutil.ReadFile(cfgPath)
+	if err == nil {
+		beType, err = backend.DetectType(rawCfg)
+		if err != nil {
+			return nil, fmt.Errorf("bad backend config file '%s': %s", cfgPath, err)
+		}
+	} else {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read backend config: %s", err)
+		}
+		log.Infof("missing backend config file '%s', falling back to default backend '%s'",
+			cfgPath, defaultBackend)
 	}
-	u, err := url.Parse(cfg.Endpoint)
+
+	be, err := backend.Make(beType, log, hostNQN, rawCfg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "bad endpoint address '%s'", cfg.Endpoint)
+		return nil, fmt.Errorf("can't initialize '%s' backend: %s", beType, err)
 	}
-	if u.Scheme != "unix" || u.Path == "" {
+	return be, nil
+}
+
+func New(cfg Config) (*Driver, error) { // nolint:gocritic
+	d := &Driver{
+		jwtPath:       cfg.JWTPath,
+		nodeID:        cfg.NodeID,
+		transport:     cfg.Transport,
+		squelchPanics: cfg.SquelchPanics,
+	}
+
+	if err := checkNodeID(cfg.NodeID); err != nil {
+		return nil, fmt.Errorf("bad node ID '%s': %s", cfg.NodeID, err)
+	}
+	d.hostNQN = nodeIDToHostNQN(cfg.NodeID)
+
+	url, err := neturl.Parse(cfg.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("bad endpoint address '%s': %s", cfg.Endpoint, err)
+	}
+	if url.Scheme != "unix" || url.Path == "" {
 		return nil, fmt.Errorf("bad endpoint address '%s': must be a UDS path",
 			cfg.Endpoint)
 	}
+	d.sockPath = url.Path
 
 	// support for additional FSes requires not only having access to the
 	// corresponding `mkfs` tools (which typically means they need to be
@@ -227,22 +267,27 @@ func New(cfg Config) (*Driver, error) { // nolint:gocritic
 	if cfg.LogRole != "" {
 		extraFields["role"] = cfg.LogRole
 	}
-	log := logger.WithFields(extraFields)
-
-	log.WithFields(logrus.Fields{
+	d.log = logger.WithFields(extraFields)
+	d.log.WithFields(logrus.Fields{
 		"driver-name":      driverName,
 		"config":           fmt.Sprintf("%+v", cfg),
+		"backends":         strings.Join(backend.ListBackends(), ", "),
 		"version-rel":      version,
 		"version-git":      versionGitCommit,
 		"version-hash":     versionBuildHash,
 		"version-build-id": versionBuildID,
-	}).Info("starting")
+	}).Info("starting...")
+
+	d.be, err = createBackend(d.log, d.hostNQN, cfg.BackendCfgPath, cfg.DefaultBackend)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create backend: %s", err)
+	}
 
 	// ok, so this is a bit heavy-handed, but until K8s guys factor it out -
 	// it's too good to reimplement from scratch.
 	// TODO: actually, should be passed in as part of the config, to allow
 	// testing/mocking...
-	mounter := &mount.SafeFormatAndMount{
+	d.mounter = &mount.SafeFormatAndMount{
 		Interface: mount.New(""),
 		Exec:      mount.NewOsExec(),
 	}
@@ -250,32 +295,22 @@ func New(cfg Config) (*Driver, error) { // nolint:gocritic
 	lbdialer := func(
 		ctx context.Context, targets endpoint.Slice, mgmtScheme string,
 	) (lb.Client, error) {
-		return lbgrpc.Dial(ctx, log, targets, mgmtScheme)
+		return lbgrpc.Dial(ctx, d.log, targets, mgmtScheme)
 	}
+	d.lbclients = lb.NewClientPool(lbdialer)
 
-	d := &Driver{
-		sockPath:      u.Path,
-		jwtPath:       cfg.JWTPath,
-		nodeID:        cfg.NodeID,
-		hostNQN:       nodeIDToHostNQN(cfg.NodeID),
-		log:           log,
-		lbclients:     lb.NewClientPool(lbdialer),
-		mounter:       mounter,
-		transport:     cfg.Transport,
-		squelchPanics: cfg.SquelchPanics,
-	}
 	return d, nil
 }
 
 func (d *Driver) Run() error {
 	// cleanup leftover socket, if any (e.g. prev instance crash).
 	if err := os.Remove(d.sockPath); err != nil && !os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to remove leftover socket file '%s'", d.sockPath)
+		return fmt.Errorf("failed to remove leftover socket file '%s': %s", d.sockPath, err)
 	}
 
 	listener, err := net.Listen("unix", d.sockPath)
 	if err != nil {
-		return errors.Wrap(err, "failed to listen on endpoint")
+		return fmt.Errorf("failed to listen on endpoint: %s", err)
 	}
 
 	// TODO: consider making interceptor logging optional (conditional on

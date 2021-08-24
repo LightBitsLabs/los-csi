@@ -12,7 +12,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0
 	github.com/grpc-ecosystem/grpc-gateway v1.11.3
 	github.com/kubernetes-csi/csi-test/v3 v3.1.1
-	github.com/pkg/errors v0.8.0
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/pflag v1.0.5
