@@ -659,16 +659,17 @@ func (c *Client) lbVolumeFromGRPC(
 	}
 
 	return &lb.Volume{
-		Name:         vol.Name,
-		UUID:         volUUID,
-		State:        lbVolumeStateFromGRPC(vol.State),
-		Protection:   lbVolumeProtectionFromGRPC(vol.ProtectionState),
-		ReplicaCount: vol.ReplicaCount,
-		ACL:          strlist.CopyUniqueSorted(vol.Acl.GetValues()),
-		Capacity:     vol.Size,
-		Compression:  compress,
-		ETag:         vol.ETag,
-		ProjectName:  vol.ProjectName,
+		Name:               vol.Name,
+		UUID:               volUUID,
+		State:              lbVolumeStateFromGRPC(vol.State),
+		Protection:         lbVolumeProtectionFromGRPC(vol.ProtectionState),
+		ReplicaCount:       vol.ReplicaCount,
+		ACL:                strlist.CopyUniqueSorted(vol.Acl.GetValues()),
+		Capacity:           vol.Size,
+		LogicalUsedStorage: vol.Statistics.LogicalUsedStorage,
+		Compression:        compress,
+		ETag:               vol.ETag,
+		ProjectName:        vol.ProjectName,
 	}, nil
 }
 

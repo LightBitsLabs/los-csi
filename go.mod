@@ -17,6 +17,7 @@ require (
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v2 v2.4.0
+	k8s.io/kubernetes v1.21.4
 	k8s.io/mount-utils v0.21.4
 	k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9
 )

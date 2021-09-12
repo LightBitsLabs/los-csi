@@ -6,9 +6,12 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"k8s.io/kubernetes/pkg/volume"
 	mountutils "k8s.io/mount-utils"
 
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
@@ -600,6 +604,13 @@ func (d *Driver) NodeGetCapabilities(
 				},
 			},
 		},
+		{
+			Type: &csi.NodeServiceCapability_Rpc{
+				Rpc: &csi.NodeServiceCapability_RPC{
+					Type: csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
+				},
+			},
+		},
 	}
 
 	return &csi.NodeGetCapabilitiesResponse{Capabilities: capabilities}, nil
@@ -616,7 +627,153 @@ func (d *Driver) NodeGetInfo(
 func (d *Driver) NodeGetVolumeStats(
 	ctx context.Context, req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "")
+	vid, err := ParseCSIResourceID(req.VolumeId)
+	if err != nil {
+		return nil, mkEinval("volume_id", err.Error())
+	}
+
+	log := d.log.WithFields(logrus.Fields{
+		"op":       "NodeGetVolumeStats",
+		"mgmt-ep":  vid.mgmtEPs,
+		"vol-uuid": vid.uuid,
+		"vol-path": req.VolumePath,
+		"project":  vid.projName,
+	})
+
+	targetPath := req.GetVolumePath()
+	log.Infof("called for volume %q in project %q, targetPath: %q", vid.uuid, vid.projName, targetPath)
+	if targetPath == "" {
+		err = fmt.Errorf("targetpath %v is empty", targetPath)
+
+		return nil, mkEinval("targetPath", err.Error())
+	}
+
+	stat, err := os.Stat(targetPath)
+	if err != nil {
+		return nil, mkEinval("targetPath", fmt.Sprintf("failed to get stat for targetpath %q: %v", targetPath, err))
+	}
+
+	if stat.Mode().IsDir() {
+		return FilesystemNodeGetVolumeStats(ctx, log, targetPath)
+	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
+		return blockNodeGetVolumeStats(ctx, log, targetPath)
+	}
+
+	return nil, mkEinval("targetPath", fmt.Sprintf("targetpath %q is not a block device", targetPath))
+}
+
+// IsMountPoint checks if the given path is mountpoint or not.
+func IsMountPoint(p string) (bool, error) {
+	dummyMount := mountutils.New("")
+	notMnt, err := dummyMount.IsLikelyNotMountPoint(p)
+	if err != nil {
+		return false, err
+	}
+
+	return !notMnt, nil
+}
+
+// FilesystemNodeGetVolumeStats can be used for getting the metrics as
+// requested by the NodeGetVolumeStats CSI procedure.
+func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+	isMnt, err := IsMountPoint(targetPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
+		}
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	if !isMnt {
+		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
+	}
+
+	metricsProvider := volume.NewMetricsStatFS(targetPath)
+	volMetrics, volMetErr := metricsProvider.GetMetrics()
+	if volMetErr != nil {
+		return nil, status.Error(codes.Internal, volMetErr.Error())
+	}
+
+	available, ok := (*(volMetrics.Available)).AsInt64()
+	if !ok {
+		log.Errorf("failed to fetch available bytes")
+	}
+	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
+	if !ok {
+		log.Errorf("failed to fetch capacity bytes")
+
+		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
+	}
+	used, ok := (*(volMetrics.Used)).AsInt64()
+	if !ok {
+		log.Errorf("failed to fetch used bytes")
+	}
+	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
+	if !ok {
+		log.Errorf("failed to fetch available inodes")
+
+		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
+	}
+	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
+	if !ok {
+		log.Errorf("failed to fetch free inodes")
+	}
+
+	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
+	if !ok {
+		log.Errorf("failed to fetch used inodes")
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Available: available,
+				Total:     capacity,
+				Used:      used,
+				Unit:      csi.VolumeUsage_BYTES,
+			},
+			{
+				Available: inodesFree,
+				Total:     inodes,
+				Used:      inodesUsed,
+				Unit:      csi.VolumeUsage_INODES,
+			},
+		},
+	}, nil
+}
+
+// blockNodeGetVolumeStats gets the metrics for a `volumeMode: Block` type of
+// volume. At the moment, only the size of the block-device can be returned, as
+// there are no secrets in the NodeGetVolumeStats request that enables us to
+// connect to the Lightbits cluster.
+//
+// TODO: https://github.com/container-storage-interface/spec/issues/371#issuecomment-756834471
+func blockNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+	args := []string{"--noheadings", "--bytes", "--output=SIZE", targetPath}
+	lsblkSize, err := exec.CommandContext(ctx, "/bin/lsblk", args...).Output()
+	if err != nil {
+		err = fmt.Errorf("lsblk %v returned an error: %w", args, err)
+		log.WithError(err).Error("blockNodeGetVolumeStats failed")
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	size, err := strconv.ParseInt(strings.TrimSpace(string(lsblkSize)), 10, 64)
+	if err != nil {
+		err = fmt.Errorf("failed to convert %q to bytes: %w", lsblkSize, err)
+		log.WithError(err).Error("blockNodeGetVolumeStats failed")
+
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return &csi.NodeGetVolumeStatsResponse{
+		Usage: []*csi.VolumeUsage{
+			{
+				Total: size,
+				Unit:  csi.VolumeUsage_BYTES,
+			},
+		},
+	}, nil
 }
 
 func (d *Driver) NodeExpandVolume(

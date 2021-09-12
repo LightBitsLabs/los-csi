@@ -77,12 +77,13 @@ func (s VolumeProtection) String() string {
 
 type Volume struct {
 	// "core" volume properties. q.v. IsSameAs().
-	Name         string
-	UUID         guuid.UUID
-	ReplicaCount uint32
-	Capacity     uint64
-	Compression  bool
-	SnapshotUUID guuid.UUID
+	Name               string
+	UUID               guuid.UUID
+	ReplicaCount       uint32
+	Capacity           uint64
+	LogicalUsedStorage uint64
+	Compression        bool
+	SnapshotUUID       guuid.UUID
 
 	ACL []string
 
