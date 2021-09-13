@@ -26,7 +26,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"k8s.io/kubernetes/pkg/util/mount"
+	mountutils "k8s.io/mount-utils"
+	"k8s.io/utils/exec"
 
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
 	_ "github.com/lightbitslabs/los-csi/pkg/driver/backend/dsc" // register backend
@@ -105,7 +106,7 @@ type Driver struct {
 
 	lbclients *lb.ClientPool
 
-	mounter *mount.SafeFormatAndMount
+	mounter *mountutils.SafeFormatAndMount
 
 	be backend.Backend
 
@@ -289,9 +290,9 @@ func New(cfg Config) (*Driver, error) { // nolint:gocritic
 	// it's too good to reimplement from scratch.
 	// TODO: actually, should be passed in as part of the config, to allow
 	// testing/mocking...
-	d.mounter = &mount.SafeFormatAndMount{
-		Interface: mount.New(""),
-		Exec:      mount.NewOsExec(),
+	d.mounter = &mountutils.SafeFormatAndMount{
+		Interface: mountutils.New(""),
+		Exec:      exec.New(),
 	}
 
 	lbdialer := func(

@@ -359,6 +359,12 @@ func (d *Driver) CreateVolume(
 	return vol, nil
 }
 
+func (d *Driver) ControllerGetVolume(
+	ctx context.Context, req *csi.ControllerGetVolumeRequest,
+) (*csi.ControllerGetVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
+}
+
 func (d *Driver) DeleteVolume(
 	ctx context.Context, req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {

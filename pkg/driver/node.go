@@ -18,8 +18,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/kubernetes/pkg/util/mount"
-	"k8s.io/kubernetes/pkg/util/resizefs"
+	mountutils "k8s.io/mount-utils"
 
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
 	"github.com/lightbitslabs/los-csi/pkg/lb"
@@ -226,7 +225,7 @@ func (d *Driver) NodeStageVolume(
 	// path, or some such). and i THINK i can see `kubelet` creating it
 	// before calling the plugins...
 	tgtPath := req.StagingTargetPath
-	notMnt, err := d.mounter.IsNotMountPoint(tgtPath)
+	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
 	if os.IsNotExist(err) {
 		return nil, mkEinvalf("staging_target_path",
 			"'%s' doesn't exist", tgtPath)
@@ -235,7 +234,7 @@ func (d *Driver) NodeStageVolume(
 	}
 	// don't you not like double negatives?
 	if !notMnt {
-		dev, _, err := mount.GetDeviceNameFromMount(d.mounter, tgtPath)
+		dev, _, err := mountutils.GetDeviceNameFromMount(d.mounter, tgtPath)
 		if err != nil {
 			log.Debugf("failed to find what's mounted at '%s': %s", tgtPath, err)
 		}
@@ -317,7 +316,7 @@ func (d *Driver) NodeStageVolume(
 	// In case the volume came from a snapshot and happens to also be
 	// larger in capacity, we want to update the fs size accordingly, we
 	// don't care really if any actual resize happened...
-	resizer := resizefs.NewResizeFs(d.mounter)
+	resizer := mountutils.NewResizeFs(d.mounter.Exec)
 	_, err = resizer.Resize(devPath, tgtPath)
 	if err != nil {
 		return nil, mkEExec("error when resizing device %s after mount: %v", vid.uuid, err)
@@ -353,7 +352,7 @@ func (d *Driver) NodeUnstageVolume(
 	// retrying the call...
 	vid = vid
 
-	notMnt, err := d.mounter.IsNotMountPoint(tgtPath)
+	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, mkEExec("can't examine staging path: %s", err)
 	}
@@ -385,7 +384,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 
 	// Create the mount point as a file since bind mount device node requires it to be a file
 	log.Debugf("Creating target file %s", target)
-	err = d.mounter.MakeFile(target)
+	err = MakeFile(target)
 	if err != nil {
 		if removeErr := os.Remove(target); removeErr != nil {
 			return &csi.NodePublishVolumeResponse{},
@@ -406,6 +405,19 @@ func (d *Driver) nodePublishVolumeForBlock(
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
+}
+
+func MakeFile(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE, os.FileMode(0644))
+	if err != nil {
+		if !os.IsExist(err) {
+			return err
+		}
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error) {
@@ -495,7 +507,7 @@ func (d *Driver) NodePublishVolume(
 
 	// for idempotency - start in reverse order:
 	if _, err := os.Stat(req.TargetPath); err == nil {
-		notMnt, err := d.mounter.IsNotMountPoint(req.TargetPath)
+		notMnt, err := mountutils.IsNotMountPoint(d.mounter, req.TargetPath)
 		if os.IsNotExist(err) {
 			return nil, mkEinvalf("target_path", "'%s' doesn't exist", req.TargetPath)
 		} else if err != nil {
@@ -550,7 +562,7 @@ func (d *Driver) NodeUnpublishVolume(
 	defer d.bdl.Unlock()
 
 	tgtPath := req.TargetPath
-	notMnt, err := d.mounter.IsNotMountPoint(tgtPath)
+	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, mkEExec("can't examine staging path: %s", err)
 	}
@@ -638,7 +650,7 @@ func (d *Driver) NodeExpandVolume(
 		return nil, err
 	}
 
-	resizer := resizefs.NewResizeFs(d.mounter)
+	resizer := mountutils.NewResizeFs(d.mounter.Exec)
 	resizedOccurred, err := resizer.Resize(devicePath, volumePath)
 	if err != nil {
 		return nil, mkInternal("Could not resize volume %s (%s): %s", vid.uuid, devicePath, err)
