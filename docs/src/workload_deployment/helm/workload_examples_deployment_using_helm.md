@@ -10,7 +10,7 @@ The Helm chart eases the deployment of the provided workload examples that use t
     - [Chart Values](#chart-values)
       - [Mandatory Values To Modify](#mandatory-values-to-modify)
     - [Install in different namespace](#install-in-different-namespace)
-    - [Rendering Manifests Using Helm Chart](#rendering-manifests-using-helm-chart)
+    - [Rendering Manifests Using the Helm Chart](#rendering-manifests-using-the-helm-chart)
 
 ### Overview
 
@@ -174,7 +174,7 @@ The following values **MUST** be modified to match the target Kubernetes cluster
 
   Before we deploy a workload we need to fetch some information from the LightOS cluster.
 
-  `lb-cs-plugin` needs to be informed about LightOS management API endpoints.
+  `lb-csi-plugin` needs to be informed about LightOS management API endpoints.
 
   These endpoints are passed as a comma-delimited string in `StorageClass.Parameters.mgmt-endpoints`.
 
@@ -239,17 +239,17 @@ by creating a namespace yourself or using the shortcut to let Helm create a name
 ```bash
 helm install -n lb-csi-ns --create-namespace \
 	lb-csi-workload-examples \
-  helm/lb-csi-workload-examples/
+  ./helm/lb-csi-workload-examples
 ```
 
 #### Rendering Manifests Using the Helm Chart
 
-Render manifests to file `/tmp/filesystem-workload.yaml` run following command:
+Render manifests to file `/tmp/filesystem-workload.yaml` by running the following command:
 
 ```bash
 helm template \
 	--set filesystem.enabled=true \
-	lb-csi-workload-examples > /tmp/filesystem-workload.yaml
+	./helm/lb-csi-workload-examples > /tmp/filesystem-workload.yaml
 ```
 
 The chart enables rendering multiple workloads at the same time using the following command:
@@ -258,7 +258,7 @@ The chart enables rendering multiple workloads at the same time using the follow
 helm template \
 	--set block.enabled=true \
 	--set filesystem.enabled=true \
-	lb-csi-workload-examples > /tmp/block-and-filesystem-workload.yaml
+	./helm/lb-csi-workload-examples > /tmp/block-and-filesystem-workload.yaml
 ```
 
 Outcome is placed at `/tmp/block-and-filesystem-workload.yaml`.

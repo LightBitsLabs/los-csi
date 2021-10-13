@@ -139,7 +139,7 @@ We will specify how to manually upgrade the image in each of the PODs:
   pod "lb-csi-node-rwrz6" deleted
   ```
 
-4. Verify that the `lb-csi-node` POD is upgraded.
+2. Verify that the `lb-csi-node` POD is upgraded.
 
   Listing the PODs again will show that one of them has a very short Age and it would have a different name:
 
@@ -169,7 +169,7 @@ We will specify how to manually upgrade the image in each of the PODs:
 
 We will run a simple verification test to see that our node is still functioning before we move to the next node.
 
-By deploy a simple workload **on the upgraded node**, we can verify that the `lb-csi-node` node is functioning properly.
+By deploying a simple workload **on the upgraded node**, we can verify that the `lb-csi-node` node is functioning properly.
 
 We provide two ways to run the verification test:
 
@@ -231,7 +231,7 @@ Make sure you modify the following fields that are cluster specific:
 
 - `storageClassName`: name of the SC configured in your cluster.
 - `nodeName`: name of the node we want to deploy on.
-- `Pod.spec.image`: name of the busybox image. docker registry prefix may vary between deployments.
+- `Pod.spec.image`: name of the busybox image. Docker registry prefix may vary between deployments.
 
 In order to get this, run the following commands:
 

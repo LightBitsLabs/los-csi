@@ -58,6 +58,6 @@ secret/example-secret                                      lightbitslabs.com/jwt
 Once done with deployment examples you can delete storageclass resources.
 
 ```bash
-helm uninstall lb-csi-workload-sc
-release "lb-csi-workload-sc" uninstalled
+helm uninstall lb-csi-workload-examples-sc
+release "lb-csi-workload-examples-sc" uninstalled
 ```

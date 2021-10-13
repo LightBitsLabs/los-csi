@@ -39,7 +39,7 @@ Examples:
   ```bash
   helm template --set block.enabled=true \
       --set block.nodeSelector."beta\.kubernetes\.io/arch"=amd64,block.nodeSelector.disktype=ssd \
-      lb-csi-workload-examples
+      ./helm/lb-csi-workload-examples
   ```
 
   Will result:
@@ -62,7 +62,7 @@ Examples:
   ```bash
   helm template --set block.enabled=true \
       --set block.nodeName=node00.local \
-      lb-csi-workload-examples
+      ./helm/lb-csi-workload-examples
   ```
 
   Will result:

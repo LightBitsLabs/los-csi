@@ -28,5 +28,5 @@ https://github.com/LightBitsLabs/lb-csi/tree/duros/docs/upgrade
 
 ### All Changes
 
-- Extend Kubernetes version support to include v1.19-v1.21 inclusive. Verified that the CSI plugin is working with newest Kubernetes versions. Updated sidecar versions when deploying on new Kubernetes versions.
+- Extend Kubernetes version support to include v1.19-v1.21 inclusive. Verified that the CSI plugin is working with newest the Kubernetes versions. Updated sidecar versions when deploying on new Kubernetes versions.
 

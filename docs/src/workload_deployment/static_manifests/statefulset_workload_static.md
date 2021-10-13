@@ -114,7 +114,7 @@ kubectl exec -it example-sts-0 -- /bin/sh -c "mount | grep /tmp/demo"
 
 Most of the mountpoints of the container running inside the pod above are either virtual file systems or file systems rooted in Docker overlay mounts. However, the LightOS-backed volume mountpoint will be a direct mount of the NVMe device exported to the Kubernetes node over NVMe/TCP transport (here: /dev/nvme0n3).
 
-To see the corresponding underlying volumes information of the LightOS storage server, you can connect to the LightOS server using SSH. Then, use the LightOS CLI utility (lbcli, see LightOS® Administrator's Guide for details) to execute the following command:
+To see the corresponding underlying volumes information of the LightOS storage server, you can connect to the LightOS server using SSH. Then, use the LightOS CLI utility (lbcli, see LightOS™ Administrator's Guide for details) to execute the following command:
 
 ```bash
 lbcli list volumes

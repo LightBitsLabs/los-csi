@@ -1,3 +1,5 @@
+<div style="page-break-after: always;"></div>
+
 ## About Lightbits Labs™
 
 Today's storage approaches were designed for enterprises and do not meet developing cloud-scale infrastructure requirements. For instance, SAN is known for lacking performance and control. At scale, Direct-Attached SSDs (DAS) have become too complicated for smooth operations, too costly, and suffer from inefficient SSD utilization.

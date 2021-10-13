@@ -43,7 +43,7 @@ To ensure smooth access to the storage volumes exported by the LightOS clusters,
 
 > Note:
 > 
-> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v2.2.2 Installation Guide document.
+> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v2.3.8 Installation Guide document.
 
 
 Before deploying the Lightbits CSI plugin, you should verify that:
@@ -51,7 +51,7 @@ Before deploying the Lightbits CSI plugin, you should verify that:
 - The LightOS storage cluster is in a "Healthy" state according to its management API service or CLI.
 - It is possible to manually mount volumes exported over NVMe/TCP by each of the appropriate LightOS storage cluster servers on each of the Kubernetes cluster nodes.
 - It is possible to manually access the LightOS management API service instances running on each of the appropriate LightOS storage cluster servers from each of the Kubernetes cluster nodes; e.g., using curl.
-- The Discovery-Client service is started and enabled on each Kubernetes worker node, in case we chose to run it on the host.
+- The Discovery-Client service is started and enabled on each Kubernetes worker node, in case we choose to run it on the host.
 
 Security systems like network firewalls and Linux Mandatory Access Control (MAC) systems (e.g., SELinux, AppArmor) running on the Kubernetes cluster nodes or the LightOS cluster servers can interfere with proper operation of the Lightbits CSI plugin. You should disable these security systems or configure them to allow the CSI plugin to carry out the requisite actions. For more details, see the Lightbits CSI Plugin Release Notes document appropriate to the version of the CSI plugin you are deploying.
 
