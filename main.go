@@ -12,7 +12,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 
-	"github.com/lightbitslabs/lb-csi/pkg/driver"
+	"github.com/lightbitslabs/los-csi/pkg/driver"
 )
 
 const usageTemplate = `USAGE: {{.BinaryName}} [flags]

@@ -28,7 +28,7 @@ DOCKER_TAG := $(PLUGIN_NAME):$(or $(BUILD_HASH),$(PLUGIN_VER))
 
 DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
 
-PKG_PREFIX := github.com/lightbitslabs/lb-csi
+PKG_PREFIX := github.com/lightbitslabs/los-csi
 
 override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
 override BUILD_TIME := $(shell date "+%Y-%m-%d.%H:%M:%S.%N%:z")

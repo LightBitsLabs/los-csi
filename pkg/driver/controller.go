@@ -11,9 +11,9 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
-	"github.com/lightbitslabs/lb-csi/pkg/lb"
-	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
-	"github.com/lightbitslabs/lb-csi/pkg/util/strlist"
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

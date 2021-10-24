@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lightbitslabs/lb-csi/pkg/util/wait"
+	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/kubernetes-csi/csi-test/v3/pkg/sanity"
-	"github.com/lightbitslabs/lb-csi/pkg/driver"
+	"github.com/lightbitslabs/los-csi/pkg/driver"
 )
 
 func getEnv(key, fallback string) string {

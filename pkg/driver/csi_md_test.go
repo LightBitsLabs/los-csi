@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 	"github.com/stretchr/testify/require"
 )
 

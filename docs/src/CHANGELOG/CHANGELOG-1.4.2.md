@@ -7,7 +7,7 @@ Date: 2021-06-02
 
 ### Source code
 
-https://github.com/lightbitslabs/lb-csi/releases/tag/v1.4.2
+https://github.com/lightbitslabs/los-csi/releases/tag/v1.4.2
 
 ### Container Image
 

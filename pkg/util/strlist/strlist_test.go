@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/lightbitslabs/lb-csi/pkg/util/strlist"
+	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
 )
 
 type test struct {

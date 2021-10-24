@@ -1,4 +1,4 @@
-module github.com/lightbitslabs/lb-csi
+module github.com/lightbitslabs/los-csi
 
 go 1.10
 

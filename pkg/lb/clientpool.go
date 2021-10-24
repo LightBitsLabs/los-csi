@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

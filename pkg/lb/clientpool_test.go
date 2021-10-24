@@ -15,8 +15,8 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
-	"github.com/lightbitslabs/lb-csi/pkg/lb"
-	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lightbitslabs/lb-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
 
 var nilEP = endpoint.EP{}
