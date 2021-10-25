@@ -11,6 +11,7 @@ import (
 	neturl "net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -66,6 +67,7 @@ func GetFullVersionStr() string {
 	if versionBuildID != "" {
 		ver += fmt.Sprintf(", BuildID: %s", versionBuildID)
 	}
+	ver += ", " + runtime.Version()
 	return ver + ")"
 }
 
