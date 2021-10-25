@@ -232,11 +232,12 @@ deploy/k8s:
 deploy/examples:
 	mkdir -p deploy/examples
 
+helm: USER_BINARIES_PATH=$(shell systemd-path user-binaries)
 helm:
 	curl -fsSL -o /tmp/get_helm.sh \
 		https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
 	chmod 700 /tmp/get_helm.sh
-	/tmp/get_helm.sh --version v3.6.3
+	HELM_INSTALL_DIR=$(USER_BINARIES_PATH) /tmp/get_helm.sh --version v3.6.3 --no-sudo
 	rm /tmp/get_helm.sh
 
 deploy/helm/charts:
