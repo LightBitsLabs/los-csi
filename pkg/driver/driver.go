@@ -50,7 +50,6 @@ var (
 	supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 	}
-	accessModesCache []*csi.VolumeCapability_AccessMode
 )
 
 func GetVersion() string {
@@ -340,9 +339,15 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
 				// original configmap file is removed
 				if event.Op == fsnotify.Remove {
 					// remove the watcher since the file is removed
-					watcher.Remove(event.Name)
+					err = watcher.Remove(event.Name)
+					if err != nil {
+						d.log.WithError(err).Error("watcher remove error")
+					}
 					// add a new watcher pointing to the new symlink/file
-					watcher.Add(jwtFile)
+					err = watcher.Add(jwtFile)
+					if err != nil {
+						d.log.WithError(err).Error("watcher remove error")
+					}
 					d.setJWT(jwtFromFile(jwtFile))
 				}
 				// also allow normal files to be modified and reloaded.

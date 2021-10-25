@@ -108,7 +108,7 @@ func (d *Driver) getDeviceUUID(device string) (string, error) {
 func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
 	// first try to get by-id device symlink, but ignore the error as older
 	// kernels might not have that yet.
-	linkPath := filepath.Join("/dev/disk/by-id","nvme-uuid." + uuid.String())
+	linkPath := filepath.Join("/dev/disk/by-id", "nvme-uuid."+uuid.String())
 	devicePath, err := filepath.EvalSymlinks(linkPath)
 	if err == nil {
 		return filepath.Abs(devicePath)
@@ -347,8 +347,6 @@ func (d *Driver) NodeUnstageVolume(
 	// odd collisions between live mount paths, but NOT, say, missing NVMe
 	// devices or even mountpoints - that might be a side-effect of k8s
 	// retrying the call...
-	vid = vid
-
 	notMnt, err := d.mounter.IsNotMountPoint(tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, mkEExec("can't examine staging path: %s", err)
@@ -557,12 +555,10 @@ func (d *Driver) NodeUnpublishVolume(
 		return nil, mkEinvalMissing("target_path")
 	}
 
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	_, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
-	vid = vid
-
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 

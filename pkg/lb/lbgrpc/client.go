@@ -137,6 +137,8 @@ func (r *lbResolver) updateCCState() {
 		addrs[i].Addr = ep.String()
 	}
 	r.mu.Unlock()
+	// FIXME NewAddress is deprecated, need to be migrated to use UpdateState instead
+	// nolint:staticcheck
 	r.cc.NewAddress(addrs)
 }
 

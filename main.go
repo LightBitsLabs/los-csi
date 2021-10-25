@@ -82,8 +82,6 @@ var (
 		"Add timestamps to log entries, see $LB_CSI_LOG_TIME.")
 	logFormat = flag.StringP("log-fmt", "f", "",
 		"Log entry format, see $LB_CSI_LOG_FMT.")
-	jwt = flag.StringP("jwt", "j", "",
-		"JWT for LightOS API, see $LB_CSI_JWT.")
 	version = flag.Bool("version", false, "Print the version and exit.")
 	help    = flag.BoolP("help", "h", false, "Print help and exit.")
 
@@ -121,6 +119,10 @@ func errorAndDie(format string, args ...interface{}) {
 	os.Exit(2)
 }
 
+func must(err error) {
+	errorAndDie(err.Error())
+}
+
 // populate config from: flags, env vars, defaults in that order:
 func pickStr(flagVal string, envVar string, def string) string {
 	res := flagVal
@@ -135,15 +137,11 @@ func pickStr(flagVal string, envVar string, def string) string {
 
 func main() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
-	flag.CommandLine.MarkHidden("transport")
-	flag.CommandLine.MarkHidden("squelch-panics")
-	flag.CommandLine.MarkHidden("pretty-json")
+	must(flag.CommandLine.MarkHidden("transport"))
+	must(flag.CommandLine.MarkHidden("squelch-panics"))
+	must(flag.CommandLine.MarkHidden("pretty-json"))
 	flag.SetInterspersed(false)
-	err := flag.CommandLine.Parse(os.Args[1:])
-	if err != nil {
-		errorAndDie(err.Error())
-		os.Exit(2)
-	}
+	must(flag.CommandLine.Parse(os.Args[1:]))
 	if *help {
 		usageAndDie()
 	}
