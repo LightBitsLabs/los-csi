@@ -17,6 +17,8 @@ override RELEASE := $(if $(BUILD_ID),$(VERSION_RELEASE).$(BUILD_ID),$(VERSION_RE
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
 
+DOCKER_REGISTRY := $(or $(DOCKER_REGISTRY),quay.io)
+
 # these vars are sometimes passed in from the outside:
 #   $BUILD_HASH
 
@@ -41,7 +43,7 @@ LDFLAGS ?= \
     $(and $(BUILD_HASH), -X $(PKG_PREFIX)/pkg/driver.versionBuildHash=$(BUILD_HASH)) \
     $(and $(BUILD_ID), -X $(PKG_PREFIX)/pkg/driver.versionBuildID=$(BUILD_ID)) \
     -extldflags "-static"
-override GO_VARS := GOPROXY=off GO111MODULE=on GOFLAGS=-mod=vendor CGO_ENABLED=0
+override GO_VARS := CGO_ENABLED=0
 
 override LABELS := \
     --label version.lb-csi.rel="$(PLUGIN_VER)" \
@@ -204,7 +206,10 @@ generate_examples_yaml: deploy/examples helm
 package: build generate_bundle
 	@docker build $(LABELS) -t $(DOCKER_REGISTRY)/$(DOCKER_TAG) deploy
 
-push: package
+image:
+	@docker build $(LABELS) -t $(DOCKER_REGISTRY)/$(DOCKER_TAG) -f deploy/Dockerfile .
+
+push: image
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
 	@docker push $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 

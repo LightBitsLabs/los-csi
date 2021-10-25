@@ -1,4 +1,10 @@
-FROM centos:7.9.2009
+FROM golang:1.17 as builder
+WORKDIR /work
+COPY . .
+RUN make build \
+ && strip deploy/lb-csi-plugin
+
+FROM alpine:3.14
 
 LABEL maintainers="Lightbits Labs" \
       description="LB CSI Plugin" \
@@ -15,11 +21,8 @@ LABEL maintainers="Lightbits Labs" \
 
 # at least as of v18.06.1, Docker appears to interpret empty second source
 # arg to COPY as "*" (shurely shome mishtake)... hence this silliness:
-COPY lb-csi-plugin /
-
-RUN yum install -y e2fsprogs xfsprogs $EXTRA_PACKAGES && \
-    yum clean all || true
-
+COPY --from=builder /work/deploy/lb-csi-plugin /
+RUN apk add e2fsprogs xfsprogs $EXTRA_PACKAGES
 ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_NODE_ID=             \
     LB_CSI_DEFAULT_FS=ext4      \
