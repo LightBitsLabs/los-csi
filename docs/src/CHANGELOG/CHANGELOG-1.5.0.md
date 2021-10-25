@@ -15,11 +15,11 @@ https://github.com/lightbitslabs/los-csi/releases/tag/v1.5.0
 
 ### Documentation
 
-https://github.com/LightBitsLabs/lb-csi/tree/v1.5.0/docs
+https://github.com/LightBitsLabs/los-csi/tree/v1.5.0/docs
 
 ### Upgrading
 
-https://github.com/LightBitsLabs/lb-csi/tree/duros/docs/upgrade
+https://github.com/LightBitsLabs/los-csi/tree/duros/docs/upgrade
 
 ### Highlights
 
