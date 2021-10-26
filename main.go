@@ -44,7 +44,6 @@ Supported environment variables:
         entries. May be redundant in some monitoring environments that
         automatically timestamp log entries. (default: {{.LogTimestamps}})
   LB_CSI_LOG_FMT    - one of: {text, json}. (default: {{.LogFormat}})
-  LB_CSI_JWT        - JWT used to communicate to LightOS.
 
 Command line flags:
 `
