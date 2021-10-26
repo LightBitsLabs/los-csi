@@ -43,6 +43,9 @@ LDFLAGS ?= \
     $(and $(BUILD_HASH), -X $(PKG_PREFIX)/pkg/driver.versionBuildHash=$(BUILD_HASH)) \
     $(and $(BUILD_ID), -X $(PKG_PREFIX)/pkg/driver.versionBuildID=$(BUILD_ID)) \
     -extldflags "-static"
+
+# since go 1.15 GO111MODULE=on is default
+# since go 1.17 vendor content is strictly validated if present
 override GO_VARS := GOPROXY=off CGO_ENABLED=0
 
 override LABELS := \
