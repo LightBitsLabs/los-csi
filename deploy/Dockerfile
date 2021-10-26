@@ -22,7 +22,7 @@ LABEL maintainers="Lightbits Labs" \
 # at least as of v18.06.1, Docker appears to interpret empty second source
 # arg to COPY as "*" (shurely shome mishtake)... hence this silliness:
 COPY --from=builder /work/deploy/lb-csi-plugin /
-RUN apk add e2fsprogs xfsprogs ca-certificates $EXTRA_PACKAGES
+RUN apk add e2fsprogs e2fsprogs-extra xfsprogs xfsprogs-extra ca-certificates $EXTRA_PACKAGES
 ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_NODE_ID=             \
     LB_CSI_DEFAULT_FS=ext4      \
