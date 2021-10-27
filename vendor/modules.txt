@@ -73,8 +73,6 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/pkg/errors v0.8.0
-github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
 # github.com/sirupsen/logrus v1.4.2
@@ -166,7 +164,7 @@ google.golang.org/grpc/tap
 gopkg.in/fsnotify.v1
 # gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 gopkg.in/tomb.v1
-# gopkg.in/yaml.v2 v2.2.5
+# gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
 # k8s.io/apimachinery v0.0.0-20181108192626-90473842928c
 k8s.io/apimachinery/pkg/util/sets

@@ -256,3 +256,100 @@ func TestParseSliceCSV(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSliceIPAddys(t *testing.T) {
+	type testCase struct {
+		tgts []string
+		eps  endpoint.Slice
+		eps4 endpoint.Slice
+	}
+
+	tgt4a := "192.168.0.1:80"
+	ep4a := endpoint.MustParse(tgt4a)
+	tgt4b := "1.1.1.1:8080"
+	ep4b := endpoint.MustParse(tgt4b)
+	tgtN1 := "1.2.3:80"
+	epN1 := endpoint.MustParse(tgtN1)
+	tgtN2 := "1.2.3.4.5:80"
+	epN2 := endpoint.MustParse(tgtN2)
+	tgtFoo := "foo.bar.baz:80"
+	epFoo := endpoint.MustParse(tgtFoo)
+	tgt6a := "[2001:0db8:0a0b:12f0:0000:0000:0000:0001]:443"
+	ep6a := endpoint.MustParse(tgt6a)
+
+	tcs := []testCase{
+		{[]string{}, endpoint.Slice{}, endpoint.Slice{}},
+		{[]string{""}, nil, nil},
+		{[]string{"1.2.3.4"}, nil, nil},
+		{
+			[]string{tgt4a},
+			[]endpoint.EP{ep4a},
+			[]endpoint.EP{ep4a},
+		},
+		{
+			[]string{tgt4b, tgt4a},
+			[]endpoint.EP{ep4b, ep4a},
+			[]endpoint.EP{ep4b, ep4a},
+		},
+		{
+			[]string{tgt4a, tgt4a},
+			[]endpoint.EP{ep4a},
+			[]endpoint.EP{ep4a},
+		},
+		{
+			[]string{tgtFoo},
+			[]endpoint.EP{epFoo},
+			nil,
+		},
+		{
+			[]string{tgtFoo, tgt4a},
+			[]endpoint.EP{ep4a, epFoo},
+			nil,
+		},
+		{
+			[]string{tgt4a, tgt6a, tgt4b},
+			[]endpoint.EP{ep4b, ep4a, ep6a},
+			nil,
+		},
+		{
+			[]string{tgt4b, tgtN1},
+			[]endpoint.EP{ep4b, epN1},
+			nil,
+		},
+		{
+			[]string{tgtN2, tgt4a},
+			[]endpoint.EP{epN2, ep4a},
+			nil,
+		},
+	}
+
+	chkRes := func(
+		t *testing.T, name string, eps endpoint.Slice, err error, tgts string,
+		exp endpoint.Slice,
+	) {
+		if err != nil {
+			if exp != nil {
+				t.Errorf("BUG: %s(%s) failed", name, tgts)
+			} else if testing.Verbose() {
+				t.Logf("OK: %s(%s) refused: %s", name, tgts, err)
+			}
+		} else if err == nil && exp == nil {
+			t.Errorf("BUG: %s(%s) succeeded: [%s]", name, tgts, eps)
+		} else if !eps.Equal(exp) {
+			t.Errorf("BUG: %s(%s) => bad result:\nEXP:%v\nGOT:%v",
+				name, tgts, exp, eps)
+		} else if testing.Verbose() {
+			t.Logf("OK: %s(%s) => [%s]", name, tgts, eps)
+		}
+	}
+
+	for _, tc := range tcs {
+		targets := strings.Join(tc.tgts, ",")
+		t.Run(targets, func(t *testing.T) {
+			eps, err := endpoint.ParseSlice(tc.tgts)
+			chkRes(t, "ParseSlice", eps, err, targets, tc.eps)
+			eps4, err := endpoint.ParseSliceIPv4(tc.tgts)
+			chkRes(t, "ParseSliceIPv4", eps4, err, targets, tc.eps4)
+		})
+	}
+}

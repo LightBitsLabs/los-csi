@@ -14,14 +14,17 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/dell/gofsutil"
-	"github.com/google/uuid"
-	"github.com/lightbitslabs/los-csi/pkg/lb"
-	"github.com/lightbitslabs/los-csi/pkg/util/wait"
+	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/util/resizefs"
+
+	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
 // lbVolEligible() allows to rule out impossible scenarios early on. it
@@ -46,44 +49,46 @@ func (d *Driver) lbVolEligible(
 		return mkEagain("volume '%s' is temporarily inaccessible", vid)
 	}
 
+	accessible := false
 	// ACLs are normally VERY short, no point in showboating...
 	for _, ace := range vol.ACL {
 		if ace == d.hostNQN {
-			return nil
+			accessible = true
+			break
 		}
 	}
-	log.Warnf("volume is inaccessible from '%s', HostNQN: '%s', ACL: %#q",
-		d.nodeID, d.hostNQN, vol.ACL)
-	return mkPrecond("volume '%s' is inaccessible from node '%s'", vid, d.nodeID)
-}
+	if !accessible {
+		log.Warnf("volume is inaccessible from '%s', HostNQN: '%s', ACL: %#q",
+			d.nodeID, d.hostNQN, vol.ACL)
+		return mkPrecond("volume '%s' is inaccessible from node '%s'", vid, d.nodeID)
+	}
 
-// targetEnv describes the LB environment that will be providing the underlying
-// storage for a given CSI volume. in addition to the general cluster metadata,
-// this includes a list of one or more relevant NVMe-oF targets. in order to
-// make the volume available on a host, the host must be connected using an
-// NVMe-oF protocol to at least the specified list of targets, even though at
-// any given point in time only a subset of these targets might be exporting
-// the volume in question. aka "target rich environment"...
-type targetEnv struct {
-	cluster *lb.ClusterInfo
-	targets []*lb.Node // TODO: temporary hack until the Discovery Service lands
+	st := d.be.LBVolEligible(ctx, vol)
+	return st.Err()
 }
 
 func (d *Driver) queryLBforTargetEnv(
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
-) (*targetEnv, error) {
-	var err error
-	res := &targetEnv{}
-	res.cluster, err = clnt.GetClusterInfo(ctx)
+) (*backend.TargetEnv, error) {
+	ci, err := clnt.GetClusterInfo(ctx)
 	if err != nil {
 		return nil, d.mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
 			vid.mgmtEPs[0])
 	}
 
-	res.targets, err = clnt.ListNodes(ctx)
+	res := &backend.TargetEnv{
+		SubsysNQN: ci.SubsysNQN,
+	}
+	res.DiscoveryEPs, err = endpoint.ParseSliceIPv4(ci.DiscoveryEndpoints)
 	if err != nil {
-		return nil, d.mungeLBErr(log, err, "failed to get nodes list from LB cluster %s "+
-			"at '%s'", res.cluster.UUID, vid.mgmtEPs[0])
+		return nil, d.mungeLBErr(log, err,
+			"got invalid discovery service endpoint from LB cluster at '%s'",
+			vid.mgmtEPs[0])
+	}
+	res.NvmeEPs, err = endpoint.ParseSliceIPv4(ci.NvmeEndpoints)
+	if err != nil {
+		return nil, d.mungeLBErr(log, err,
+			"got invalid NVMe endpoint from LB cluster at '%s'", vid.mgmtEPs[0])
 	}
 
 	return res, nil
@@ -105,10 +110,10 @@ func (d *Driver) getDeviceUUID(device string) (string, error) {
 	return "", nil
 }
 
-func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
+func (d *Driver) GetDevPathByUUID(uuid guuid.UUID) (string, error) {
 	// first try to get by-id device symlink, but ignore the error as older
 	// kernels might not have that yet.
-	linkPath := filepath.Join("/dev/disk/by-id","nvme-uuid." + uuid.String())
+	linkPath := filepath.Join("/dev/disk/by-id", "nvme-uuid."+uuid.String())
 	devicePath, err := filepath.EvalSymlinks(linkPath)
 	if err == nil {
 		return filepath.Abs(devicePath)
@@ -135,7 +140,7 @@ func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
 		devUUID, err := d.getDeviceUUID(filepath.Base(dev))
 		if err != nil {
 			// ignoring errors to get device UUID
-			// because apperantly some unexpected device
+			// because apparently some unexpected device
 			// identifications were found in the wild
 			// between kernel backport quirks and old
 			// devices that expose outdated identifications.
@@ -152,7 +157,7 @@ func (d *Driver) GetDevPathByUUID(uuid uuid.UUID) (string, error) {
 	return "", nil
 }
 
-func (d *Driver) getDevicePath(uuid uuid.UUID) (string, error) {
+func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	devPath := ""
 	var err error = nil
 	err = wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
@@ -256,19 +261,18 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
-	////////////////////////////////////  Discovery-Client ////////////////////////////////
-	entries, err := createEntries(tgtEnv.cluster.DiscoveryEndpoints, d.hostNQN, tgtEnv.cluster.SubsysNQN, "tcp")
-	if err != nil {
-		return nil, d.mungeLBErr(log, err, "failed to get info from LB cluster")
-	}
-	if err := writeEntriesToFile(vid.uuid.String(), entries); err != nil {
-		return nil, d.mungeLBErr(log, err, "failed to create DC file")
+	// let backend connect and produce block device: - - - - - - - - - - -
+
+	if st := d.be.Attach(ctx, tgtEnv, vid.uuid); st != nil {
+		return nil, st.Err()
 	}
 
 	devPath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return nil, err
 	}
+
+	// turn block dev into what CO wanted: - - - - - - - - - - - - - - - -
 
 	if req.VolumeCapability.GetBlock() != nil {
 		// block volume - we are done for now.
@@ -360,31 +364,10 @@ func (d *Driver) NodeUnstageVolume(
 		}
 	}
 
-	// TODO: CSI spec mandates that it is effectively CO's sacred duty to
-	// do the refcounting on volumes (which is facilitated by mandating
-	// idempotent semantics of the plugins). unfortunately, COs are totally
-	// oblivious of the LB "all volumes grow off the same subsystem, and
-	// connect/disconnect must be done per subsystem, NOT volume" semantics.
-	// which means we need to devise a way of detecting when and how to
-	// disconnect the subsystem, in the face of:
-	// 1. CSI plugin being ephemeral and with no persistent state - that's
-	//    a bit hard to track, and:
-	// 2. watch out for the races: the whole connect/disconnect machinery
-	//    will need to be protected by a lock, because even if we trust
-	//    k8s not to run more than one instance of this plugin in the same
-	//    role on the same node (do expect Node+Controller side by side,
-	//    though), k8s is only too eager to invoke the gRPC calls
-	//    concurrently. and, apparently, NVMe-oF does NOT track block device
-	//    usage by mounts (which still sounds very odd to me!!), so in a
-	//    race you can easily end up disconnecting a volume that just got
-	//    mounted - with a corresponding data loss (tried it, works).
-	//  so i foresee some GetDeviceNameFromMount() under lock (that func
-	//  and its ilk in k8s.io-land have odd notion of TOCTTOU) around here...
-
-	////////////////// DISCOVERY-CLIENT ///////////////////////////////////
-	if err := deleteDiscoveryEntriesFile(vid.uuid.String()); err != nil {
-		return nil, mkEExec("failed to delete DC file: %v", err)
+	if st := d.be.Detach(ctx, vid.uuid); st != nil {
+		return nil, st.Err()
 	}
+
 	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
@@ -599,6 +582,8 @@ func (d *Driver) NodeGetCapabilities(
 		{
 			Type: &csi.NodeServiceCapability_Rpc{
 				Rpc: &csi.NodeServiceCapability_RPC{
+					// TODO: this might depend on the backend used - some
+					// backends might not support resize out of the box...
 					Type: csi.NodeServiceCapability_RPC_EXPAND_VOLUME,
 				},
 			},
@@ -625,7 +610,6 @@ func (d *Driver) NodeGetVolumeStats(
 func (d *Driver) NodeExpandVolume(
 	ctx context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
-
 	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())

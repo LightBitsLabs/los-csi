@@ -90,6 +90,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set enableSnapshot=false \
 		--set kubeVersion=v1.16 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.16.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -98,6 +99,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.16 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.16-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -105,6 +107,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.17 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -113,6 +116,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.17 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -120,6 +124,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -128,6 +133,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -135,6 +141,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.19 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -143,6 +150,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.19 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -150,6 +158,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.20 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -158,6 +167,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.20 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -165,6 +175,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.21 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
@@ -173,6 +184,7 @@ generate_deployment_yaml: deploy/k8s helm
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.21 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
 
 generate_examples_yaml: deploy/examples helm

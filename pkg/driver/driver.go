@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
-	"net/url"
+	neturl "net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -20,17 +21,19 @@ import (
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
-	"github.com/lightbitslabs/los-csi/pkg/lb"
-	"github.com/lightbitslabs/los-csi/pkg/lb/lbgrpc"
-	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"k8s.io/kubernetes/pkg/util/mount"
+
+	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
+	_ "github.com/lightbitslabs/los-csi/pkg/driver/backend/dsc" // register backend
+	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
+	"github.com/lightbitslabs/los-csi/pkg/lb"
+	"github.com/lightbitslabs/los-csi/pkg/lb/lbgrpc"
+	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
 
 const (
@@ -50,7 +53,6 @@ var (
 	supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
 		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
 	}
-	accessModesCache []*csi.VolumeCapability_AccessMode
 )
 
 func GetVersion() string {
@@ -65,10 +67,15 @@ func GetFullVersionStr() string {
 	if versionBuildID != "" {
 		ver += fmt.Sprintf(", BuildID: %s", versionBuildID)
 	}
+	ver += ", " + runtime.Version()
 	return ver + ")"
 }
 
 type Config struct {
+	DefaultBackend string
+	BackendCfgPath string // if valid - contents override DefaultBackend.
+	JWTPath        string
+
 	NodeID   string
 	Endpoint string // must be a Unix Domain Socket URI
 
@@ -87,7 +94,8 @@ type Config struct {
 }
 
 type Driver struct {
-	sockPath  string // control UDS path
+	sockPath  string // control UDS path.
+	jwtPath   string // LightOS API authN/authZ JWT.
 	nodeID    string
 	hostNQN   string
 	defaultFS string
@@ -98,6 +106,8 @@ type Driver struct {
 	lbclients *lb.ClientPool
 
 	mounter *mount.SafeFormatAndMount
+
+	be backend.Backend
 
 	// only 'tcp' is properly supported, 'rdma' is a dev/test-only hack
 	transport string
@@ -119,8 +129,15 @@ type Driver struct {
 	// single huge lock is unfortunate, but safety first...
 	bdl sync.Mutex
 
-	// a string passed in by environment variable LB_CSI_JWT
-	// used to access LightOS API
+	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
+	// used for authN/authZ when communicating with the LightOS API service.
+	//
+	// the path is monitored for changes, in which case the file contents
+	// are auto-reloaded and `jwt` is updated. this is useful for JWT
+	// rotation using both the traditional FS files (where a JWT might be
+	// exposed to the LB CSI plugin from the host FS) and using special CO
+	// mechanisms (e.g. K8s Secrets that can be exposed to the LB CSI plugin
+	// as files through the pod volumes mechanism).
 	jwt string
 }
 
@@ -165,18 +182,53 @@ func hostNQNToNodeID(hostNQN string) string {
 	return ""
 }
 
-func New(cfg Config) (*Driver, error) {
-	if err := checkNodeID(cfg.NodeID); err != nil {
-		return nil, errors.Wrapf(err, "bad node ID '%s'", cfg.NodeID)
+func createBackend(
+	log *logrus.Entry, hostNQN, cfgPath, defaultBackend string,
+) (backend.Backend, error) {
+	beType := defaultBackend
+	rawCfg, err := ioutil.ReadFile(cfgPath)
+	if err == nil {
+		beType, err = backend.DetectType(rawCfg)
+		if err != nil {
+			return nil, fmt.Errorf("bad backend config file '%s': %s", cfgPath, err)
+		}
+	} else {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read backend config: %s", err)
+		}
+		log.Infof("missing backend config file '%s', falling back to default backend '%s'",
+			cfgPath, defaultBackend)
 	}
-	u, err := url.Parse(cfg.Endpoint)
+
+	be, err := backend.Make(beType, log, hostNQN, rawCfg)
 	if err != nil {
-		return nil, errors.Wrapf(err, "bad endpoint address '%s'", cfg.Endpoint)
+		return nil, fmt.Errorf("can't initialize '%s' backend: %s", beType, err)
 	}
-	if u.Scheme != "unix" || u.Path == "" {
+	return be, nil
+}
+
+func New(cfg Config) (*Driver, error) { // nolint:gocritic
+	d := &Driver{
+		jwtPath:       cfg.JWTPath,
+		nodeID:        cfg.NodeID,
+		transport:     cfg.Transport,
+		squelchPanics: cfg.SquelchPanics,
+	}
+
+	if err := checkNodeID(cfg.NodeID); err != nil {
+		return nil, fmt.Errorf("bad node ID '%s': %s", cfg.NodeID, err)
+	}
+	d.hostNQN = nodeIDToHostNQN(cfg.NodeID)
+
+	url, err := neturl.Parse(cfg.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("bad endpoint address '%s': %s", cfg.Endpoint, err)
+	}
+	if url.Scheme != "unix" || url.Path == "" {
 		return nil, fmt.Errorf("bad endpoint address '%s': must be a UDS path",
 			cfg.Endpoint)
 	}
+	d.sockPath = url.Path
 
 	// support for additional FSes requires not only having access to the
 	// corresponding `mkfs` tools (which typically means they need to be
@@ -217,59 +269,57 @@ func New(cfg Config) (*Driver, error) {
 	if cfg.LogRole != "" {
 		extraFields["role"] = cfg.LogRole
 	}
-	log := logger.WithFields(extraFields)
-
-	log.WithFields(logrus.Fields{
+	d.log = logger.WithFields(extraFields)
+	d.log.WithFields(logrus.Fields{
 		"driver-name":      driverName,
 		"config":           fmt.Sprintf("%+v", cfg),
+		"backends":         strings.Join(backend.ListBackends(), ", "),
 		"version-rel":      version,
 		"version-git":      versionGitCommit,
 		"version-hash":     versionBuildHash,
 		"version-build-id": versionBuildID,
-	}).Info("starting")
+	}).Info("starting...")
+
+	d.be, err = createBackend(d.log, d.hostNQN, cfg.BackendCfgPath, cfg.DefaultBackend)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create backend: %s", err)
+	}
 
 	// ok, so this is a bit heavy-handed, but until K8s guys factor it out -
 	// it's too good to reimplement from scratch.
 	// TODO: actually, should be passed in as part of the config, to allow
 	// testing/mocking...
-	mounter := &mount.SafeFormatAndMount{
+	d.mounter = &mount.SafeFormatAndMount{
 		Interface: mount.New(""),
 		Exec:      mount.NewOsExec(),
 	}
 
-	lbdialer := func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
-		return lbgrpc.Dial(ctx, log, targets, mgmtScheme)
+	lbdialer := func(
+		ctx context.Context, targets endpoint.Slice, mgmtScheme string,
+	) (lb.Client, error) {
+		return lbgrpc.Dial(ctx, d.log, targets, mgmtScheme)
 	}
+	d.lbclients = lb.NewClientPool(lbdialer)
 
-	d := &Driver{
-		sockPath:      u.Path,
-		nodeID:        cfg.NodeID,
-		hostNQN:       nodeIDToHostNQN(cfg.NodeID),
-		log:           log,
-		lbclients:     lb.NewClientPool(lbdialer),
-		mounter:       mounter,
-		transport:     cfg.Transport,
-		squelchPanics: cfg.SquelchPanics,
-	}
 	return d, nil
 }
 
 func (d *Driver) Run() error {
 	// cleanup leftover socket, if any (e.g. prev instance crash).
 	if err := os.Remove(d.sockPath); err != nil && !os.IsNotExist(err) {
-		return errors.Wrapf(err, "failed to remove leftover socket file '%s'", d.sockPath)
+		return fmt.Errorf("failed to remove leftover socket file '%s': %s", d.sockPath, err)
 	}
 
 	listener, err := net.Listen("unix", d.sockPath)
 	if err != nil {
-		return errors.Wrap(err, "failed to listen on endpoint")
+		return fmt.Errorf("failed to listen on endpoint: %s", err)
 	}
 
 	// TODO: consider making interceptor logging optional (conditional on
 	// cmd line switch or env var). though by now, the whole driver relies
 	// pretty heavily on requests/replies being logged at gRPC level...
 	ctxTagOpts := []grpc_ctxtags.Option{
-		//TODO: consider replacing with custom narrow field extractor
+		// TODO: consider replacing with custom narrow field extractor
 		// just for the stuff of interest:
 		grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor),
 	}
@@ -298,36 +348,39 @@ func (d *Driver) Run() error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	jwtFilePath := "/etc/lb-csi/jwt"
-	if err := d.monitorJWTVariable(ctx, jwtFilePath); err != nil {
-		d.log.WithError(err).Errorf("failed to watch %q. will not ba able to read jwt from task.", jwtFilePath)
+	if err := d.monitorJWTVariable(ctx, d.jwtPath); err != nil {
+		// TODO: this is just wrong and it prevents reasonable usage:
+		// K8s secrets or host JWT file deployment becomes racy.
+		// the watcher should watch the parent dir of the path, instead,
+		// and trigger JWT reload on creations of the specified file.
+		d.log.WithError(err).Errorf("failed to watch path '%s', "+
+			"global JWT file monitoring disabled", d.jwtPath)
 	}
 
 	d.log.WithField("addr", d.sockPath).Info("server started")
 	return d.srv.Serve(listener)
 }
 
-func (d *Driver) setJWT(jwt string) {
-	d.log.Infof("jwt set via file with length: %d", len(jwt))
-	d.jwt = jwt
-}
-
-func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
-	jwtFromFile := func(filename string) string {
-		b, err := ioutil.ReadFile(filename)
-		if err != nil {
-			d.log.WithError(err).Error("failed to read jwt from file")
-			return ""
-		}
-		jwt := strings.TrimSpace(string(b))
-		return jwt
+func (d *Driver) setJWT(jwtPath string) {
+	log := d.log.WithField("jwt-path", jwtPath)
+	b, err := ioutil.ReadFile(jwtPath)
+	if err != nil {
+		log.WithError(err).Warn("failed to load global JWT, clearing it")
+		d.jwt = ""
+		return
 	}
 
+	jwt := strings.TrimSpace(string(b))
+	d.jwt = jwt
+	log.Infof("loaded global JWT, size: %d bytes", len(jwt))
+}
+
+func (d *Driver) monitorJWTVariable(ctx context.Context, jwtPath string) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
-	err = watcher.Add(jwtFile)
+	err = watcher.Add(jwtPath)
 	if err != nil {
 		return err
 	}
@@ -342,12 +395,12 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
 					// remove the watcher since the file is removed
 					watcher.Remove(event.Name)
 					// add a new watcher pointing to the new symlink/file
-					watcher.Add(jwtFile)
-					d.setJWT(jwtFromFile(jwtFile))
+					watcher.Add(jwtPath)
+					d.setJWT(jwtPath)
 				}
 				// also allow normal files to be modified and reloaded.
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					d.setJWT(jwtFromFile(jwtFile))
+					d.setJWT(jwtPath)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -359,7 +412,7 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtFile string) error {
 			}
 		}
 	}()
-	d.setJWT(jwtFromFile(jwtFile))
+	d.setJWT(jwtPath)
 	return nil
 }
 
@@ -383,7 +436,9 @@ func (d *Driver) mungeLBErr(
 // GetLBClient conjures up a functional LB mgmt API client by whatever means
 // necessary. the errors it returns are gRPC-grade and can be returned directly
 // to the remote CSI API clients.
-func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+func (d *Driver) GetLBClient(
+	ctx context.Context, mgmtEPs endpoint.Slice, mgmtScheme string,
+) (lb.Client, error) {
 	clnt, err := d.lbclients.GetClient(ctx, mgmtEPs, mgmtScheme)
 	if err != nil {
 		msg := fmt.Sprintf("failed to connect to LBs at '%s': %s", mgmtEPs, err.Error())
@@ -397,11 +452,12 @@ func (d *Driver) GetLBClient(ctx context.Context, mgmtEPs endpoint.Slice, mgmtSc
 		case codes.Canceled,
 			codes.DeadlineExceeded:
 			return nil, err
+		default:
+			// if we failed to connect to a LB for an external, presumably
+			// net-related reason, just try to cause the CO to retry the
+			// whole thing at a later time:
+			return nil, mkEagain(msg)
 		}
-		// if we failed to connect to a LB for an external, presumably
-		// net-related reason, just try to cause the CO to retry the
-		// whole thing at a later time:
-		return nil, mkEagain(msg)
 	}
 
 	err = clnt.RemoteOk(ctx)
@@ -430,8 +486,10 @@ func (d *Driver) cloneCtxWithCreds(ctx context.Context, secrets map[string]strin
 	if jwt != "" {
 		// many times we see a user passing a jwt with `\n` at the end.
 		// this will result in the following error:
-		//  code = Internal desc = stream terminated by RST_STREAM with error code: PROTOCOL_ERROR
-		// a JWT will never contain '\n' so we will protect the user from such an error.
+		//   code = Internal desc = stream terminated by RST_STREAM with
+		//       error code: PROTOCOL_ERROR
+		// a JWT will never contain '\n' so we will protect the user
+		// from such an error.
 		jwt = strings.Trim(jwt, "\n")
 		ctx = metadata.AppendToOutgoingContext(ctx, "Authorization", "Bearer "+jwt)
 	}
