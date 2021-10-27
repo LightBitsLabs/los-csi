@@ -14,6 +14,8 @@
 - [Plugin Deployment](plugin_deployment/deployment.md)
   - [Static Manifests](plugin_deployment/plugin_deployment_static_manifests.md)
   - [Helm](plugin_deployment/plugin_deployment_using_helm.md)
+    - [Installing From Bundled Helm Charts](plugin_deployment/plugin_deployment_using_chart_in_bundle.md)
+    - [Installing From Lightbits Helm Repository](plugin_deployment/plugin_deployment_using_lightbits_helm_repository.md)
 - [Workload Deployment](workload_deployment/deployment.md)
   - [Static Manifests](workload_deployment/static_manifests/workload_examples_deployment_using_static_manifests.md)
     - [Secret And StorageClass](workload_deployment/static_manifests/secret_and_storage_class_static.md)

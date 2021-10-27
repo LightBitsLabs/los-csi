@@ -18,13 +18,9 @@ We provide some workload deployment examples that use `lb-csi-plugin` for storag
 
 To ease the deployment of these workloads and to make them easily customizable we provide a Helm Chart as part of the `lb-csi-bundle-<version>.tar.gz`.
 
-This Helm Chart is comprised of six sub-charts. Each sub-chart defines a workload manifest.
+This Helm Chart is comprised of six sub-charts. Each sub-chart defines a set of manifests representing a workload.
 
-All sub-charts are dependent on the storageclass chart.
-
-This chart should be created first and deleted last.
-
-Without this chart no other chart can be deployed and all deployments will fail.
+All sub-charts are dependent on the StorageClass chart. All following PVC created by the other charts will use the StorageClass we create using the StorageClass Chart. Hence, we should first install this chart and uninstall only after we uninstalled all other charts.
 
 Workload examples include:
 
