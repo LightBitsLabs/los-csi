@@ -398,7 +398,6 @@ func (d *Driver) NodeUnstageVolume(
 	// odd collisions between live mount paths, but NOT, say, missing NVMe
 	// devices or even mountpoints - that might be a side-effect of k8s
 	// retrying the call...
-	vid = vid
 
 	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -600,11 +599,10 @@ func (d *Driver) NodeUnpublishVolume(
 		return nil, mkEinvalMissing("target_path")
 	}
 
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	_, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
-	vid = vid
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()

@@ -1,11 +1,13 @@
 # Copyright (C) 2016--2020 Lightbits Labs Ltd.
 # SPDX-License-Identifier: Apache-2.0
 
-.PHONY: all test test_long build package push clean
+.PHONY: all test test_long build build-image push clean
 
 ifeq ($(V),1)
     GO_VERBOSE := -v
 endif
+
+TTY=$(if $(shell [ -t 0 ] && echo 1),-it, )
 
 # do NOT change or force these from the cmd-line for custom builds, use
 # $PLUGIN_NAME/$PLUGIN_VER for that instead:
@@ -53,7 +55,26 @@ override LABELS := \
 
 YAML_PATH := deploy/k8s
 
-all: package
+IMG_BUILDER := image-builder:v0.0.1
+IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
+
+##@ General
+
+# The help target prints out all targets with their descriptions organized
+# beneath their categories. The categories are represented by '##@' and the
+# target descriptions by '##'. The awk commands is responsible for reading the
+# entire set of makefiles included in this invocation, looking for lines of the
+# file as xyz: ## something, and then pretty-format the target and help. Then,
+# if there's a line with ##@ something, that gets pretty-printed as a category.
+# More info on the usage of ANSI control characters for terminal formatting:
+# https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_parameters
+# More info on the awk command:
+# http://linuxcommand.org/lc3_adv_awk.php
+
+help: ## Display this help.
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
+
 
 # NOTE: some tests have additional external dependencies (e.g. network access,
 # presence of remote LightOS cluster. these will not be run by default and require
@@ -64,21 +85,28 @@ all: package
 # to make sure they're actually being run against an external entity, rather
 # than `go test` just regurgitating cached old test results.
 #
-# TODO: consider adding at least 'go vet'. in related news, consider adding a
-# separate target 'lint' to push it through the entire 'gometalinter' (or,
+# TODO: consider adding a separate target 'lint' to push it through the entire 'gometalinter' (or,
 # preferably, 'golangci-lint'!) with custom config - but that implies quite a
 # bit of external dependencies as part of the toolchain...
-test:
+test: fmt vet ## Run short test suite
 	$(GO_VARS) go test $(GO_VERBOSE) -short -cover ./...
 
-# you're looking at over 10min here...
-test_long:
+test_long: fmt vet ## Run long test suite (you're looking at over 10min here...)
 	$(GO_VARS) go test $(GO_VERBOSE) -cover ./...
 
-build:
+fmt: ## Run go fmt against code
+	go fmt ./...
+
+vet: ## Run go vet against code.
+	go vet ./...
+
+build: fmt ## Build plugin binary.
 	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
 
-generate_deployment_yaml: deploy/k8s helm
+deploy/k8s:
+	mkdir -p deploy/k8s
+
+manifests: verify_image_registry deploy/k8s
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -182,7 +210,10 @@ generate_deployment_yaml: deploy/k8s helm
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
 
-generate_examples_yaml: deploy/examples helm
+deploy/examples:
+	mkdir -p deploy/examples
+
+examples_manifests: deploy/examples
 	helm template --set storageclass.enabled=true \
 		--set global.storageClass.mgmtEndpoints="10.10.0.2:443\,10.10.0.3:443\,10.10.0.4:443" \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/secret-and-storage-class.yaml
@@ -213,48 +244,37 @@ generate_examples_yaml: deploy/examples helm
 		--set snaps.stage=pvc-from-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-pvc-workload.yaml
 
-package: build generate_bundle
-	@docker build $(LABELS) -t $(DOCKER_REGISTRY)/$(DOCKER_TAG) deploy
-
-push: package
+verify_image_registry:
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
-	@docker push $(DOCKER_REGISTRY)/$(DOCKER_TAG)
+
+build-image: verify_image_registry build  ## Builds the image, but does not push.
+	@docker build $(LABELS) -t $(IMG) deploy
+
+push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
+	@docker push $(IMG)
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
 	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~ build/* deploy/helm/charts/*
 	@git clean -f '*.orig'
 
-image_tag:
+image_tag: ## Print image tag
 	@echo $(DOCKER_TAG)
 
-full_image_tag:
-	@echo $(DOCKER_REGISTRY)/$(DOCKER_TAG)
+full_image_tag: verify_image_registry ## Prints full name of plugin image.
+	@echo $(IMG)
 
-generate_bundle: generate_deployment_yaml helm_package
+bundle: verify_image_registry manifests examples_manifests helm_package
 	@mkdir -p ./build
 	rm -rf build/lb-csi-bundle-*.tar.gz
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	@tar -C deploy -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
 		k8s examples helm/charts
 
-deploy/k8s:
-	mkdir -p deploy/k8s
-
-deploy/examples:
-	mkdir -p deploy/examples
-
-helm:
-	curl -fsSL -o /tmp/get_helm.sh \
-		https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
-	chmod 700 /tmp/get_helm.sh
-	/tmp/get_helm.sh --version v3.6.3
-	rm /tmp/get_helm.sh
-
 deploy/helm/charts:
 	mkdir -p deploy/helm/charts
 
-helm_package: deploy/helm/charts helm
+helm_package: deploy/helm/charts
 	rm -rf ./deploy/helm/charts/*
 	helm package -d ./deploy/helm/charts deploy/helm/lb-csi
 	helm lint ./deploy/helm/charts/lb-csi-plugin-*.tgz
@@ -268,3 +288,51 @@ helm_package_upload: helm_package
 	find ./deploy/helm/charts -name '*.tgz' -type f -exec \
 		curl -XPOST -L -u $(HELM_CHART_REPOSITORY_USERNAME):$(HELM_CHART_REPOSITORY_PASSWORD) -T {} http://$(HELM_CHART_REPOSITORY)/api/charts \;
 	helm repo update
+
+image-builder: ## Build image for building the plugin and the bundle.
+	@docker build \
+		--build-arg UID=$(shell id -u) \
+		--build-arg GID=$(shell id -g) \
+		--build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) \
+		-t ${IMG_BUILDER} -f Dockerfile.builder .
+
+docker-cmd := docker run --rm --privileged $(TTY) \
+		-e DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
+		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
+		-e BUILD_HASH=$(BUILD_HASH) \
+		-e BUILD_ID=$(BUILD_ID) \
+		-e RELEASE=$(RELEASE) \
+		-e PLUGIN_VER=$(PLUGIN_VER) \
+		-e HELM_CHART_REPOSITORY=$(HELM_CHART_REPOSITORY) \
+		-e HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
+		-e HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD) \
+		-e DISCOVERY_CLIENT_BUILD_HASH=$(DISCOVERY_CLIENT_BUILD_HASH) \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v `pwd`:/go/src/$(PKG_PREFIX) \
+		-w /go/src/$(PKG_PREFIX) \
+		-h $(BUILD_HOST) \
+		${IMG_BUILDER}
+
+docker-run: image-builder ## Enter image-builder shell.
+	@${docker-cmd} sh
+
+docker-helm-package: image-builder ## Generate helm packages in image-builder.
+	@${docker-cmd} sh -c "$(MAKE) helm_package"
+
+docker-helm-package-upload: image-builder ## Upload helm packages to Helm Repo in image-builder.
+	@${docker-cmd} sh -c "$(MAKE) helm_package_upload"
+
+docker-build: image-builder ## Build plugin and package it in image-builder.
+	@${docker-cmd} sh -c "$(MAKE) build-image"
+
+docker-push: push
+
+docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
+	@${docker-cmd} sh -c "$(MAKE) bundle"
+
+docker-test: image-builder ## Run short test suite in image-builder
+	${docker-cmd} sh -c "$(MAKE) test"
+
+.PHONY: docs
+docs:
+	@$(BUILD_FLAGS) $(MAKE) -f docs/Makefile.docs pandoc-pdf

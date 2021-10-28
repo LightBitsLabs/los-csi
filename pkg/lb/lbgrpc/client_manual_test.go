@@ -1,6 +1,7 @@
 // Copyright (C) 2016--2020 Lightbits Labs Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+//go:build have_net && have_lb && manual
 // +build have_net,have_lb,manual
 
 package lbgrpc_test
