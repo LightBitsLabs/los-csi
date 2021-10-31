@@ -1,4 +1,4 @@
-FROM centos:7.9.2009
+FROM alpine:3.14
 
 LABEL maintainers="Lightbits Labs" \
       description="LB CSI Plugin" \
@@ -13,13 +13,6 @@ LABEL maintainers="Lightbits Labs" \
 #     build.host
 #     build.time
 
-# at least as of v18.06.1, Docker appears to interpret empty second source
-# arg to COPY as "*" (shurely shome mishtake)... hence this silliness:
-COPY lb-csi-plugin /
-
-RUN yum install -y e2fsprogs xfsprogs $EXTRA_PACKAGES && \
-    yum clean all || true
-
 ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_NODE_ID=             \
     LB_CSI_DEFAULT_FS=ext4      \
@@ -27,5 +20,15 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_LOG_ROLE=node        \
     LB_CSI_LOG_TIME=true        \
     LB_CSI_LOG_FMT=text
+
+RUN apk add --no-cache \
+    e2fsprogs e2fsprogs-extra \
+    xfsprogs xfsprogs-extra \
+    blkid \
+    $EXTRA_PACKAGES
+
+COPY licenses /licenses
+
+COPY lb-csi-plugin /
 
 ENTRYPOINT ["/lb-csi-plugin"]
