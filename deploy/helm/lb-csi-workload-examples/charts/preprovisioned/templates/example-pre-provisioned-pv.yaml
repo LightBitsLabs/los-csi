@@ -11,17 +11,17 @@ spec:
     driver: csi.lightbitslabs.com       
     fsType: {{ .Values.global.storageClass.fsType }}
     controllerExpandSecretRef:  
-      name: {{ .Values.global.storageClass.secretName }}
-      namespace: {{ .Values.global.storageClass.secretNamespace }}
+      name: {{ .Values.global.jwtSecret.name }}
+      namespace: {{ .Values.global.jwtSecret.namespace }}
     controllerPublishSecretRef: 
-      name: {{ .Values.global.storageClass.secretName }}
-      namespace: {{ .Values.global.storageClass.secretNamespace }}
+      name: {{ .Values.global.jwtSecret.name }}
+      namespace: {{ .Values.global.jwtSecret.namespace }}
     nodePublishSecretRef:       
-      name: {{ .Values.global.storageClass.secretName }}
-      namespace: {{ .Values.global.storageClass.secretNamespace }}
+      name: {{ .Values.global.jwtSecret.name }}
+      namespace: {{ .Values.global.jwtSecret.namespace }}
     nodeStageSecretRef:
-      name: {{ .Values.global.storageClass.secretName }}
-      namespace: {{ .Values.global.storageClass.secretNamespace }}
+      name: {{ .Values.global.jwtSecret.name }}
+      namespace: {{ .Values.global.jwtSecret.namespace }}
     volumeHandle: mgmt:{{ (required "mgmtEndpoints field is required" .Values.global.storageClass.mgmtEndpoints) }}|nguid:{{ (required "lightosVolNguid field is required" .Values.lightosVolNguid) }}|proj:{{ .Values.global.storageClass.projectName }}|scheme:grpcs
   persistentVolumeReclaimPolicy: Delete
   storageClassName: {{ .Values.global.storageClass.name | quote }}

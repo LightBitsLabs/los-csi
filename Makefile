@@ -216,6 +216,7 @@ deploy/examples:
 examples_manifests: deploy/examples
 	helm template --set storageclass.enabled=true \
 		--set global.storageClass.mgmtEndpoints="10.10.0.2:443\,10.10.0.3:443\,10.10.0.4:443" \
+		--set global.jwtSecret.jwt="eyJhbGciOiJSUzI1NiIsImtpZCI6InN5c3RlbTpyb290IiwidHlwIjoiSldUIn0.eyJhdWQiOiJMaWdodE9TIiwiZXhwIjoxNjY0MTc4NjA5LCJpYXQiOjE2MzI2NDI2MDksImlzcyI6InN5c3Rlc3RzIiwianRpIjoiU0gwLXhVR1R3M2hLdFFRRURzckVtUSIsIm5iZiI6MTYzMjY0MjYwOSwicm9sZXMiOlsic3lzdGVtOmNsdXN0ZXItYWRtaW4iXSwic3ViIjoibGlnaHRvcy1jbGllbnQifQ.qd1L0FnFIYwPZuZY0D2109l1a8D6YekriiPLnNNhu7MygrMNQFZ9hbkv1XNIeZR0mopTFmziMYV95TzP7fEh2_4Y4Q9rmpoi-d2NCsK3dwGdI1DIhjbC07YZUOmg0nNPcJFeWvbFv-gPaIkKpOBY9sL8tNPLVc3RsazksfOd4xC6InGG509sfoPDzIBW84WahezEuma32Ljw4BWDBAK-IQ3UOEEvpiOh-YkEKeLGkQNNPNqRUoEEnwTs5Vue9DC0L9OqRIfK1K4GEGOlF1P69jJn1tdRoUf8z1fZpvdt4GBhR5L8pK7gSQpDxXI-OgXi0YYvZE-2IIcGJjXXHa5OiA" \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/secret-and-storage-class.yaml
 	helm template --set block.enabled=true \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/block-workload.yaml
@@ -225,6 +226,8 @@ examples_manifests: deploy/examples
 		deploy/helm/lb-csi-workload-examples > deploy/examples/statefulset-workload.yaml
 	helm template --set preprovisioned.enabled=true \
 		--set global.storageClass.mgmtEndpoints="10.10.0.2:443\,10.10.0.3:443\,10.10.0.4:443" \
+		--set global.jwtSecret.name="example-secret" \
+		--set global.jwtSecret.namespace="default" \
 		--set preprovisioned.lightosVolNguid=60907a32-76c7-11eb-ac25-fb55927189f9 \
 		--set preprovisioned.volumeMode=Filesystem \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-workload.yaml
@@ -255,7 +258,11 @@ push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY 
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
-	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml deploy/*.rpm *~ deploy/*~ build/* deploy/helm/charts/*
+	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml \
+		deploy/*.rpm *~ deploy/*~ build/* \
+		deploy/helm/charts/* deploy/k8s \
+		deploy/examples \
+		docs/book
 	@git clean -f '*.orig'
 
 image_tag: ## Print image tag
