@@ -323,7 +323,7 @@ func (d *Driver) NodeStageVolume(
 	wantFSType := mntCap.FsType
 	fsType, err := d.mounter.GetDiskFormat(devPath)
 	if err != nil {
-		return nil, mkEExec("error examining format of volume %s", vid.uuid)
+		return nil, mkEExec("error examining format of volume %q. devPath: %q. error: %v", vid.uuid, devPath, err)
 	}
 	if fsType != "" {
 		if fsType != wantFSType && wantFSType != "" {
