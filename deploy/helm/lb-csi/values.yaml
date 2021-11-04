@@ -1,14 +1,14 @@
 ---
 enableExpandVolume: true
 enableSnapshot: true
-image: "lb-csi-plugin:1.6.0"
+image: "lb-csi-plugin:1.7.0"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
 sidecarImageRegistry: quay.io
 imagePullPolicy: IfNotPresent
 imagePullSecrets: []
 discoveryClientInContainer: false
 maxIOQueues: 0
-discoveryClientImage: "lb-nvme-discovery-client:1.6.0"
+discoveryClientImage: "lb-nvme-discovery-client:1.7.0"
 controllerServiceAccountName: lb-csi-ctrl-sa
 nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet
