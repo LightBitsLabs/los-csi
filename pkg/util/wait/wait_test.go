@@ -102,7 +102,7 @@ func doBackoffTimeoutTest(t *testing.T, opts wait.Backoff) {
 	if factor == 0 {
 		factor = 1.0
 	}
-	margin := 10 * ms
+	margin := 15 * ms
 	exactDelay := time.Duration(0)
 	start := time.Now()
 
