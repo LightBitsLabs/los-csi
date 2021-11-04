@@ -583,10 +583,10 @@ func testGetGetSameClusterABAB(env *testEnv) {
 	}
 	env.assertNumClients(1)
 	env.pool.PutClient(clnt1)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(1)
 	env.pool.PutClient(clnt2)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(0)
 	env.assertTotalClients(1)
 }
@@ -602,10 +602,10 @@ func testGetGetDiffClustersABBA(env *testEnv) {
 	}
 	env.assertNumClients(2)
 	env.pool.PutClient(clnt1)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(1)
 	env.pool.PutClient(clnt2)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(0)
 	env.assertTotalClients(2)
 }
@@ -621,10 +621,10 @@ func testGetGetDiffClustersABAC(env *testEnv) {
 	}
 	env.assertNumClients(2)
 	env.pool.PutClient(clnt1)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(1)
 	env.pool.PutClient(clnt2)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(0)
 	env.assertTotalClients(2)
 }
@@ -634,7 +634,7 @@ func testGetExpireGet(env *testEnv) {
 	clnt1 := env.assertGetClient(ctx, hostA, "#1")
 	env.assertNumClients(1)
 	env.pool.PutClient(clnt1)
-	time.Sleep(3 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	env.assertNumClients(0)
 	clnt2 := env.assertGetClient(ctx, hostA, "#2")
 	env.assertNumClients(1)
