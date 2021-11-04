@@ -24,7 +24,7 @@ import (
 
 const (
 	defaultTimeout = 3 * time.Second
-	leeway         = 5 * time.Millisecond
+	leeway         = 10 * time.Millisecond
 )
 
 // would it have killed the core team to just export the lockedSource?
