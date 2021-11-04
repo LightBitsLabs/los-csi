@@ -30,3 +30,5 @@ https://github.com/LightBitsLabs/los-csi/tree/duros/docs/upgrade
 
 - Implement NodeGetVolumeStats. (issue: LBM1-17861)
 - Add xfs support. (issue: LBM1-12627)
+- Add image for building lb-csi plugin and all related artifacts. Edit Makefile to run build/test/package targets in that image.
+- Port lb-csi-plugin image to Alpine:3.14 base image.
