@@ -5,9 +5,6 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 ENV BOOKDIR /mdbook
 
-VOLUME $BOOKDIR
-WORKDIR $BOOKDIR
-
 RUN apk add --no-cache g++ openssl-dev expat cmake curl \
 	irrlicht-dev libbz2 \
 	sqlite-dev \
@@ -47,6 +44,20 @@ ENV PATH /root/.cargo/bin:$PATH
 RUN cargo install mdbook
 RUN cargo install mdbook-latex
 
-WORKDIR /mdbook
+ENV UNAME=app
+
+ARG GID=1000
+ARG UID=1000
+
+RUN echo $UNAME
+RUN echo $UID
+RUN echo $GID
+
+RUN addgroup -g $GID $UNAME
+RUN adduser --disabled-password -u $UID -G $UNAME $UNAME
+
+VOLUME $BOOKDIR
+WORKDIR $BOOKDIR
+
 #ENTRYPOINT [ "/usr/bin/mdbook" ]
 ENTRYPOINT [ "sh" ]
