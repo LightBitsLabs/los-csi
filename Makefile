@@ -25,7 +25,7 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
 # for local testing you can override those and $DOCKER_REGISTRY:
 override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
 override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
-DOCKER_TAG := $(PLUGIN_NAME):$(or $(BUILD_HASH),$(PLUGIN_VER))
+DOCKER_TAG := $(PLUGIN_NAME):$(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
 
 
 DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
