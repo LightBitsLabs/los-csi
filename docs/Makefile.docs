@@ -28,8 +28,14 @@ pandoc-pdf: mdbook-build
 		-c "pandoc --pdf-engine=xelatex --toc \
 		--from=markdown+grid_tables+pipe_tables+multiline_tables \
 		./book/latex/'LightOS CSI Plugin Deployment Guide.md' \
-		--to latex -o ./book/latex/lb-csi-plugin-deployment-guide-${RELEASE}.pdf \
-		-V block-headings --preserve-tabs \
+		--to latex \
+		-o ./book/latex/lb-csi-plugin-deployment-guide-${RELEASE}.pdf \
+		-V block-headings \
+		-V colorlinks=true \
+		-V linkcolor=blue \
+		-V urlcolor=blue \
+		-V toccolor=gray \
+		--preserve-tabs \
 		--metadata-file=metadata.md \
 		--template=src/templates/default.latex \
 		--listings \
