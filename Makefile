@@ -25,8 +25,6 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
 # for local testing you can override those and $DOCKER_REGISTRY:
 override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
 override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
-DOCKER_TAG := $(PLUGIN_NAME):$(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
-
 
 DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
 
@@ -36,6 +34,13 @@ override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
 override BUILD_TIME := $(shell date "+%Y-%m-%d.%H:%M:%S.%N%:z")
 override GIT_VER := $(or \
     $(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN)
+
+
+# set BUILD_HASH to GIT_VER if not provided
+override BUILD_HASH := $(or $(BUILD_HASH),$(GIT_VER))
+TAG := $(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
+DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
+
 
 LDFLAGS ?= \
     -X $(PKG_PREFIX)/pkg/driver.version=$(PLUGIN_VER) \
