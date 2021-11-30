@@ -844,6 +844,9 @@ func (d *Driver) NodeExpandVolume(
 		return nil, err
 	}
 
+	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
+	defer d.bdl.Unlock()
+
 	devicePath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return nil, err
