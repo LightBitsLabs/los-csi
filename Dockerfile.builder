@@ -20,12 +20,9 @@ ARG GID=1000
 ARG UID=1000
 ARG DOCKER_GID=998
 
-RUN echo $UNAME
-RUN echo $UID
-RUN echo $GID
-RUN echo $DOCKER_GID
-
 RUN addgroup -g $GID $UNAME
+# on alpine ping group is coliding with docker-group on id 999 - delete it if exists
+RUN getent group ping && delgroup ping
 RUN addgroup -g $DOCKER_GID docker
 RUN adduser --disabled-password -u $UID -G $UNAME -G docker $UNAME
 USER $UNAME
