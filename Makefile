@@ -294,12 +294,7 @@ helm_package: deploy/helm/charts
 	helm lint ./deploy/helm/charts/lb-csi-workload-examples-*.tgz
 
 helm_package_upload: helm_package
-	@if [ -z "$(HELM_CHART_REPOSITORY)" ] ; then echo "HELM_CHART_REPOSITORY not set, can't push" ; exit 1 ; fi
-	@if [ -z "$(HELM_CHART_REPOSITORY_USERNAME)" ] ; then echo "HELM_CHART_REPOSITORY_USERNAME not set, can't push" ; exit 1 ; fi
-	@if [ -z "$(HELM_CHART_REPOSITORY_PASSWORD)" ] ; then echo "HELM_CHART_REPOSITORY_PASSWORD not set, can't push" ; exit 1 ; fi
-	find ./deploy/helm/charts -name '*.tgz' -type f -exec \
-		curl -XPOST -L -u $(HELM_CHART_REPOSITORY_USERNAME):$(HELM_CHART_REPOSITORY_PASSWORD) -T {} http://$(HELM_CHART_REPOSITORY)/api/charts \;
-	helm repo update
+	@$(BUILD_FLAGS) ./scripts/upload-helm-packages.sh
 
 image-builder: ## Build image for building the plugin and the bundle.
 	@docker build \
