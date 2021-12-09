@@ -32,3 +32,7 @@ https://github.com/LightBitsLabs/los-csi/tree/duros/docs/upgrade
 - Add xfs support. (issue: LBM1-12627)
 - Add image for building lb-csi plugin and all related artifacts. Edit Makefile to run build/test/package targets in that image.
 - Port lb-csi-plugin image to Alpine:3.14 base image.
+- fixed helm workload example for pre-provisioned volume:
+  - added a storage parameter to specify storage size of existing volume.
+  - added a missing annotation to enable PV deletion.
+  - added an example in the docs.

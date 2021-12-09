@@ -126,6 +126,8 @@ filesystem:
 preprovisioned:
   enabled: false
   lightosVolNguid: "" # required! nguid of LightOS volume.
+  volumeMode: null # required! Block/Filesystem
+  storage: "" # required! 10Gi/3Gi/etc...
 statefulset:
   enabled: false
   statefulSetName: example-sts
@@ -150,7 +152,9 @@ Values Description:
 | filesystem.nodeName                    | Deploy `POD` on specific node using node name                      | ""      | false |
 | statefulset.enable                     | Deploy statefulset workload                                        | false   | false |
 | preprovisioned.enable                  | Deploy preprovisioned volume workload                              | false   | false |
-| preprovisioned.lightosVolNguid         | NGUID of LightOS volume                                            | ""      | false |
+| preprovisioned.lightosVolNguid         | NGUID of LightOS volume                                            | ""      | true  |
+| preprovisioned.volumeMode              | Specifies if this volume is used for Block or Filesystem           | ""      | true  |
+| preprovisioned.storage                 | Size of the volume this PV will point to.                          | ""      | true  |
 | snaps.enable                           | Deploy snapshot workloads                                          | false   | false |
 | snaps.pvcName                          | Name of the pvc for snapshot example                               | example-pvc | false |
 | snaps.stage                            | Name the snapshot stage we want to execute                         | ""  | false |

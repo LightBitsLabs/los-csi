@@ -22,8 +22,8 @@ lightos-helm-repo       https://dl.lightbitslabs.com/public/lightos-csi/helm/cha
 ```bash
 helm search repo lb-csi
 NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
-lightos-helm-repo/lb-csi-plugin                 0.4.0           1.6.0           Helm Chart for LightOS CSI Plugin.
-lightos-helm-repo/lb-csi-workload-examples      0.4.0           1.6.0           Helm Chart for LightOS CSI Workload Examples.
+lightos-helm-repo/lb-csi-plugin                 0.5.0           1.7.0           Helm Chart for LightOS CSI Plugin.
+lightos-helm-repo/lb-csi-workload-examples      0.5.0           1.7.0           Helm Chart for LightOS CSI Workload Examples.
 ```
 
 ### Deploying release `lb-csi` using `lb-csi-plugin` Chart

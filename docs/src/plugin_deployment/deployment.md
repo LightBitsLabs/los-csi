@@ -43,7 +43,7 @@ To ensure smooth access to the storage volumes exported by the LightOS clusters,
 
 > Note:
 > 
-> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v2.3.8 Installation Guide document.
+> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v2.3.12 Installation Guide document.
 
 
 Before deploying the Lightbits CSI plugin, you should verify that:
@@ -335,7 +335,7 @@ metadata:
               ...
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.6.0
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.7.0
               ...
         - name: csi-provisioner
           image: quay.io/k8scsi/csi-provisioner:v1.5.0
@@ -353,7 +353,7 @@ metadata:
               ... 
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.6.0
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.7.0
               ...
         - name: driver-registrar
           image: quay.io/k8scsi/driver-registrar:v1.2.0
