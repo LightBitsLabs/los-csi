@@ -235,6 +235,7 @@ examples_manifests: deploy/examples
 		--set global.jwtSecret.namespace="default" \
 		--set preprovisioned.lightosVolNguid=60907a32-76c7-11eb-ac25-fb55927189f9 \
 		--set preprovisioned.volumeMode=Filesystem \
+		--set preprovisioned.storage=1Gi \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-workload.yaml
 	helm template --set snaps.enabled=true \
 		--set snaps.stage=snapshot-class \

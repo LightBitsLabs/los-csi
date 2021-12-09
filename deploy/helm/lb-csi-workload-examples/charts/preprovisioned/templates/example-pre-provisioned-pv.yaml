@@ -2,21 +2,23 @@ apiVersion: v1
 kind: PersistentVolume  
 metadata:     
   name: example-pre-provisioned-pv
+  labels:
+    name: example-pre-provisioned-pv
 spec:
   accessModes:
   - ReadWriteOnce       
   capacity:   
-    storage: 10Gi       
+    storage: {{ (required "storage field is required" .Values.storage) }}
   csi:
-    driver: csi.lightbitslabs.com       
+    driver: csi.lightbitslabs.com
     fsType: {{ .Values.global.storageClass.fsType }}
-    controllerExpandSecretRef:  
+    controllerExpandSecretRef:
       name: {{ .Values.global.jwtSecret.name }}
       namespace: {{ .Values.global.jwtSecret.namespace }}
-    controllerPublishSecretRef: 
+    controllerPublishSecretRef:
       name: {{ .Values.global.jwtSecret.name }}
       namespace: {{ .Values.global.jwtSecret.namespace }}
-    nodePublishSecretRef:       
+    nodePublishSecretRef:
       name: {{ .Values.global.jwtSecret.name }}
       namespace: {{ .Values.global.jwtSecret.namespace }}
     nodeStageSecretRef:

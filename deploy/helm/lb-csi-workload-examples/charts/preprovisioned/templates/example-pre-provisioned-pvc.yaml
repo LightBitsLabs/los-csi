@@ -1,0 +1,14 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: example-pre-provisioned-pvc
+spec:
+  storageClassName: {{ .Values.global.storageClass.name | quote }}
+  selector:
+    matchLabels:
+      name: example-pre-provisioned-pv
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ (required "storage field is required" .Values.storage) }}

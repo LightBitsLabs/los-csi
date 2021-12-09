@@ -1,2 +1,4 @@
 enabled: false
 lightosVolNguid: "" # required! nguid of LightOS volume.
+volumeMode: null # required! Block/Filesystem
+storage: "" # required! 10Gi/3Gi/etc...

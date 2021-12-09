@@ -32,6 +32,7 @@ preprovisioned:
   enabled: false
   lightosVolNguid: "" # required! nguid of LightOS volume.
   volumeMode: null # required! one of ["Block", "Filesystem"]
+  storage: "" # required! 1Gi
 statefulset:
   enabled: false
   statefulSetName: example-sts

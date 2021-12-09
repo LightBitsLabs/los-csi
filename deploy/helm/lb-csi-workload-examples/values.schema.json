@@ -130,6 +130,10 @@
           "description": "Rather this volume is Block or Filesystem",
           "type": [ "string", "null" ],
           "enum": ["Block", "Filesystem", null]
+        },
+        "storage": {
+          "description": "Size of the volume this PV will point to.",
+          "type": "string"
         }
       }
     },
