@@ -4,6 +4,8 @@ metadata:
   name: example-pre-provisioned-pv
   labels:
     name: example-pre-provisioned-pv
+  annotations:
+    pv.kubernetes.io/provisioned-by: csi.lightbitslabs.com
 spec:
   accessModes:
   - ReadWriteOnce       
