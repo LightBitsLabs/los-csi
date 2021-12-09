@@ -777,9 +777,11 @@ func (d *Driver) ControllerExpandVolume(
 		}).Errorf("clnt.UpdateVolume() succeeded, but resultant volume Capacity smaller then requested capacity")
 		return nil, mkEagain("failed to expand volume %q", vid.uuid)
 	}
+	nodeExpansionRequired := d.nodeExpansionRequired(req.VolumeCapability)
+	log.Infof("nodeExpansionRequired: %t. req.VolumeCapability: %+v", nodeExpansionRequired, req.VolumeCapability)
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes:         int64(vol.Capacity),
-		NodeExpansionRequired: d.nodeExpansionRequired(req.VolumeCapability),
+		NodeExpansionRequired: nodeExpansionRequired,
 	}, nil
 }
 
