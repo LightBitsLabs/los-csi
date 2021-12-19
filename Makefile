@@ -290,7 +290,7 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	rm -rf build/lb-csi-bundle-*.tar.gz
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	@tar -C deploy -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
-		k8s examples helm/charts
+		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
 	mkdir -p deploy/helm/charts
