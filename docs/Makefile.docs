@@ -14,11 +14,26 @@ push-image:
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
 	@docker push ${IMAGE}
 
+build-image: LOCAL_IMAGE_ID:=$(shell docker images -q $(IMAGE) 2>/dev/null)
+build-image: IMAGE_EXISTS_IN_REGISTRY:=$(shell docker pull ${IMAGE} 1>/dev/null; echo $$?)
 build-image:
-	@docker build \
-		--build-arg UID=$(shell id -u) \
-		--build-arg GID=$(shell id -g) \
-		-t ${IMAGE} -f docs/Dockerfile .
+	@# image does not exist locally - build it
+	@echo "LOCAL_IMAGE_ID: $(LOCAL_IMAGE_ID)"
+	@echo "IMAGE_EXISTS_IN_REGISTRY: $(IMAGE_EXISTS_IN_REGISTRY)"
+	if [ "${LOCAL_IMAGE_ID}" = "" ];then\
+		echo "image doesn't exists locally - try to pull";\
+		if [ ${IMAGE_EXISTS_IN_REGISTRY} = 0 ];then\
+			echo "image pulled from registry - do nothing";\
+		else\
+			echo "image doesn't exists locally and in registry - build it";\
+			docker build \
+				--build-arg UID=$(shell id -u) \
+				--build-arg GID=$(shell id -g) \
+				-t ${IMAGE} -f docs/Dockerfile .;\
+		fi;\
+	else\
+		echo "image exists locally - do nothing";\
+	fi
 
 mdbook-build: build-image
 	@docker run --rm -v `pwd`/docs:/mdbook ${IMAGE} -c "mdbook build" || /bin/true
