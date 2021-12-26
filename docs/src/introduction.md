@@ -38,15 +38,15 @@ If you have any questions about the deployment, usage, or functionality of the L
 
 ## LB CSI Driver Capabilities
 
-| Features                    | K8s v1.16 | K8s v1.17 | K8s v1.18 | K8s v1.19 | K8s v1.20 | K8s v1.21 |
+| Features                    | K8s v1.17 | K8s v1.18 | K8s v1.19 | K8s v1.20 | K8s v1.21 | K8s v1.22 |
 |-----------------------------|-----------|-----------|-----------|-----------|-----------|-----------|
 | Static Provisioning         | V         | V         | V         | V         | V         | V         |
 | Dynamic Provisioning        | V         | V         | V         | V         | V         | V         |
 | Expand Persistent Volume    | V         | V         | V         | V         | V         | V         |
-| Create VolumeSnapshot       | X         | V         | V         | V         | V         | V         |
-| Create Volume from Snapshot | X         | V         | V         | V         | V         | V         |
-| Delete Snapshot             | X         | V         | V         | V         | V         | V         |
-| CSI Volume Cloning          | X         | V         | V         | V         | V         | V         |
+| Create VolumeSnapshot       | V         | V         | V         | V         | V         | V         |
+| Create Volume from Snapshot | V         | V         | V         | V         | V         | V         |
+| Delete Snapshot             | V         | V         | V         | V         | V         | V         |
+| CSI Volume Cloning          | V         | V         | V         | V         | V         | V         |
 | CSI Raw Block Volume        | V         | V         | V         | V         | V         | V         |
 | CSI Ephemeral Volume        | V         | V         | V         | V         | V         | V         |
 | Topology                    | X         | X         | X         | X         | X         | X         |

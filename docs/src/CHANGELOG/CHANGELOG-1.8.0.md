@@ -27,3 +27,8 @@ https://github.com/LightBitsLabs/los-csi/tree/v1.8.0/docs
 https://github.com/LightBitsLabs/los-csi/tree/duros/docs/upgrade
 
 ### Highlights
+
+- Drop v1.16 support.
+- Add v1.22 support.
+- Extract Snapshot-Controller and CRDs deployment to it's own Helm Chart. Remove the deployment of the Snapshot-Controller as a sidecar
+  and deploy it as a stand alone deployment.

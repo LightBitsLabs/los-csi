@@ -20,11 +20,38 @@ lightos-helm-repo       https://dl.lightbitslabs.com/public/lightos-csi/helm/cha
 ### Listing All packages from Lightbits Helm Repository
 
 ```bash
-helm search repo lb-csi
+helm search repo lightos-helm-repo
 NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
-lightos-helm-repo/lb-csi-plugin                 0.5.0           1.7.0           Helm Chart for LightOS CSI Plugin.
-lightos-helm-repo/lb-csi-workload-examples      0.5.0           1.7.0           Helm Chart for LightOS CSI Workload Examples.
+lightos-helm-repo/lb-csi-plugin                 0.6.0           1.8.0           Helm Chart for LightOS CSI Plugin.
+lightos-helm-repo/lb-csi-workload-examples      0.6.0           1.8.0           Helm Chart for LightOS CSI Workload Examples.
+lightos-helm-repo/snapshot-controller-3         0.6.0           3.0.3           Deploy snapshot-controller for k8s version < v1.20
+lightos-helm-repo/snapshot-controller-4         0.6.0           4.2.1           Deploy snapshot-controller for k8s version >= v1.20
 ```
+
+
+### Deploying Snapshot-Controller On Kubernetes Cluster
+
+For reference see: [kubernetes-csi#snapshot-controller](https://kubernetes-csi.github.io/docs/snapshot-controller.html#snapshot-controller)
+
+Volume snapshot is managed by a controller named `Snapshot-Controller`.
+
+Kubernetes admins should bundle and deploy the controller and CRDs as part of their Kubernetes cluster management process (independent of any CSI Driver).
+
+If your cluster does not come pre-installed with the correct components, you may manually install these components by executing these [steps](https://kubernetes-csi.github.io/docs/snapshot-controller.html#deployment)
+
+For convenience we provide Helm Charts to deploy snapshot-controller, CRDs and RBAC rules:
+
+```bash
+k8s/
+lightos-helm-repo/snapshot-controller-3         0.6.0           3.0.3           Deploy snapshot-controller for k8s version < v1.20
+lightos-helm-repo/snapshot-controller-4         0.6.0           4.2.1           Deploy snapshot-controller for k8s version >= v1.20
+```
+
+Deploy these resources once before installing `lb-csi-plugin`.
+
+> **NOTE:**
+>
+> If these resources are already deployed for use by other CSI drivers, make sure the versions are correct and skip this step.
 
 ### Deploying release `lb-csi` using `lb-csi-plugin` Chart
 

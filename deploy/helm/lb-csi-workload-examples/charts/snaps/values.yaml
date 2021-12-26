@@ -3,3 +3,4 @@ snapshotStorageClass:
   name: example-snapshot-sc
 pvcName: example-pvc
 stage: "" # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc"]
+kubeVersion: "" # required! example: v1.20, v1.22.5
