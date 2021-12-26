@@ -19,26 +19,22 @@ The LB-CSI plugin Helm Chart is provided in two ways:
 ### Helm Chart Content
 
 ```bash
-├── helm
-│   └── lb-csi
-│       ├── Chart.yaml
-│       ├── templates
-│       │   ├── controllerServiceAccount.yaml
-│       │   ├── csidriver.yaml
-│       │   ├── csinodeinfo_crd.yaml
-│       │   ├── lb-csi-attacher-cluster-role.yaml
-│       │   ├── lb-csi-controller.yaml
-│       │   ├── lb-csi-external-resizer-cluster-role.yaml
-│       │   ├── lb-csi-node.yaml
-│       │   ├── lb-csi-provisioner-cluster-role.yaml
-│       │   ├── nodeServiceAccount.yaml
-│       │   ├── registry-secret.yml
-│       │   ├── secret.yaml
-│       │   ├── snapshot-rbac.yaml
-│       │   ├── volume-snapshot-class-crd.yaml
-│       │   ├── volume-snapshot-content-crd.yaml
-│       │   └── volume-snapshot-crd.yaml
-│       └── values.yaml
+helm/lb-csi
+├── Chart.yaml
+├── templates
+│   ├── controllerServiceAccount.yaml
+│   ├── csidriver.yaml
+│   ├── lb-csi-attacher-cluster-role.yaml
+│   ├── lb-csi-controller.yaml
+│   ├── lb-csi-external-resizer-cluster-role.yaml
+│   ├── lb-csi-node.yaml
+│   ├── lb-csi-provisioner-cluster-role.yaml
+│   ├── nodeServiceAccount.yaml
+│   ├── rbac-csi-snapshotter.yaml
+│   ├── registry-secret.yml
+│   └── secret.yaml
+├── values.schema.json
+└── values.yaml
 ```
 
 ### Chart Values
@@ -50,13 +46,13 @@ The LB-CSI plugin Helm Chart is provided in two ways:
 | maxIOQueues                        | "0"                                     | Overrides the default number of I/O queues created by the driver.<br>Zero value means no override (default driver value is number of cores).  |
 | image                              |  ""                                     | lb-csi-plugin image name (string format:  `<image-name>:<tag>`) |
 | imageRegistry                      | docker.lightbitslabs.com/lightos-csi    | Registry to pull LightBits CSI images  |
-| sidecarImageRegistry               | quay.io                                 | Registry to pull CSI sidecar images                 |
+| sidecarImageRegistry               | k8s.gcr.io                              | Registry to pull CSI sidecar images                 |
 | imagePullPolicy                    | Always                                  |                                                  |
 | imagePullSecrets                   | [] (don't use secret)                   | Specify docker-registry secret names as an array. [example](#using-a-custom-docker-registry)  |
 | controllerServiceAccountName       | lb-csi-ctrl-sa                          | Name of controller service account                                                  |
 | nodeServiceAccountName             | lb-csi-node-sa                          | Name of node service account                                                        |
-| enableExpandVolume                 | true                                    | Allow volume expand feature support (supported for `k8s` v1.16 and above)           |
-| enableExpandVolume                 | true                                    | Allow volume snapshot feature support (supported for `k8s` v1.17 and above)         |
+| enableExpandVolume                 | true                                    | Allow volume expand feature support           |
+| enableSnapshotVolume               | true                                    | Allow volume snapshot feature support         |
 | kubeletRootDir                     | /var/lib/kubelet                        | Kubelet root directory. (change only k8s deployment is different from default)      |
 | kubeVersion                        | ""                                      | Target K8s version for offline manifests rendering (overrides .Capabilities.Version)|
 | jwtSecret                          | []                                      | LightOS API JWT to mount as volume for controller and node pods.                    |

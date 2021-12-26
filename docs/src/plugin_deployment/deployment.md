@@ -26,7 +26,7 @@
 > 
 > The instructions below cover deployment flows for the following environments:
 > 
-> * Deployment on Kubernetes versions between v1.16 and v1.21.x, inclusive.
+> * Deployment on Kubernetes versions between v1.17 and v1.22.x, inclusive.
 > 
 > When deploying the Lightbits CSI plugin, only one set of version-specific instructions for every section needs to be carried out, matching the target Kubernetes environment version.
 
@@ -159,7 +159,7 @@ spec:
     - --allow-privileged=true
     ...
     - --feature-gates=CSIDriverRegistry=true,CSINodeInfo=true
-    image: lbdocker:5000/kube-apiserver:v1.17.5
+    image: k8s.gcr.io/kube-apiserver:v1.22.5
     ...
 ```
 
@@ -235,11 +235,11 @@ The `lb-csi-bundle` includes the following content:
 │   └── statefulset-workload.yaml
 ├── helm
 │   └── charts
-│       ├── lb-csi-plugin-<CHART_VERSION>.tgz
-│       └── lb-csi-workload-examples-<CHART_VERSION>.tgz
+│       ├── lb-csi-plugin-0.6.0.tgz
+│       ├── lb-csi-workload-examples-0.6.0.tgz
+│       ├── snapshot-controller-3-0.6.0.tgz
+│       └── snapshot-controller-4-0.6.0.tgz
 ├── k8s
-│   ├── lb-csi-plugin-k8s-v1.16-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.16.yaml
 │   ├── lb-csi-plugin-k8s-v1.17-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.17.yaml
 │   ├── lb-csi-plugin-k8s-v1.18-dc.yaml
@@ -249,7 +249,11 @@ The `lb-csi-bundle` includes the following content:
 │   ├── lb-csi-plugin-k8s-v1.20-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.20.yaml
 │   ├── lb-csi-plugin-k8s-v1.21-dc.yaml
-│   └── lb-csi-plugin-k8s-v1.21.yaml
+│   ├── lb-csi-plugin-k8s-v1.21.yaml
+│   ├── lb-csi-plugin-k8s-v1.22-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.22.yaml
+│   ├── snapshot-controller-3.yaml
+│   └── snapshot-controller-4.yaml
 ```
 
 - **k8s:** Contains static manifests to deploy `lb-csi-plugin` on various Kubernetes versions.
@@ -257,6 +261,8 @@ The `lb-csi-bundle` includes the following content:
 - **helm/charts:** Contain two Helm Charts:
   - **lb-csi-plugin-<CHART_VERSION>.tgz:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
   - **lb-csi-workload-examples-<CHART_VERSION>.tgz:** Provides various workload examples that use `lb-csi` as persistent storage backend using Helm Chart.
+  - **snapshot-controller-3-<CHART_VERSION>.tgz:** Chart to deploy VolumeSnapshot CRDs and Snapshot-Controller deployment for k8s versions < v1.20. A package that automates the process documented [here](https://kubernetes-csi.github.io/docs/snapshot-controller.html)
+  - **snapshot-controller-4-<CHART_VERSION>.tgz:** Chart to deploy VolumeSnapshot CRDs and Snapshot-Controller deployment for k8s versions >= v1.20. A package that automates the process documented [here](https://kubernetes-csi.github.io/docs/snapshot-controller.html)
 
 > Note
 > 
@@ -283,7 +289,7 @@ If you cannot access the Lightbits Docker registry, contact Lightbits support to
 Furthermore, during the deployment 4-6 of the required Kubernetes sidecar container images will be obtained from the Quay registry:
 
 ```bash
-quay.io
+k8s.gcr.io
 ```
 
 #### Deploying from a Local Private Docker Registry
@@ -302,24 +308,14 @@ Deployment using sidecar container images of versions other than those specified
   docker.lightbitslabs.com/lightos-csi/lb-csi-plugin
   ```
 
-- For deployment on Kubernetes version v1.16.x, the required Kubernetes sidecar containers are:
+- For deployment on Kubernetes versions between v1.17.0 and v1.22.x, since Snapshot support was added, the required Kubernetes sidecar containers are:
 
   ```bash
-  quay.io/k8scsi/csi-node-driver-registrar
-  quay.io/k8scsi/csi-provisioner
-  quay.io/k8scsi/csi-attacher
-  quay.io/k8scsi/csi-resizer
-  ```
-
-- For deployment on Kubernetes versions between v1.17.0 and v1.21.x, since Snapshot support was added, the required Kubernetes sidecar containers are:
-
-  ```bash
-  quay.io/k8scsi/csi-node-driver-registrar
-  quay.io/k8scsi/csi-provisioner
-  quay.io/k8scsi/csi-attacher
-  quay.io/k8scsi/csi-resizer
-  quay.io/k8scsi/snapshot-controller
-  quay.io/k8scsi/csi-snapshotter
+  k8s.gcr.io/sig-storage/csi-node-driver-registrar
+  k8s.gcr.io/sig-storage/csi-provisioner
+  k8s.gcr.io/sig-storage/csi-attacher
+  k8s.gcr.io/sig-storage/csi-resizer
+  k8s.gcr.io/sig-storage/csi-snapshotter
   ```
 
 Once all the relevant container images are staged in the local Image registry, you must modify the Lightbits CSI plugin deployment spec file that you obtained as part of the Supplementary Package. Specifically:
@@ -338,10 +334,10 @@ metadata:
           image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.8.0
               ...
         - name: csi-provisioner
-          image: quay.io/k8scsi/csi-provisioner:v1.5.0
+          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.2
               ...
         - name: csi-attacher
-          image: quay.io/k8scsi/csi-attacher:v2.1.0
+          image: k8s.gcr.io/sig-storage/csi-attacher:v3.3.0
               ...
       imagePullSecrets:
       - name: lb-docker-reg-cred
@@ -356,7 +352,7 @@ metadata:
           image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.8.0
               ...
         - name: driver-registrar
-          image: quay.io/k8scsi/driver-registrar:v1.2.0
+          image: k8s.gcr.io/sig-storage/driver-registrar:v2.1.0
               ...
       imagePullSecrets:
       - name: lb-docker-reg-cred

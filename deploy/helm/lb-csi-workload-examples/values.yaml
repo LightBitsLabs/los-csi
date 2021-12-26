@@ -40,5 +40,6 @@ snaps:
   enabled: false
   pvcName: example-pvc
   stage: "" # required! one of ["example-pvc", "snapshot-from-pvc", "pvc-from-snapshot", "pvc-from-pvc", "snapshot-class", ""]
+  kubeVersion: ""
   snapshotStorageClass:
     name: example-snapshot-sc

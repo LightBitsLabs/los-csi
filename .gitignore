@@ -2,6 +2,7 @@ deploy/lb-csi-plugin
 deploy/helm/charts
 .cache
 deploy/k8s/lb-csi-plugin-*.yaml
+deploy/k8s/snapshot-controller-*.yaml
 deploy/examples
 build/
 .vscode
