@@ -260,9 +260,9 @@ func TestParseSliceCSV(t *testing.T) {
 
 func TestParseSliceIPAddys(t *testing.T) {
 	type testCase struct {
-		tgts []string
-		eps  endpoint.Slice
-		eps4 endpoint.Slice
+		tgts  []string
+		eps   endpoint.Slice
+		ipeps endpoint.Slice
 	}
 
 	tgt4a := "192.168.0.1:80"
@@ -277,11 +277,21 @@ func TestParseSliceIPAddys(t *testing.T) {
 	epFoo := endpoint.MustParse(tgtFoo)
 	tgt6a := "[2001:0db8:0a0b:12f0:0000:0000:0000:0001]:443"
 	ep6a := endpoint.MustParse(tgt6a)
+	tgt6b := "[2001:db8::1]:80"
+	ep6b := endpoint.MustParse(tgt6b)
+	tgt6c := "[fe80::dead:beef]:80"
+	ep6c := endpoint.MustParse(tgt6c)
+	tgt6d := "[1]:80"
+	ep6d := endpoint.MustParse(tgt6d)
+	tgt6e := "[12345]:80"
+	ep6e := endpoint.MustParse(tgt6e)
 
 	tcs := []testCase{
 		{[]string{}, endpoint.Slice{}, endpoint.Slice{}},
 		{[]string{""}, nil, nil},
 		{[]string{"1.2.3.4"}, nil, nil},
+		{[]string{"[]:80"}, nil, nil},
+		{[]string{"2001:db8::1:80"}, nil, nil},
 		{
 			[]string{tgt4a},
 			[]endpoint.EP{ep4a},
@@ -310,8 +320,24 @@ func TestParseSliceIPAddys(t *testing.T) {
 		{
 			[]string{tgt4a, tgt6a, tgt4b},
 			[]endpoint.EP{ep4b, ep4a, ep6a},
+			[]endpoint.EP{ep4b, ep4a, ep6a},
+		},
+		{
+			[]string{tgt6d},
+			[]endpoint.EP{ep6d},
 			nil,
 		},
+		{
+			[]string{tgt6e},
+			[]endpoint.EP{ep6e},
+			nil,
+		},
+		{
+			[]string{tgt6a, tgt6b, tgt6c},
+			[]endpoint.EP{ep6a, ep6b, ep6c},
+			[]endpoint.EP{ep6a, ep6b, ep6c},
+		},
+
 		{
 			[]string{tgt4b, tgtN1},
 			[]endpoint.EP{ep4b, epN1},
@@ -349,8 +375,8 @@ func TestParseSliceIPAddys(t *testing.T) {
 		t.Run(targets, func(t *testing.T) {
 			eps, err := endpoint.ParseSlice(tc.tgts)
 			chkRes(t, "ParseSlice", eps, err, targets, tc.eps)
-			eps4, err := endpoint.ParseSliceIPv4(tc.tgts)
-			chkRes(t, "ParseSliceIPv4", eps4, err, targets, tc.eps4)
+			ipeps, err := endpoint.ParseSliceIP(tc.tgts)
+			chkRes(t, "ParseSliceIP", ipeps, err, targets, tc.ipeps)
 		})
 	}
 }

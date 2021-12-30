@@ -82,13 +82,13 @@ func queryLBforTargetEnv(
 	res := &backend.TargetEnv{
 		SubsysNQN: ci.SubsysNQN,
 	}
-	res.DiscoveryEPs, err = endpoint.ParseSliceIPv4(ci.DiscoveryEndpoints)
+	res.DiscoveryEPs, err = endpoint.ParseSliceIP(ci.DiscoveryEndpoints)
 	if err != nil {
 		return nil, mungeLBErr(log, err,
 			"got invalid discovery service endpoint from LB cluster at '%s'",
 			vid.mgmtEPs[0])
 	}
-	res.NvmeEPs, err = endpoint.ParseSliceIPv4(ci.NvmeEndpoints)
+	res.NvmeEPs, err = endpoint.ParseSliceIP(ci.NvmeEndpoints)
 	if err != nil {
 		return nil, mungeLBErr(log, err,
 			"got invalid NVMe endpoint from LB cluster at '%s'", vid.mgmtEPs[0])

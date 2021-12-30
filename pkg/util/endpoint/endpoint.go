@@ -65,16 +65,18 @@ func MustParse(endpoint string) EP {
 	return ep
 }
 
-// ParseIPv4() is akin to Parse, but it only accepts dotted-decimal IPv4 addresses as hosts.
-func ParseIPv4(endpoint string) (EP, error) {
+// ParseIP() is akin to Parse, but it only accepts valid IPv4/IPv6 addresses as hosts.
+func ParseIP(endpoint string) (EP, error) {
 	ep, err := Parse(endpoint)
 	if err != nil {
 		return ep, err
 	}
-	if net.ParseIP(ep.host).To4() == nil {
-		return EP{}, fmt.Errorf("bad endpoint '%s': must be IPv4 address", endpoint)
+
+	ip := net.ParseIP(ep.host)
+	if ip.To4() != nil || ip.To16() != nil {
+		return ep, nil
 	}
-	return ep, nil
+	return EP{}, fmt.Errorf("bad endpoint '%s': must be IP address", endpoint)
 }
 
 func (ep EP) Host() string {
@@ -172,10 +174,10 @@ func ParseSlice(targets []string) (Slice, error) {
 	return canonicalize(targets, Parse)
 }
 
-// ParseSliceIPv4() is akin to ParseSlice, but it only accepts dotted-decimal
-// IPv4 addresses as hosts.
-func ParseSliceIPv4(targets []string) (Slice, error) {
-	return canonicalize(targets, ParseIPv4)
+// ParseSliceIP() is akin to ParseSlice, but it only accepts a valid
+// IPv4/IPv6 addresses as hosts.
+func ParseSliceIP(targets []string) (Slice, error) {
+	return canonicalize(targets, ParseIP)
 }
 
 // ParseCSV() parses a string containing comma-separated list of target
