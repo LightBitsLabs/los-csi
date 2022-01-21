@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"golang.org/x/sys/unix"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -15,33 +14,33 @@ type Metrics struct {
 
 	// Used represents the total bytes used by the Volume.
 	// Note: For block devices this maybe more than the total size of the files.
-	Used *resource.Quantity
+	Used int64
 
 	// Capacity represents the total capacity (bytes) of the volume's
 	// underlying storage. For Volumes that share a filesystem with the host
 	// (e.g. emptydir, hostpath) this is the size of the underlying storage,
 	// and will not equal Used + Available as the fs is shared.
-	Capacity *resource.Quantity
+	Capacity int64
 
 	// Available represents the storage space available (bytes) for the
 	// Volume. For Volumes that share a filesystem with the host (e.g.
 	// emptydir, hostpath), this is the available space on the underlying
 	// storage, and is shared with host processes and other Volumes.
-	Available *resource.Quantity
+	Available int64
 
 	// InodesUsed represents the total inodes used by the Volume.
-	InodesUsed *resource.Quantity
+	InodesUsed int64
 
 	// Inodes represents the total number of inodes available in the volume.
 	// For volumes that share a filesystem with the host (e.g. emptydir, hostpath),
 	// this is the inodes available in the underlying storage,
 	// and will not equal InodesUsed + InodesFree as the fs is shared.
-	Inodes *resource.Quantity
+	Inodes int64
 
 	// InodesFree represent the inodes available for the volume.  For Volumes that share
 	// a filesystem with the host (e.g. emptydir, hostpath), this is the free inodes
 	// on the underlying storage, and is shared with host processes and other volumes
-	InodesFree *resource.Quantity
+	InodesFree int64
 
 	// Normal volumes are available for use and operating optimally.
 	// An abnormal volume does not meet these criteria.
@@ -98,12 +97,12 @@ func (md *metricsStatFS) getFsInfo(metrics *Metrics) error {
 	if err != nil {
 		return err
 	}
-	metrics.Available = resource.NewQuantity(available, resource.BinarySI)
-	metrics.Capacity = resource.NewQuantity(capacity, resource.BinarySI)
-	metrics.Used = resource.NewQuantity(usage, resource.BinarySI)
-	metrics.Inodes = resource.NewQuantity(inodes, resource.BinarySI)
-	metrics.InodesFree = resource.NewQuantity(inodesFree, resource.BinarySI)
-	metrics.InodesUsed = resource.NewQuantity(inodesUsed, resource.BinarySI)
+	metrics.Available = available
+	metrics.Capacity = capacity
+	metrics.Used = usage
+	metrics.Inodes = inodes
+	metrics.InodesFree = inodesFree
+	metrics.InodesUsed = inodesUsed
 	return nil
 }
 

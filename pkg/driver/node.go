@@ -735,48 +735,18 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, target
 		return nil, status.Error(codes.Internal, volMetErr.Error())
 	}
 
-	available, ok := (*(volMetrics.Available)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch available bytes")
-	}
-	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch capacity bytes")
-
-		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
-	}
-	used, ok := (*(volMetrics.Used)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch used bytes")
-	}
-	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch available inodes")
-
-		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
-	}
-	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch free inodes")
-	}
-
-	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch used inodes")
-	}
-
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
-				Available: available,
-				Total:     capacity,
-				Used:      used,
+				Available: volMetrics.Available,
+				Total:     volMetrics.Capacity,
+				Used:      volMetrics.Used,
 				Unit:      csi.VolumeUsage_BYTES,
 			},
 			{
-				Available: inodesFree,
-				Total:     inodes,
-				Used:      inodesUsed,
+				Available: volMetrics.InodesFree,
+				Total:     volMetrics.Inodes,
+				Used:      volMetrics.InodesUsed,
 				Unit:      csi.VolumeUsage_INODES,
 			},
 		},
