@@ -21,7 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/kubernetes/pkg/volume"
 	mountutils "k8s.io/mount-utils"
 
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
@@ -730,7 +729,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, target
 		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
 	}
 
-	metricsProvider := volume.NewMetricsStatFS(targetPath)
+	metricsProvider := newMetricsStatFS(targetPath)
 	volMetrics, volMetErr := metricsProvider.GetMetrics()
 	if volMetErr != nil {
 		return nil, status.Error(codes.Internal, volMetErr.Error())
