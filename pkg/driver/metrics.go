@@ -1,16 +1,11 @@
 package driver
 
 import (
-	"fmt"
-
 	"golang.org/x/sys/unix"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Metrics represents the used and available bytes of the Volume.
-type Metrics struct {
-	// The time at which these stats were updated.
-	Time metav1.Time
+// metrics represents the used and available bytes of the Volume.
+type metrics struct {
 
 	// Used represents the total bytes used by the Volume.
 	// Note: For block devices this maybe more than the total size of the files.
@@ -41,69 +36,22 @@ type Metrics struct {
 	// a filesystem with the host (e.g. emptydir, hostpath), this is the free inodes
 	// on the underlying storage, and is shared with host processes and other volumes
 	InodesFree int64
-
-	// Normal volumes are available for use and operating optimally.
-	// An abnormal volume does not meet these criteria.
-	// This field is OPTIONAL. Only some csi drivers which support NodeServiceCapability_RPC_VOLUME_CONDITION
-	// need to fill it.
-	Abnormal *bool
-
-	// The message describing the condition of the volume.
-	// This field is OPTIONAL. Only some csi drivers which support capability_RPC_VOLUME_CONDITION
-	// need to fill it.
-	Message *string
-}
-
-type MetricsProvider interface {
-	// GetMetrics returns the Metrics for the Volume. Maybe expensive for
-	// some implementations.
-	GetMetrics() (*Metrics, error)
-}
-
-var _ MetricsProvider = &metricsStatFS{}
-
-// metricsStatFS represents a MetricsProvider that calculates the used and available
-// Volume space by stat'ing and gathering filesystem info for the Volume path.
-type metricsStatFS struct {
-	// the directory path the volume is mounted to.
-	path string
-}
-
-// newMetricsStatfs creates a new metricsStatFS with the Volume path.
-func newMetricsStatFS(path string) MetricsProvider {
-	return &metricsStatFS{path}
-}
-
-// See MetricsProvider.GetMetrics
-// GetMetrics calculates the volume usage and device free space by executing "du"
-// and gathering filesystem info for the Volume path.
-func (md *metricsStatFS) GetMetrics() (*Metrics, error) {
-	metrics := &Metrics{Time: metav1.Now()}
-	if md.path == "" {
-		return metrics, fmt.Errorf("path is empty")
-	}
-
-	err := md.getFsInfo(metrics)
-	if err != nil {
-		return metrics, err
-	}
-
-	return metrics, nil
 }
 
 // getFsInfo writes metrics.Capacity, metrics.Used and metrics.Available from the filesystem info
-func (md *metricsStatFS) getFsInfo(metrics *Metrics) error {
-	available, capacity, usage, inodes, inodesFree, inodesUsed, err := info(md.path)
+func getFsInfo(path string) (*metrics, error) {
+	available, capacity, usage, inodes, inodesFree, inodesUsed, err := info(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	metrics.Available = available
-	metrics.Capacity = capacity
-	metrics.Used = usage
-	metrics.Inodes = inodes
-	metrics.InodesFree = inodesFree
-	metrics.InodesUsed = inodesUsed
-	return nil
+	return &metrics{
+		Available:  available,
+		Capacity:   capacity,
+		Used:       usage,
+		Inodes:     inodes,
+		InodesFree: inodesFree,
+		InodesUsed: inodesUsed,
+	}, nil
 }
 
 // info linux returns (available bytes, byte capacity, byte usage, total inodes, inodes free, inode usage, error)

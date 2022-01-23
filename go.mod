@@ -11,6 +11,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/kubernetes-csi/csi-test/v3 v3.1.1
+	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
@@ -18,7 +19,6 @@ require (
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c
 	google.golang.org/grpc v1.38.0
 	gopkg.in/yaml.v2 v2.4.0
-	k8s.io/apimachinery v0.21.4
 	k8s.io/mount-utils v0.21.4
 	k8s.io/utils v0.0.0-20210707171843-4b05e18ac7d9
 )

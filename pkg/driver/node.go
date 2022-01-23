@@ -729,8 +729,7 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, target
 		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
 	}
 
-	metricsProvider := newMetricsStatFS(targetPath)
-	volMetrics, volMetErr := metricsProvider.GetMetrics()
+	volMetrics, volMetErr := getFsInfo(targetPath)
 	if volMetErr != nil {
 		return nil, status.Error(codes.Internal, volMetErr.Error())
 	}
