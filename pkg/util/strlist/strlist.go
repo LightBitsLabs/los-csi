@@ -29,7 +29,7 @@ func CopyUniqueSorted(s []string) []string {
 	}
 
 	res := make([]string, 0, len(uniq))
-	for k, _ := range uniq {
+	for k := range uniq {
 		res = append(res, k)
 	}
 	sort.Strings(res)

@@ -369,8 +369,5 @@ func (cp *ClientPool) PutClient(c Client) {
 	pm.rc--
 	if pm.rc == 0 {
 		pm.expireBy = time.Now().Add(cp.opts.LingerTime)
-	} else if pm.rc < 0 {
-		panic(fmt.Sprintf("PutClient(): negative refcount of %d on "+
-			"client ID '%s' for targets '%s'", pm.rc, cid, tgts))
 	}
 }

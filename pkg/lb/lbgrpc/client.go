@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	guuid "github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
@@ -27,6 +26,7 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/lightbitslabs/los-csi/pkg/grpcutil"
 	"github.com/lightbitslabs/los-csi/pkg/lb"
@@ -131,14 +131,18 @@ func (r *lbResolver) Scheme() string {
 
 // updateCCState() updates the underlying ClientConn with the currently
 // known list of LightOS cluster nodes.
-func (r *lbResolver) updateCCState() {
+func (r *lbResolver) updateCCState() error {
 	r.mu.Lock()
 	addrs := make([]resolver.Address, len(r.eps))
 	for i, ep := range r.eps {
 		addrs[i].Addr = ep.String()
 	}
 	r.mu.Unlock()
-	r.cc.NewAddress(addrs)
+	err := r.cc.UpdateState(resolver.State{Addresses: addrs})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Build() implements (together with Scheme()) the resolver.Builder interface
@@ -152,7 +156,10 @@ func (r *lbResolver) Build(
 	r.log.WithFields(logrus.Fields{
 		"targets": r.tgts,
 	}).Info("building...")
-	r.updateCCState()
+	err := r.updateCCState()
+	if err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 
@@ -176,7 +183,12 @@ func (r *lbResolver) ResolveNow(o resolver.ResolveNowOptions) {
 	r.log.WithFields(logrus.Fields{
 		"targets": r.tgts,
 	}).Info("resolving...")
-	r.updateCCState()
+	err := r.updateCCState()
+	if err != nil {
+		r.log.WithFields(logrus.Fields{
+			"resolvenow": r.tgts,
+		}).Error(err)
+	}
 }
 
 func (r *lbResolver) Close() {
@@ -1420,7 +1432,7 @@ func (c *Client) lbSnapshotFromGRPC(
 	}
 
 	if snap.CreationTime == nil {
-		snap.CreationTime = ptypes.TimestampNow()
+		snap.CreationTime = timestamppb.Now()
 	}
 
 	return &lb.Snapshot{

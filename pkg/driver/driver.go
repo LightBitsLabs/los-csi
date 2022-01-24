@@ -394,9 +394,15 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtPath string) error {
 				// original configmap file is removed
 				if event.Op == fsnotify.Remove {
 					// remove the watcher since the file is removed
-					watcher.Remove(event.Name)
+					err := watcher.Remove(event.Name)
+					if err != nil {
+						d.log.WithError(err).Error("watcher remove error")
+					}
 					// add a new watcher pointing to the new symlink/file
-					watcher.Add(jwtPath)
+					err = watcher.Add(jwtPath)
+					if err != nil {
+						d.log.WithError(err).Error("watcher add error")
+					}
 					d.setJWT(jwtPath)
 				}
 				// also allow normal files to be modified and reloaded.

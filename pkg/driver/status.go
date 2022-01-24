@@ -5,7 +5,6 @@ package driver
 
 import (
 	"fmt"
-	"syscall"
 
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
@@ -73,10 +72,6 @@ func mkEbadOp(kind, subj string, format string, args ...interface{}) error {
 
 func mkEExec(format string, args ...interface{}) error {
 	return status.Errorf(codes.Unknown, "OS error: "+format, args...)
-}
-
-func mkEExecOsErr(errno syscall.Errno, desc string) error {
-	return mkEExec("%s (%d)", desc, errno)
 }
 
 func mkInternal(format string, args ...interface{}) error {
