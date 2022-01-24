@@ -696,7 +696,7 @@ func (d *Driver) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return FilesystemNodeGetVolumeStats(ctx, log, targetPath)
+		return filesystemNodeGetVolumeStats(ctx, log, targetPath)
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
 		return blockNodeGetVolumeStats(ctx, log, targetPath)
 	}
@@ -715,9 +715,11 @@ func IsMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-// FilesystemNodeGetVolumeStats can be used for getting the metrics as
+// filesystemNodeGetVolumeStats can be used for getting the metrics as
 // requested by the NodeGetVolumeStats CSI procedure.
-func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+func filesystemNodeGetVolumeStats(
+	ctx context.Context, log *logrus.Entry, targetPath string,
+) (*csi.NodeGetVolumeStatsResponse, error) {
 	isMnt, err := IsMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
