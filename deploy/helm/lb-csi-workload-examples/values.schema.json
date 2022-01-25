@@ -23,7 +23,7 @@
             "projectName": {
               "description": "Name of the LightOS project we want the plugin to target.",
               "type": "string",
-	      "default": "default"
+	            "default": "default"
             },
             "mgmtEndpoints": {
               "description": "required! comma delimited endpoints string, for example <ip>:<port>,<ip>:<port>",
@@ -128,8 +128,8 @@
         },
         "volumeMode": {
           "description": "Rather this volume is Block or Filesystem",
-          "type": [ "string", "null" ],
-          "enum": ["Block", "Filesystem", null]
+          "type": "string",
+          "enum": ["Block", "Filesystem", ""]
         },
         "storage": {
           "description": "Size of the volume this PV will point to.",
