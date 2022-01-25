@@ -127,7 +127,7 @@
           "type": "string"
         },
         "volumeMode": {
-          "description": "Rather this volume is Block or Filesystem",
+          "description": "Whether this volume is Block or Filesystem",
           "type": "string",
           "enum": ["Block", "Filesystem", ""]
         },
