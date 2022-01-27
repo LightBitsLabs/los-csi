@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -31,6 +32,7 @@ const (
 const (
 	volCapGranularity int64 = GiB
 	minVolCap         int64 = volCapGranularity
+	encryptedKey            = "encrypted"
 )
 
 var (
@@ -108,7 +110,7 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 	return uint64(volCap), nil
 }
 
-func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string) *csi.CreateVolumeResponse {
+func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string, encrypted bool) *csi.CreateVolumeResponse {
 	volID := lbResourceID{
 		mgmtEPs:  mgmtEPs,
 		uuid:     vol.UUID,
@@ -119,6 +121,9 @@ func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string)
 		Volume: &csi.Volume{
 			CapacityBytes: int64(vol.Capacity),
 			VolumeId:      volID.String(),
+			VolumeContext: map[string]string{
+				encryptedKey: strconv.FormatBool(encrypted),
+			},
 		},
 	}
 }
@@ -214,7 +219,7 @@ func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volu
 }
 
 func (d *Driver) doCreateVolume(
-	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume,
+	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume, encrypted bool,
 ) (*csi.CreateVolumeResponse, error) {
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "CreateVolume",
@@ -256,7 +261,7 @@ func (d *Driver) doCreateVolume(
 	}
 
 	log.WithField("vol-uuid", vol.UUID).Info("volume created successfully")
-	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme), nil
+	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme, encrypted), nil
 }
 
 // CreateVolume uses info extracted from request `parameters` field to connect
@@ -324,6 +329,17 @@ func (d *Driver) CreateVolume(
 		snapshotUUID = sid.uuid
 	}
 
+	encrypted := false
+	encryptedStringValue, ok := req.GetParameters()[encryptedKey]
+	if ok {
+		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, encryptedKey, err)
+		}
+		// TODO check if this value has changed?
+		encrypted = encryptedValue
+	}
+
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
 		lb.Volume{
@@ -334,7 +350,7 @@ func (d *Driver) CreateVolume(
 			ACL:          []string{lb.ACLAllowNone},
 			SnapshotUUID: snapshotUUID,
 			ProjectName:  params.projectName,
-		})
+		}, encrypted)
 	if err != nil {
 		return nil, err
 	}
