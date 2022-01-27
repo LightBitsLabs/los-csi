@@ -19,9 +19,9 @@ import (
 	"github.com/dell/gofsutil"
 	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"k8s.io/kubernetes/pkg/volume"
 	mountutils "k8s.io/mount-utils"
 
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
@@ -696,7 +696,7 @@ func (d *Driver) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return FilesystemNodeGetVolumeStats(ctx, log, targetPath)
+		return filesystemNodeGetVolumeStats(ctx, log, targetPath)
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
 		return blockNodeGetVolumeStats(ctx, log, targetPath)
 	}
@@ -715,9 +715,11 @@ func IsMountPoint(p string) (bool, error) {
 	return !notMnt, nil
 }
 
-// FilesystemNodeGetVolumeStats can be used for getting the metrics as
+// filesystemNodeGetVolumeStats can be used for getting the metrics as
 // requested by the NodeGetVolumeStats CSI procedure.
-func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+func filesystemNodeGetVolumeStats(
+	ctx context.Context, log *logrus.Entry, targetPath string,
+) (*csi.NodeGetVolumeStatsResponse, error) {
 	isMnt, err := IsMountPoint(targetPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -730,54 +732,26 @@ func FilesystemNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, target
 		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
 	}
 
-	metricsProvider := volume.NewMetricsStatFS(targetPath)
-	volMetrics, volMetErr := metricsProvider.GetMetrics()
-	if volMetErr != nil {
-		return nil, status.Error(codes.Internal, volMetErr.Error())
-	}
-
-	available, ok := (*(volMetrics.Available)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch available bytes")
-	}
-	capacity, ok := (*(volMetrics.Capacity)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch capacity bytes")
-
-		return nil, status.Error(codes.Unknown, "failed to fetch capacity bytes")
-	}
-	used, ok := (*(volMetrics.Used)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch used bytes")
-	}
-	inodes, ok := (*(volMetrics.Inodes)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch available inodes")
-
-		return nil, status.Error(codes.Unknown, "failed to fetch available inodes")
-	}
-	inodesFree, ok := (*(volMetrics.InodesFree)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch free inodes")
-	}
-
-	inodesUsed, ok := (*(volMetrics.InodesUsed)).AsInt64()
-	if !ok {
-		log.Errorf("failed to fetch used inodes")
+	statfs := &unix.Statfs_t{}
+	err = unix.Statfs(targetPath, statfs)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal,
+			"failed to collect FS info for mount '%s': %s", targetPath, err)
 	}
 
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
-				Available: available,
-				Total:     capacity,
-				Used:      used,
-				Unit:      csi.VolumeUsage_BYTES,
+				Available: int64(statfs.Bavail) * int64(statfs.Bsize),
+				Total:     int64(statfs.Blocks) * int64(statfs.Bsize),
+				Used: (int64(statfs.Blocks) - int64(statfs.Bfree)) *
+					int64(statfs.Bsize),
+				Unit: csi.VolumeUsage_BYTES,
 			},
 			{
-				Available: inodesFree,
-				Total:     inodes,
-				Used:      inodesUsed,
+				Available: int64(statfs.Ffree),
+				Total:     int64(statfs.Files),
+				Used:      int64(statfs.Files) - int64(statfs.Ffree),
 				Unit:      csi.VolumeUsage_INODES,
 			},
 		},
