@@ -30,6 +30,11 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
+const (
+	// name of the secret for the encryption passphrase
+	encryptionPassphraseKey = "encryptionPassphrase"
+)
+
 // lbVolEligible() allows to rule out impossible scenarios early on. it
 // checks if the volume exists on the LightOS cluster and is fully accessible
 // by this host configuration-wise and in terms of target-side availability.
@@ -230,12 +235,23 @@ func (d *Driver) NodeStageVolume(
 		return nil, mkEinval("volume_id", err.Error())
 	}
 
+	encrypted := false
+	if encryptedStringValue, ok := req.GetVolumeContext()[encryptedKey]; ok {
+		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, encryptedKey, err)
+		}
+		// TODO check if this value has changed?
+		encrypted = encryptedValue
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "NodeStageVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-		"scheme":   vid.scheme,
+		"op":        "NodeStageVolume",
+		"mgmt-ep":   vid.mgmtEPs,
+		"vol-uuid":  vid.uuid,
+		"project":   vid.projName,
+		"scheme":    vid.scheme,
+		"encrypted": encrypted,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
@@ -314,6 +330,17 @@ func (d *Driver) NodeStageVolume(
 	if req.VolumeCapability.GetBlock() != nil {
 		// block volume - we are done for now.
 		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	if encrypted {
+		passhrase, ok := req.GetSecrets()[encryptionPassphraseKey]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", encryptionPassphraseKey)
+		}
+		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passhrase)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %s", vid.uuid, err.Error())
+		}
 	}
 
 	mntCap := req.VolumeCapability.GetMount()
@@ -408,6 +435,11 @@ func (d *Driver) NodeUnstageVolume(
 		if err != nil {
 			return nil, mkEExec("failed to unmount '%s': %s", tgtPath, err)
 		}
+	}
+
+	err = d.diskUtils.CloseDevice(vid.uuid.String())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error closing device with ID %s: %s", vid.uuid, err.Error())
 	}
 
 	if st := d.be.Detach(ctx, vid.uuid); st != nil {

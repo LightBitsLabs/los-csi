@@ -330,8 +330,7 @@ func (d *Driver) CreateVolume(
 	}
 
 	encrypted := false
-	encryptedStringValue, ok := req.GetParameters()[encryptedKey]
-	if ok {
+	if encryptedStringValue, ok := req.GetParameters()[encryptedKey]; ok {
 		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, encryptedKey, err)
