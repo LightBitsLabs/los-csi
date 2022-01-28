@@ -32,7 +32,6 @@ const (
 const (
 	volCapGranularity int64 = GiB
 	minVolCap         int64 = volCapGranularity
-	encryptedKey            = "encrypted"
 )
 
 var (
@@ -44,29 +43,25 @@ var (
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	}
-	capsCache []*csi.ControllerServiceCapability
 )
-
-func init() {
-	// ah, the wonders of flat structuring and concise naming...
-	for _, cap := range controllerCaps {
-		capsCache = append(capsCache,
-			&csi.ControllerServiceCapability{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: cap,
-					},
-				},
-			},
-		)
-	}
-}
 
 func (d *Driver) ControllerGetCapabilities(
 	ctx context.Context, req *csi.ControllerGetCapabilitiesRequest,
 ) (*csi.ControllerGetCapabilitiesResponse, error) {
+
+	var capabilities []*csi.ControllerServiceCapability
+	for _, capability := range controllerCaps {
+		capabilities = append(capabilities, &csi.ControllerServiceCapability{
+			Type: &csi.ControllerServiceCapability_Rpc{
+				Rpc: &csi.ControllerServiceCapability_RPC{
+					Type: capability,
+				},
+			},
+		})
+	}
+
 	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: capsCache,
+		Capabilities: capabilities,
 	}, nil
 }
 
@@ -122,7 +117,7 @@ func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string,
 			CapacityBytes: int64(vol.Capacity),
 			VolumeId:      volID.String(),
 			VolumeContext: map[string]string{
-				encryptedKey: strconv.FormatBool(encrypted),
+				volEncryptedKey: strconv.FormatBool(encrypted),
 			},
 		},
 	}
@@ -329,16 +324,6 @@ func (d *Driver) CreateVolume(
 		snapshotUUID = sid.uuid
 	}
 
-	encrypted := false
-	if encryptedStringValue, ok := req.GetParameters()[encryptedKey]; ok {
-		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
-		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, encryptedKey, err)
-		}
-		// TODO check if this value has changed?
-		encrypted = encryptedValue
-	}
-
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
 		lb.Volume{
@@ -349,7 +334,7 @@ func (d *Driver) CreateVolume(
 			ACL:          []string{lb.ACLAllowNone},
 			SnapshotUUID: snapshotUUID,
 			ProjectName:  params.projectName,
-		}, encrypted)
+		}, params.encrypted)
 	if err != nil {
 		return nil, err
 	}

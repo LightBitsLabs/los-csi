@@ -29,11 +29,6 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
-const (
-	// name of the secret for the encryption passphrase
-	encryptionPassphraseKey = "encryptionPassphrase"
-)
-
 // lbVolEligible() allows to rule out impossible scenarios early on. it
 // checks if the volume exists on the LightOS cluster and is fully accessible
 // by this host configuration-wise and in terms of target-side availability.
@@ -235,10 +230,10 @@ func (d *Driver) NodeStageVolume(
 	}
 
 	encrypted := false
-	if encryptedStringValue, ok := req.GetVolumeContext()[encryptedKey]; ok {
+	if encryptedStringValue, ok := req.GetVolumeContext()[volEncryptedKey]; ok {
 		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
 		if err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, encryptedKey, err)
+			return nil, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, volEncryptedKey, err)
 		}
 		// TODO check if this value has changed?
 		encrypted = encryptedValue
@@ -332,9 +327,9 @@ func (d *Driver) NodeStageVolume(
 	}
 
 	if encrypted {
-		passhrase, ok := req.GetSecrets()[encryptionPassphraseKey]
+		passhrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
 		if !ok {
-			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", encryptionPassphraseKey)
+			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
 		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passhrase)
 		if err != nil {
