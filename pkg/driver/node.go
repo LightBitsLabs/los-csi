@@ -498,7 +498,7 @@ func MakeFile(path string) error {
 	return nil
 }
 
-func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error) {
+func getDeviceNameFromMount(tgtPath string) (string, error) {
 	info, err := mountutils.ListProcMounts(tgtPath)
 	if err != nil {
 		return "", err
@@ -592,7 +592,7 @@ func (d *Driver) NodePublishVolume(
 			return nil, mkEExec("can't examine target path: %s", err)
 		}
 		if !notMnt {
-			dev, err := getDeviceNameFromMount(ctx, req.TargetPath)
+			dev, err := getDeviceNameFromMount(req.TargetPath)
 			if err != nil {
 				log.Debugf("failed to find what's mounted at '%s': %s", req.TargetPath, err)
 			}
@@ -727,7 +727,7 @@ func (d *Driver) NodeGetVolumeStats(
 	}
 
 	if stat.Mode().IsDir() {
-		return filesystemNodeGetVolumeStats(ctx, log, targetPath)
+		return filesystemNodeGetVolumeStats(targetPath)
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
 		return blockNodeGetVolumeStats(ctx, log, targetPath)
 	}
@@ -749,7 +749,7 @@ func IsMountPoint(p string) (bool, error) {
 // filesystemNodeGetVolumeStats can be used for getting the metrics as
 // requested by the NodeGetVolumeStats CSI procedure.
 func filesystemNodeGetVolumeStats(
-	ctx context.Context, log *logrus.Entry, targetPath string,
+	targetPath string,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
 	isMnt, err := IsMountPoint(targetPath)
 	if err != nil {

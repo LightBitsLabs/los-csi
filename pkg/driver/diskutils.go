@@ -16,19 +16,17 @@ import (
 )
 
 const (
-	diskByIDPath         = "/dev/disk/by-id"
-	diskSCWPrefix        = "scsi-0SCW_b_ssd_volume-"
+	diskByIDPath = "/dev/disk/by-id"
+	// FIXME what to take here
+	diskSCWPrefix        = "lb-volume-"
 	diskLuksMapperPrefix = "lb-luks-"
 	diskLuksMapperPath   = "/dev/mapper/"
 
 	defaultFSType = "ext4"
 
-	procMountInfoMaxListTries             = 3
-	procMountsExpectedNumFieldsPerLine    = 6
-	procMountInfoExpectedAtLeastNumFields = 10
-	procMountsPath                        = "/proc/mounts"
-	procMountInfoPath                     = "/proc/self/mountinfo"
-	expectedAtLeastNumFieldsPerMountInfo  = 10
+	procMountInfoMaxListTries            = 3
+	procMountInfoPath                    = "/proc/self/mountinfo"
+	expectedAtLeastNumFieldsPerMountInfo = 10
 )
 
 type DiskUtils interface {

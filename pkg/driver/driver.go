@@ -304,10 +304,7 @@ func New(cfg Config) (*Driver, error) { // nolint:gocritic
 	}
 	d.lbclients = lb.NewClientPool(lbdialer)
 
-	diskUtils := &diskUtils{
-		log: d.log,
-	}
-	d.diskUtils = diskUtils
+	d.diskUtils = newDiskUtils(d.log)
 	return d, nil
 }
 
