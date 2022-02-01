@@ -236,7 +236,15 @@ examples_manifests: deploy/examples
 		--set preprovisioned.lightosVolNguid=60907a32-76c7-11eb-ac25-fb55927189f9 \
 		--set preprovisioned.volumeMode=Filesystem \
 		--set preprovisioned.storage=1Gi \
-		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-workload.yaml
+		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-filesystem-workload.yaml
+	helm template --set preprovisioned.enabled=true \
+		--set global.storageClass.mgmtEndpoints="10.10.0.2:443\,10.10.0.3:443\,10.10.0.4:443" \
+		--set global.jwtSecret.name="example-secret" \
+		--set global.jwtSecret.namespace="default" \
+		--set preprovisioned.lightosVolNguid=60907a32-76c7-11eb-ac25-fb55927189f9 \
+		--set preprovisioned.volumeMode=Block \
+		--set preprovisioned.storage=1Gi \
+		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-block-workload.yaml
 	helm template --set snaps.enabled=true \
 		--set snaps.stage=snapshot-class \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-snapshot-class.yaml
@@ -282,7 +290,7 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	rm -rf build/lb-csi-bundle-*.tar.gz
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	@tar -C deploy -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
-		k8s examples helm/charts
+		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
 	mkdir -p deploy/helm/charts

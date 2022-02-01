@@ -28,7 +28,7 @@ header-includes: |
   \pagestyle{fancy}
   \fancyfoot[CO,CE]{Proprietary And Confidential}
   \fancyfoot[LE,RO]{Under NDA Only}
-  \fancyfoot[LE,LO]{2021 Lightbits Labs}
+  \fancyfoot[LE,LO]{2022 Lightbits Labs}
 
   \usepackage{listings}
   \usepackage{xcolor}
