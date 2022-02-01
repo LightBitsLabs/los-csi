@@ -161,7 +161,7 @@ Values Description:
 | global.storageClass.mgmtEndpoints      | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>`        | "" | true |
 | global.storageClass.projectName        | Created resources will be scoped to this project                   | default | false |
 | global.storageClass.replicaCount       | Number of replicas for each volume                                 | 3 | false |
-| global.storageClass.compression        | Rather compressions in enabled/disabled                            | disabled | false |
+| global.storageClass.compression        | Whether compressions in enabled/disabled                           | disabled | false |
 | global.jwtSecret.name                  | Secret name that holds LightOS API `JWT`                           | example-secret | true |
 | global.jwtSecret.namespace             | Namespace the secret is defined at                                 | default | true |
 | global.jwtSecret.jwt                   | `JWT` to authenticate against LightOS API                          | default | true |

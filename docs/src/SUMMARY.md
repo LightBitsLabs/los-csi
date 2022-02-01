@@ -34,6 +34,7 @@
 - [Upgrade](upgrade/upgrade.md)
   - [Upgrade LightOS](upgrade/upgrade-lightos.md)
   - [Upgrade LB CSI](upgrade/upgrade-lb-csi.md)
+- [Extend LightOS Cluster](extend_lightos_cluster.md)
 - [External References](external_references.md)
 ---
 [About Lightbits Labs](about.md)

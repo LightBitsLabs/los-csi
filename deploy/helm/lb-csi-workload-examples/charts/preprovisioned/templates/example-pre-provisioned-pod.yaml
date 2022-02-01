@@ -22,9 +22,15 @@ spec:
           fieldPath: spec.nodeName
     stdin: true
     tty: true
+{{- if eq .Values.volumeMode "Filesystem" }}
     volumeMounts:
     - name: test-mnt
       mountPath: "/mnt/test"
+{{- else if eq .Values.volumeMode "Block" }}
+    volumeDevices:
+    - name: test-mnt
+      devicePath: "/mnt/test"
+{{- end }}
   volumes:
   - name: test-mnt
     persistentVolumeClaim:

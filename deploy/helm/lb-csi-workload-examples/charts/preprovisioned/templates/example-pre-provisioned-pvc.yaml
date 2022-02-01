@@ -3,6 +3,7 @@ apiVersion: v1
 metadata:
   name: example-pre-provisioned-pvc
 spec:
+  volumeMode: {{ (required "volumeMode field is required" .Values.volumeMode) }}
   storageClassName: {{ .Values.global.storageClass.name | quote }}
   selector:
     matchLabels:
