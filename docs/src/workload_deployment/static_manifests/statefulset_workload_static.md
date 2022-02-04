@@ -108,8 +108,8 @@ Events:
 Based on the “Mounts:” section of the output example, you can see how the PV is represented inside a pod by executing the following command:
 
 ```bash
-kubectl exec -it example-sts-0 -- /bin/sh -c "mount | grep /tmp/demo"
-/dev/nvme0n3 on /tmp/demo type ext4 (rw,relatime,data=ordered)
+kubectl exec -it example-sts-0 -- /bin/sh -c "mount | grep /mnt/test"
+/dev/nvme0n3 on /mnt/test type ext4 (rw,relatime,data=ordered)
 ```
 
 Most of the mountpoints of the container running inside the pod above are either virtual file systems or file systems rooted in Docker overlay mounts. However, the LightOS-backed volume mountpoint will be a direct mount of the NVMe device exported to the Kubernetes node over NVMe/TCP transport (here: /dev/nvme0n3).

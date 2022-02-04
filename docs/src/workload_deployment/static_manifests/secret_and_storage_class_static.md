@@ -127,9 +127,6 @@ secret/example-secret        lightbitslabs.com/jwt                 1      59s
 
 NAME                                     PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
 storageclass.storage.k8s.io/example-sc   csi.lightbitslabs.com   Delete          Immediate           true                   59s
-
-NAME                                                              DRIVER                  DELETIONPOLICY   AGE
-volumesnapshotclass.snapshot.storage.k8s.io/example-snapshot-sc   csi.lightbitslabs.com   Delete           59s
 ```
 
 > **NOTE:**

@@ -2,13 +2,13 @@
 
 ## Static Manifests
 
-- [LightOS CSI Plugin Deployment Using Static Manifests](#lightos-csi-plugin-deployment-using-static-manifests)
+- [Static Manifests](#static-manifests)
   - [Overview](#overview)
   - [Deploying LightOS CSI Plugin On Kubernetes Cluster](#deploying-lightos-csi-plugin-on-kubernetes-cluster)
     - [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin)
   - [CSI Plugin Removal Instructions](#csi-plugin-removal-instructions)
     - [Before Removing the CSI Plugin](#before-removing-the-csi-plugin)
-    - [Removing LightOS CSI Plugin](#removing-lightos-csi-plugin)
+    - [Removing the LightOS CSI Plugin](#removing-the-lightos-csi-plugin)
 
 ### Overview
 
@@ -77,7 +77,7 @@ lb-csi-node   3         3         3         3            3           <none>     
 
 $  kubectl get --namespace=kube-system pod --selector app=lb-csi-plugin -o wide
 NAME                  READY     STATUS    RESTARTS   AGE       IP              NODE      NOMINATED NODE
-lb-csi-controller-0   3/3       Running   0          1m        10.233.65.12    node3     <none>
+lb-csi-controller-0   6/6       Running   0          1m        10.233.65.12    node3     <none>
 lb-csi-node-6ptlf     2/2       Running   0          1m        192.168.20.20   node3     <none>
 lb-csi-node-blc46     2/2       Running   0          1m        192.168.20.22   node4     <none>
 lb-csi-node-djv7t     2/2       Running   0          1m        192.168.20.18   node2     <none>
