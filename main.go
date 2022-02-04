@@ -144,10 +144,6 @@ func errorAndDie(format string, args ...interface{}) {
 	os.Exit(2)
 }
 
-func must(err error) {
-	errorAndDie(err.Error())
-}
-
 // populate config from: flags, env vars, defaults in that order:
 func pickStr(flagVal string, envVar string, def string) string {
 	res := flagVal
@@ -162,9 +158,9 @@ func pickStr(flagVal string, envVar string, def string) string {
 
 func main() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
-	must(flag.CommandLine.MarkHidden("transport"))
-	must(flag.CommandLine.MarkHidden("squelch-panics"))
-	must(flag.CommandLine.MarkHidden("pretty-json"))
+	_ = flag.CommandLine.MarkHidden("transport")
+	_ = flag.CommandLine.MarkHidden("squelch-panics")
+	_ = flag.CommandLine.MarkHidden("pretty-json")
 	flag.SetInterspersed(false)
 	err := flag.CommandLine.Parse(os.Args[1:])
 	if err != nil {
