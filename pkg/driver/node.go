@@ -447,8 +447,27 @@ func (d *Driver) nodePublishVolumeForBlock(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
+	encrypted := false
+	if encryptedValueString, ok := req.GetVolumeContext()[volEncryptedKey]; ok {
+		encryptedValue, err := strconv.ParseBool(encryptedValueString)
+		if err != nil {
+			// should never happen but better safe than sorry, let's panic
+			panic(err)
+		}
+		encrypted = encryptedValue
+	}
+
 	target := req.GetTargetPath()
 	source, err := d.getDevicePath(vid.uuid)
+
+	// if block device is encrypted, we should use the mapped path as the source path
+	if encrypted {
+		source, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device %s: %s", source, err.Error())
+		}
+	}
+
 	if err != nil {
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
 	}
@@ -512,13 +531,34 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
+	var err error
+
+	encrypted := false
+	if encryptedValueString, ok := req.GetVolumeContext()[volEncryptedKey]; ok {
+		encryptedValue, err := strconv.ParseBool(encryptedValueString)
+		if err != nil {
+			// should never happen but better safe than sorry, let's panic
+			panic(err)
+		}
+		encrypted = encryptedValue
+	}
+
 	stagingPath := req.StagingTargetPath
+
+	// if block device is encrypted, we should use the mapped path as the source path
+	if encrypted {
+		stagingPath, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device with ID %s: %s", vid.uuid.String(), err.Error())
+		}
+	}
+
 	tgtPath := req.TargetPath
 	if err := os.MkdirAll(tgtPath, 0750); err != nil {
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
 
-	err := d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
+	err = d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
 		return nil, mkEExec("failed to bind mount: %s", err)
 	}
