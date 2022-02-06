@@ -6,7 +6,8 @@ LABEL maintainers="Lightbits Labs" \
       version.lb-csi.git="UNKNOWN" \
       version.lb-csi.build.host="UNKNOWN" \
       version.lb-csi.build.time="UNKNOWN" \
-      version.lb-csi.build.id="UNKNOWN"
+      version.lb-csi.build.id="UNKNOWN" \
+      dummy_label="check a new label is added to docker image"
 # official builds will also carry the following labels:
 #     version.lb-csi.hash
 # while custom builds might also have labels:
