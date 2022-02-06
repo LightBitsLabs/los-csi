@@ -156,8 +156,7 @@ func pickStr(flagVal string, envVar string, def string) string {
 	return res
 }
 
-// commenting out spare parts:
-//func main() {
+func main() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
 	flag.CommandLine.MarkHidden("transport")
 	flag.CommandLine.MarkHidden("squelch-panics")
