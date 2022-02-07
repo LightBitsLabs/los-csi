@@ -6,13 +6,11 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	mount "k8s.io/mount-utils"
-	utilsio "k8s.io/utils/io"
 )
 
 const (
@@ -23,10 +21,6 @@ const (
 	diskLuksMapperPath   = "/dev/mapper/"
 
 	defaultFSType = "ext4"
-
-	procMountInfoMaxListTries            = 3
-	procMountInfoPath                    = "/proc/self/mountinfo"
-	expectedAtLeastNumFieldsPerMountInfo = 10
 )
 
 type DiskUtils interface {
@@ -45,10 +39,6 @@ type DiskUtils interface {
 
 	// IsSharedMounted returns true is `devicePath` is shared mounted on `targetPath`
 	IsSharedMounted(targetPath string, devicePath string) (bool, error)
-
-	// GetMountInfo returns a mount informations for `targetPath`
-	// taken from https://github.com/kubernetes/kubernetes/blob/master/pkg/util/mount/mount_linux.go
-	GetMountInfo(targetPath string) (*mountInfo, error)
 
 	// GetStatfs return the statfs struct for the given path
 	GetStatfs(path string) (*unix.Statfs_t, error)
@@ -274,168 +264,4 @@ func (d *diskUtils) GetDevicePath(volumeID string) (string, error) {
 	}
 
 	return devicePath, nil
-}
-
-func (d *diskUtils) IsSharedMounted(targetPath string, devicePath string) (bool, error) {
-	if targetPath == "" {
-		return false, errTargetPathEmpty
-	}
-
-	mountInfo, err := d.GetMountInfo(targetPath)
-	if err != nil {
-		return false, err
-	}
-
-	if mountInfo == nil {
-		return false, nil
-	}
-
-	sharedMounted := false
-	for _, optionalField := range mountInfo.optionalFields {
-		tag := strings.Split(optionalField, ":")
-		if tag != nil && tag[0] == "shared" {
-			sharedMounted = true
-		}
-	}
-	if !sharedMounted {
-		return false, errTargetNotSharedMounter
-	}
-
-	if devicePath != "" && mountInfo.source != devicePath {
-		return false, errTargetNotMounterOnRightDevice
-	}
-
-	return true, nil
-}
-
-// taken from https://github.com/kubernetes/kubernetes/blob/master/pkg/util/mount/mount_linux.go
-// This represents a single line in /proc/<pid>/mountinfo.
-type mountInfo struct {
-	// Unique ID for the mount (maybe reused after umount).
-	id int
-	// The ID of the parent mount (or of self for the root of this mount namespace's mount tree).
-	parentID int
-	// The value of `st_dev` for files on this filesystem.
-	majorMinor string
-	// The pathname of the directory in the filesystem which forms the root of this mount.
-	root string
-	// Mount source, filesystem-specific information. e.g. device, tmpfs name.
-	source string
-	// Mount point, the pathname of the mount point.
-	mountPoint string
-	// Optional fieds, zero or more fields of the form "tag[:value]".
-	optionalFields []string
-	// The filesystem type in the form "type[.subtype]".
-	fsType string
-	// Per-mount options.
-	mountOptions []string
-	// Per-superblock options.
-	superOptions []string
-}
-
-// taken from https://github.com/kubernetes/kubernetes/blob/master/pkg/util/mount/mount_linux.go
-func (d *diskUtils) GetMountInfo(targetPath string) (*mountInfo, error) {
-	content, err := utilsio.ConsistentRead(procMountInfoPath, procMountInfoMaxListTries)
-	if err != nil {
-		return &mountInfo{}, err
-	}
-	contentStr := string(content)
-
-	for _, line := range strings.Split(contentStr, "\n") {
-		if line == "" {
-			// the last split() item is empty string following the last \n
-			continue
-		}
-		// See `man proc` for authoritative description of format of the file.
-		fields := strings.Fields(line)
-		if len(fields) < expectedAtLeastNumFieldsPerMountInfo {
-			return nil, fmt.Errorf("wrong number of fields in (expected at least %d, got %d): %s", expectedAtLeastNumFieldsPerMountInfo, len(fields), line)
-		}
-		if fields[4] != targetPath {
-			continue
-		}
-		id, err := strconv.Atoi(fields[0])
-		if err != nil {
-			return nil, err
-		}
-		parentID, err := strconv.Atoi(fields[1])
-		if err != nil {
-			return nil, err
-		}
-		info := &mountInfo{
-			id:           id,
-			parentID:     parentID,
-			majorMinor:   fields[2],
-			root:         fields[3],
-			mountPoint:   fields[4],
-			mountOptions: strings.Split(fields[5], ","),
-		}
-		// All fields until "-" are "optional fields".
-		i := 6
-		for ; i < len(fields) && fields[i] != "-"; i++ {
-			info.optionalFields = append(info.optionalFields, fields[i])
-		}
-		// Parse the rest 3 fields.
-		i++
-		if len(fields)-i < 3 {
-			return nil, fmt.Errorf("expect 3 fields in %s, got %d", line, len(fields)-i)
-		}
-		info.fsType = fields[i]
-		info.source = fields[i+1]
-		info.superOptions = strings.Split(fields[i+2], ",")
-		return info, nil
-	}
-	return nil, nil
-}
-
-func (d *diskUtils) IsBlockDevice(path string) (bool, error) {
-	realPath, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return false, err
-	}
-
-	deviceInfo, err := os.Stat(realPath)
-	if err != nil {
-		return false, err
-	}
-
-	deviceMode := deviceInfo.Mode()
-	if os.ModeDevice != deviceMode&os.ModeDevice || os.ModeCharDevice == deviceMode&os.ModeCharDevice {
-		return false, nil
-	}
-
-	return true, nil
-
-}
-
-func (d *diskUtils) GetStatfs(path string) (*unix.Statfs_t, error) {
-	fs := &unix.Statfs_t{}
-	err := unix.Statfs(path, fs)
-	return fs, err
-}
-
-func (d *diskUtils) Resize(targetPath string, devicePath string) error {
-	mountInfo, err := d.GetMountInfo(targetPath)
-	if err != nil {
-		return err
-	}
-
-	switch mountInfo.fsType {
-	case "ext3", "ext4":
-		resize2fsPath, err := exec.LookPath("resize2fs")
-		if err != nil {
-			return err
-		}
-		resize2fsArgs := []string{devicePath}
-		return exec.Command(resize2fsPath, resize2fsArgs...).Run()
-	case "xfs":
-		xfsGrowfsPath, err := exec.LookPath("xfs_growfs")
-		if err != nil {
-			return err
-		}
-		xfsGrowfsArgs := []string{"-d", targetPath}
-		return exec.Command(xfsGrowfsPath, xfsGrowfsArgs...).Run()
-	}
-
-	return fmt.Errorf("filesystem %s does not support resizing", mountInfo.fsType)
 }
