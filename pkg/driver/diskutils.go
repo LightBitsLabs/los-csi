@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	mount "k8s.io/mount-utils"
 )
 
@@ -31,20 +30,8 @@ type DiskUtils interface {
 	// MountToTarget tries to mount `sourcePath` on `targetPath` as `fsType` with `mountOptions`
 	MountToTarget(sourcePath, targetPath, fsType string, mountOptions []string) error
 
-	// IsBlockDevice returns true if `path` is a block device
-	IsBlockDevice(path string) (bool, error)
-
 	// GetDevicePath returns the path for the specified volumeID
 	GetDevicePath(volumeID string) (string, error)
-
-	// IsSharedMounted returns true is `devicePath` is shared mounted on `targetPath`
-	IsSharedMounted(targetPath string, devicePath string) (bool, error)
-
-	// GetStatfs return the statfs struct for the given path
-	GetStatfs(path string) (*unix.Statfs_t, error)
-
-	// Resize resizes the given volumes
-	Resize(targetPath string, devicePath string) error
 
 	// EncryptAndOpenDevice encrypts the volume with the given ID with the given passphrase and open it
 	// If the device is already encrypted (LUKS header present), it will only open the device
