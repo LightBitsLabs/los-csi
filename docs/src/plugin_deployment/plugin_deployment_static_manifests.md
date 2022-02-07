@@ -4,6 +4,7 @@
 
 - [Static Manifests](#static-manifests)
   - [Overview](#overview)
+  - [Deploying Snapshot-Controller On Kubernetes Cluster](#deploying-snapshot-controller-on-kubernetes-cluster)
   - [Deploying LightOS CSI Plugin On Kubernetes Cluster](#deploying-lightos-csi-plugin-on-kubernetes-cluster)
     - [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin)
   - [CSI Plugin Removal Instructions](#csi-plugin-removal-instructions)
@@ -24,6 +25,30 @@ The following instructions demonstrate a simplified plugin deployment flow using
 >
 > There is no technical requirement to keep the CSI plugin in the `kube-system` namespace for actual deployments. Since `kube-system` is a privileged Kubernetes namespace, this can often avoid unexpected loss of service due to operator mistakes.
 
+### Deploying Snapshot-Controller On Kubernetes Cluster
+
+For reference see: [kubernetes-csi#snapshot-controller](https://kubernetes-csi.github.io/docs/snapshot-controller.html#snapshot-controller)
+
+Volume snapshot is managed by a controller named `Snapshot-Controller`.
+
+Kubernetes admins should bundle and deploy the controller and CRDs as part of their Kubernetes cluster management process (independent of any CSI Driver).
+
+If your cluster does not come pre-installed with the correct components, you may manually install these components by executing these [steps](https://kubernetes-csi.github.io/docs/snapshot-controller.html#deployment)
+
+For convenience we provide a static manifests file that helps deployment of the snapshot-controller, CRDs and RBAC rules:
+
+```bash
+k8s/
+├── snapshot-controller-3.yaml # for kubernetes version < v1.20
+└── snapshot-controller-4.yaml # for kubernetes version >= v1.20
+```
+
+Deploy these resources once before installing `lb-csi-plugin`.
+
+> **NOTE:**
+>
+> If these resources are already deployed for use by other CSI drivers, make sure the versions are correct and skip this step.
+
 ### Deploying LightOS CSI Plugin On Kubernetes Cluster
 
 Provided manifests create the required `ServiceAccount` and RBAC `ClusterRole`/`ClusterRoleBinding` Kubernetes objects.
@@ -34,8 +59,6 @@ We provide a manifest file for each K8s version supported:
 
 ```bash
 k8s/
-├── lb-csi-plugin-k8s-v1.16-dc.yaml
-├── lb-csi-plugin-k8s-v1.16.yaml
 ├── lb-csi-plugin-k8s-v1.17-dc.yaml
 ├── lb-csi-plugin-k8s-v1.17.yaml
 ├── lb-csi-plugin-k8s-v1.18-dc.yaml
@@ -45,7 +68,9 @@ k8s/
 ├── lb-csi-plugin-k8s-v1.20-dc.yaml
 ├── lb-csi-plugin-k8s-v1.20.yaml
 ├── lb-csi-plugin-k8s-v1.21-dc.yaml
-└── lb-csi-plugin-k8s-v1.21.yaml
+├── lb-csi-plugin-k8s-v1.21.yaml
+├── lb-csi-plugin-k8s-v1.22-dc.yaml
+└── lb-csi-plugin-k8s-v1.22.yaml
 ```
 
 >**Note:**
@@ -57,7 +82,7 @@ k8s/
 To deploy the plugin, run the following commands with examples as the current directory and with kubectl in your $PATH.
 
 ```bash
-kubectl create -f lb-csi-plugin-k8s-v1.17.yaml
+kubectl create -f lb-csi-plugin-k8s-v1.21.yaml
 ```
 
 Ideally, the output should contain no error messages. If you see any, try to determine if the problem is with the connectivity to the Kubernetes cluster, the kubelet configuration, or some other minor issue.
@@ -77,7 +102,7 @@ lb-csi-node   3         3         3         3            3           <none>     
 
 $  kubectl get --namespace=kube-system pod --selector app=lb-csi-plugin -o wide
 NAME                  READY     STATUS    RESTARTS   AGE       IP              NODE      NOMINATED NODE
-lb-csi-controller-0   6/6       Running   0          1m        10.233.65.12    node3     <none>
+lb-csi-controller-0   5/5       Running   0          1m        192.168.20.21   node1     <none>
 lb-csi-node-6ptlf     2/2       Running   0          1m        192.168.20.20   node3     <none>
 lb-csi-node-blc46     2/2       Running   0          1m        192.168.20.22   node4     <none>
 lb-csi-node-djv7t     2/2       Running   0          1m        192.168.20.18   node2     <none>
@@ -100,7 +125,7 @@ Failure to confirm that the Lightbits CSI plugin is not in use can result in som
 Assuming you have deployed the Lightbits CSI plugin by following the instructions in the section [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
 
 ```bash
-$ kubectl delete -f lb-csi-plugin-k8s-v1.17.yaml
+$ kubectl delete -f lb-csi-plugin-k8s-v1.21.yaml
 
 $ kubectl get --namespace=kube-system statefulset lb-csi-controller
 No resources found.

@@ -3,12 +3,12 @@ title:  |
   ![](assets/images/lightbits-cover-page.jpg){width=15cm}
 
 
-  Lightbits CSI Plugin v1.7.0 Deployment Guide
+  Lightbits CSI Plugin v1.8.0 Deployment Guide
 subtitle: |
 
   LightOS Version: v2.3.12
 
-  Kubernetes Versions: v1.16 - v1.21
+  Kubernetes Versions: v1.17 - v1.22
 author: Lightbits Labs
 date: \today
 listings: true

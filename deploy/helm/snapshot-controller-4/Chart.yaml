@@ -1,12 +1,11 @@
-apiVersion: v2
-name: lb-csi-plugin
+apiVersion: v1
+name: snapshot-controller-4
 version: 0.6.0
-description: Helm Chart for LightOS CSI Plugin.
-appVersion: 1.8.0
+description: Deploy snapshot-controller for k8s version >= v1.20
+appVersion: 4.2.1
 home: https://github.com/lightbitslabs/los-csi
 icon: https://www.lightbitslabs.com/wp-content/uploads/2018/08/cropped-header-logo-32x32.png
 maintainers:
 - name: Lightbits LTD
   email: support@lightbitslabs.com
   url: https://www.lightbitslabs.com/
-

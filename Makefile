@@ -17,7 +17,7 @@ override VERSION_RELEASE := $(or $(shell cat VERSION 2>/dev/null),$(DEFAULT_REL)
 override RELEASE := $(if $(BUILD_ID),$(VERSION_RELEASE).$(BUILD_ID),$(VERSION_RELEASE))
 
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
-SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),quay.io)
+SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),k8s.gcr.io)
 
 # these vars are sometimes passed in from the outside:
 #   $BUILD_HASH
@@ -111,24 +111,19 @@ build: fmt ## Build plugin binary.
 deploy/k8s:
 	mkdir -p deploy/k8s
 
-manifests: verify_image_registry deploy/k8s
-	helm template deploy/helm/lb-csi/ \
+manifests: lb-csi-manifests snapshot-controller-manifests
+
+snapshot-controller-manifests: verify_image_registry deploy/k8s
+	helm template deploy/helm/snapshot-controller-3/ \
+	    --include-crds \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
-		--set enableSnapshot=false \
-		--set kubeVersion=v1.16 \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.16.yaml
-	helm template deploy/helm/lb-csi/ \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) > deploy/k8s/snapshot-controller-3.yaml
+	helm template deploy/helm/snapshot-controller-4/ \
+	    --include-crds \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
-		--set enableSnapshot=false \
-		--set discoveryClientInContainer=true \
-		--set kubeVersion=v1.16 \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.16-dc.yaml
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) > deploy/k8s/snapshot-controller-4.yaml
+
+lb-csi-manifests: verify_image_registry deploy/k8s
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -214,6 +209,23 @@ manifests: verify_image_registry deploy/k8s
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.22 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.22.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.22 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.22-dc.yaml
 
 deploy/examples:
 	mkdir -p deploy/examples
@@ -246,18 +258,23 @@ examples_manifests: deploy/examples
 		--set preprovisioned.storage=1Gi \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-block-workload.yaml
 	helm template --set snaps.enabled=true \
+		--set snaps.kubeVersion=v1.20.0 \
 		--set snaps.stage=snapshot-class \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-snapshot-class.yaml
 	helm template --set snaps.enabled=true \
+		--set snaps.kubeVersion=v1.20.0 \
 		--set snaps.stage=example-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-pvc-workload.yaml
 	helm template --set snaps.enabled=true \
+		--set snaps.kubeVersion=v1.20.0 \
 		--set snaps.stage=snapshot-from-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-snapshot-from-pvc-workload.yaml
 	helm template --set snaps.enabled=true \
+		--set snaps.kubeVersion=v1.20.0 \
 		--set snaps.stage=pvc-from-snapshot \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-snapshot-workload.yaml
 	helm template --set snaps.enabled=true \
+		--set snaps.kubeVersion=v1.20.0 \
 		--set snaps.stage=pvc-from-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-pvc-workload.yaml
 
@@ -301,6 +318,10 @@ helm_package: deploy/helm/charts
 	helm lint ./deploy/helm/charts/lb-csi-plugin-*.tgz
 	helm package -d ./deploy/helm/charts deploy/helm/lb-csi-workload-examples
 	helm lint ./deploy/helm/charts/lb-csi-workload-examples-*.tgz
+	helm package -d ./deploy/helm/charts deploy/helm/snapshot-controller-3
+	helm lint ./deploy/helm/charts/snapshot-controller-3-*.tgz
+	helm package -d ./deploy/helm/charts deploy/helm/snapshot-controller-4
+	helm lint ./deploy/helm/charts/snapshot-controller-4-*.tgz
 
 helm_package_upload: helm_package
 	@$(BUILD_FLAGS) ./scripts/upload-helm-packages.sh

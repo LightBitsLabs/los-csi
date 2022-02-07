@@ -33,6 +33,22 @@ cleanup() {
     info "Delete default storage class and snapshot class"
     KUBECONFIG="/root/.kube/config" kubectl delete -f $TESTDIR/storage-class.yaml
     KUBECONFIG="/root/.kube/config" kubectl delete -f $TESTDIR/snapshot-class.yaml
+    trap 'exit 0' EXIT
+}
+
+function list_all_tests()
+{
+    KUBECONFIG="/root/.kube/config" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.skip='\[Feature:Windows\]' \
+        -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
+        -ginkgo.dryRun
+}
+
+function list_all_tests_for_our_driver()
+{
+    KUBECONFIG="/root/.kube/config" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.skip='\[Feature:Windows\]' \
+        -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
+        -ginkgo.focus="\[Driver: csi.lightbitslabs.com\]" \
+        -ginkgo.dryRun
 }
 
 test() {
@@ -48,34 +64,39 @@ test() {
 
     info "Start $TEST tests"
     case "$TEST" in
-            volume-expand) focus='csi.lightbitslabs.com.*volume-expand' ;;
-            volume-expand-block) focus='csi.lightbitslabs.com.*(block volmode).*volume-expand' ;;
-            volume-expand-fs) focus='csi.lightbitslabs.com.*fs.*volume-expand' ;;
-            volume-mode) focus='csi.lightbitslabs.com.*volumeMode' ;;
-            volumes) focus='csi.lightbitslabs.com.*volumes' ;;
-            volume-stress) focus='csi.lightbitslabs.com.*volume-stress' ;;
-            multi-volume) focus='csi.lightbitslabs.com.*multiVolume' ;;
-            provisioning) focus='csi.lightbitslabs.com.*provisioning' ;;
-            snapshottable) focus='csi.lightbitslabs.com.*snapshottable' ;;
-            snapshottable-stress) focus='csi.lightbitslabs.com.*snapshottable-stress' ;;
-            capacity) focus='csi.lightbitslabs.com.*capacity' ;;
-            disruptive) focus='csi.lightbitslabs.com.*disruptive' ;;
-            ephemeral) focus='csi.lightbitslabs.com.*ephemeral' ;;
-            volumeIO) focus='csi.lightbitslabs.com.*volumeIO' ;;
-        *) focus='csi.lightbitslabs.com' ;;
+            volume-expand) focus='\[Driver: csi.lightbitslabs.com\].*volume-expand' ;;
+            volume-expand-block) focus='\[Driver: csi.lightbitslabs.com\].*(block volmode).*volume-expand' ;;
+            volume-expand-fs) focus='\[Driver: csi.lightbitslabs.com\].*fs.*volume-expand' ;;
+            volume-mode) focus='\[Driver: csi.lightbitslabs.com\].*volumeMode' ;;
+            volumes) focus='\[Driver: csi.lightbitslabs.com\].*volumes' ;;
+            volume-stress) focus='\[Driver: csi.lightbitslabs.com\].*volume-stress' ;;
+            multi-volume) focus='\[Driver: csi.lightbitslabs.com\].*multiVolume' ;;
+            provisioning) focus='\[Driver: csi.lightbitslabs.com\].*provisioning' ;;
+            snapshottable) focus='\[Driver: csi.lightbitslabs.com\].*snapshottable' ;;
+            snapshottable-stress) focus='\[Driver: csi.lightbitslabs.com\].*snapshottable-stress' ;;
+            capacity) focus='\[Driver: csi.lightbitslabs.com\].*capacity' ;;
+            disruptive) focus='\[Driver: csi.lightbitslabs.com\].*disruptive' ;;
+            ephemeral) focus='\[Driver: csi.lightbitslabs.com\].*ephemeral' ;;
+            volumeIO) focus='\[Driver: csi.lightbitslabs.com\].*volumeIO' ;;
+        *) focus='\[Driver: csi.lightbitslabs.com\]' ;;
     esac
 
     # we comment the redirect to test.log cause it hides the error code of the command
     # since we run this under systemd we have the journald log so no need to redirect
     #cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
-    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" -ginkgo.noColor  | tee $LOGSDIR/test-$TEST.log"
+    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v \
+        -ginkgo.skip='Disruptive' -ginkgo.skip='\[Feature:Windows\]' \
+        -ginkgo.focus='${focus}' \
+        -ginkgo.reportPassed \
+        -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
+        -report-dir=\"$TESTDIR\" -ginkgo.noColor"
 
     pushd $TESTDIR
     info "Start '$TEST' tests"
     info "$cmd"
 
     eval $cmd
-    result=`echo ${PIPESTATUS[0]}`
+    result=`echo $?`
     # we comment the redirect to test.log cause it hides the error code of the command
     # since we run this under systemd we have the journald log so no need to redirect
     # if [[ $result -eq 0 ]]; then
@@ -86,7 +107,7 @@ test() {
     end_time=`date +%s.%N`
     runtime=$( echo "$end_time - $start_time" | bc -l )
     info "=============================="
-    info "Done. Took: $runtime seconds"
+    info "Done. Took: $runtime seconds. error-code: $result"
     info "=============================="
     exit $result
 }
@@ -105,7 +126,17 @@ download() {
     info "Done"
 }
 
+compare_versions() {
+    local aver="$1"
+    local op="$2"
+    local bver="$3"
+    python -c 'import sys
+from pkg_resources import parse_version
+sys.exit(not parse_version(sys.argv[1])'"${op}"'parse_version(sys.argv[2]))' "$aver" "$bver"
+}
+
 generate() {
+
     cat > $TESTDIR/storage-class.yaml <<EOF
 kind: StorageClass
 apiVersion: storage.k8s.io/v1
@@ -133,7 +164,8 @@ parameters:
   csi.storage.k8s.io/controller-expand-secret-namespace: $SECRET_NAMESPACE
 EOF
 
-    cat > $TESTDIR/snapshot-class.yaml <<EOF
+    if compare_versions $CLUSTER_VERSION '>=' v1.20 ; then
+        cat > $TESTDIR/snapshot-class.yaml <<EOF
 apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
@@ -148,6 +180,23 @@ parameters:
   snapshot.storage.kubernetes.io/deletion-secret-name: $SECRET_NAME
   snapshot.storage.kubernetes.io/deletion-secret-namespace: $SECRET_NAMESPACE
 EOF
+    else
+        cat > $TESTDIR/snapshot-class.yaml <<EOF
+apiVersion: snapshot.storage.k8s.io/v1beta1
+kind: VolumeSnapshotClass
+metadata:
+  name: lb-csi-snapshot-sc
+driver: csi.lightbitslabs.com
+deletionPolicy: Delete
+parameters:
+  csi.storage.k8s.io/snapshotter-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/snapshotter-secret-namespace: $SECRET_NAMESPACE
+  csi.storage.k8s.io/snapshotter-list-secret-name: $SECRET_NAME
+  csi.storage.k8s.io/snapshotter-list-secret-namespace: $SECRET_NAMESPACE
+  snapshot.storage.kubernetes.io/deletion-secret-name: $SECRET_NAME
+  snapshot.storage.kubernetes.io/deletion-secret-namespace: $SECRET_NAMESPACE
+EOF
+    fi
 
     cat > $TESTDIR/test-driver.yaml <<EOF
 StorageClass:

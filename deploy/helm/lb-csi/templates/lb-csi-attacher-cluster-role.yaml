@@ -1,36 +1,73 @@
-{{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
+# kind: ClusterRole
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: lb-csi-attacher-role
+# rules:
+#   - apiGroups: [""]
+#     resources: ["persistentvolumes"]
+#     verbs: ["get", "list", "watch", "update", "patch"]
+#   - apiGroups: [""]
+#     resources: ["nodes"]
+#     verbs: ["get", "list", "watch"]
+#   - apiGroups: ["storage.k8s.io"]
+#     resources: ["volumeattachments"]
+#     verbs: ["get", "list", "watch", "update", "patch"]
+#   - apiGroups: ["storage.k8s.io"]
+#     resources: ["csinodes"]
+#     verbs: ["get", "list", "watch"]
+# ---
+
+# kind: ClusterRoleBinding
+# apiVersion: rbac.authorization.k8s.io/v1
+# metadata:
+#   name: lb-csi-attacher-binding
+# subjects:
+#   - kind: ServiceAccount
+#     name: {{ .Values.controllerServiceAccountName }}
+#     namespace: {{ .Release.Namespace }}
+# roleRef:
+#   kind: ClusterRole
+#   name: lb-csi-attacher-role
+#   apiGroup: rbac.authorization.k8s.io
+
+
+---
+# Attacher must be able to work with PVs, CSINodes and VolumeAttachments
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: lb-csi-attacher-role
+  name: external-attacher-runner
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["volumeattachments"]
-    verbs: ["get", "list", "watch", "update", "patch"]
-{{- if ($kubeVersion | semverCompare ">= 1.16.0")}}
+    verbs: ["get", "list", "watch", "patch"]
   - apiGroups: ["storage.k8s.io"]
     resources: ["csinodes"]
     verbs: ["get", "list", "watch"]
-{{end}}
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
+#Secret permission is optional.
+#Enable it if you need value from secret.
+#For example, you have key `csi.storage.k8s.io/controller-publish-secret-name` in StorageClass.parameters
+#see https://kubernetes-csi.github.io/docs/secrets-and-credentials.html
+#  - apiGroups: [""]
+#    resources: ["secrets"]
+#    verbs: ["get", "list"]
 
 ---
-
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: lb-csi-attacher-binding
+  name: csi-attacher-role
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.controllerServiceAccountName }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: lb-csi-attacher-role
+  name: external-attacher-runner
   apiGroup: rbac.authorization.k8s.io
-

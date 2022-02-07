@@ -1,5 +1,5 @@
 {{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
-{{if and ($kubeVersion | semverCompare ">=1.16.0") ( .Values.enableExpandVolume ) }}
+{{if ( .Values.enableExpandVolume ) }}
 # RBAC: external-resizer -------------------------
 # Taken from: https://github.com/kubernetes-csi/external-resizer/blob/master/deploy/kubernetes/rbac.yaml
 # Resizer must be able to work with PVCs, PVs, SCs.

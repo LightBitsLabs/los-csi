@@ -86,14 +86,7 @@ spec:
               mountPath: "/etc/lb-csi"
 {{- end }}
         - name: csi-node-driver-registrar
-          # if hosting the K8s CSI plugin sidecar container images in a
-          # different registry, e.g. a local private Docker registry,
-          # modify the image identifier below accordingly:
-{{- if ($kubeVersion | semverCompare ">=1.16.0 <= 1.18.0") }}
-          image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-node-driver-registrar:v1.2.0
-{{- else }}
-          image: {{ .Values.sidecarImageRegistry }}/k8scsi/csi-node-driver-registrar:v2.1.0
-{{- end }}
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-node-driver-registrar:v2.1.0
           args:
             - "--v=4"
             - "--csi-address=$(ADDRESS)"
