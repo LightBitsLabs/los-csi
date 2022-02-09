@@ -13,9 +13,8 @@ import (
 )
 
 const (
-	diskByIDPath = "/dev/disk/by-id"
-	// FIXME what to take here
-	diskSCWPrefix        = "lb-volume-"
+	diskByIDPath         = "/dev/disk/by-id"
+	diskPrefix           = "lb-volume-"
 	diskLuksMapperPrefix = "lb-luks-"
 	diskLuksMapperPath   = "/dev/mapper/"
 
@@ -234,7 +233,7 @@ func (d *diskUtils) getDeviceType(devicePath string) (string, error) {
 }
 
 func (d *diskUtils) GetDevicePath(volumeID string) (string, error) {
-	devicePath := path.Join(diskByIDPath, diskSCWPrefix+volumeID)
+	devicePath := path.Join(diskByIDPath, diskPrefix+volumeID)
 	realDevicePath, err := filepath.EvalSymlinks(devicePath)
 	if err != nil {
 		return "", err
