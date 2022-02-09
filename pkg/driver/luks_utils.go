@@ -27,7 +27,7 @@ func (d *diskUtils) luksFormat(devicePath string, passphrase string) error {
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
-	d.log.Infof("luksFormat", "args", args)
+	d.log.Info("luksFormat", "args", args)
 	luksFormatCmd := exec.Command(cryptsetupCmd, args...)
 	luksFormatCmd.Stdin = strings.NewReader(passphrase)
 
@@ -42,7 +42,7 @@ func (d *diskUtils) luksOpen(devicePath string, mapperFile string, passphrase st
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
-	d.log.Infof("luksOpen", "args", args)
+	d.log.Info("luksOpen", "args", args)
 	luksOpenCmd := exec.Command(cryptsetupCmd, args...)
 	luksOpenCmd.Stdin = strings.NewReader(passphrase)
 
@@ -55,7 +55,7 @@ func (d *diskUtils) luksClose(mapperFile string) error {
 		mapperFile,  // mapper file to close
 	}
 
-	d.log.Infof("luksClose", "args", args)
+	d.log.Info("luksClose", "args", args)
 	luksCloseCmd := exec.Command(cryptsetupCmd, args...)
 
 	return luksCloseCmd.Run()
@@ -69,7 +69,7 @@ func (d *diskUtils) luksStatus(mapperFile string) ([]byte, error) {
 
 	var stdout bytes.Buffer
 
-	d.log.Infof("luksStatus", "args", args)
+	d.log.Info("luksStatus", "args", args)
 	luksStatusCmd := exec.Command(cryptsetupCmd, args...)
 	luksStatusCmd.Stdout = &stdout
 
@@ -87,7 +87,7 @@ func (d *diskUtils) luksIsLuks(devicePath string) (bool, error) {
 		devicePath, // device path to check
 	}
 
-	d.log.Infof("luksIsLuks", "args", args)
+	d.log.Info("luksIsLuks", "args", args)
 	luksIsLuksCmd := exec.Command(cryptsetupCmd, args...)
 
 	err := luksIsLuksCmd.Run()

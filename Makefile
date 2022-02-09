@@ -105,7 +105,7 @@ fmt: ## Run go fmt against code
 vet: ## Run go vet against code.
 	go vet ./...
 
-build: fmt ## Build plugin binary.
+build: fmt vet ## Build plugin binary.
 	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
 
 deploy/k8s:

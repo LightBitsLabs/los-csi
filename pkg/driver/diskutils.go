@@ -204,7 +204,7 @@ func (d *diskUtils) getDeviceType(devicePath string) (string, error) {
 
 	blkidArgs := []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", devicePath}
 
-	d.log.Infof("getDeviceType", "args", blkidArgs)
+	d.log.Info("getDeviceType", "args", blkidArgs)
 	blkidOutputBytes, err := exec.Command(blkidPath, blkidArgs...).Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
