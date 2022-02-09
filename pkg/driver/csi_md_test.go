@@ -14,32 +14,40 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
 
-//nolint:lll
-var goodIDs = []string{
-	"mgmt:1.2.3.4:80|nguid:00000000-0000-0000-0000-000000000001", // keep first
-	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:1.2.3.4:80|nguid:6BB32FB5-99AA-4A4C-A4E7-30B7787BBD66",
-	"mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:1.0.0.1:80,1.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:lb01.net:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-
-	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:3",
-	"mgmt:1.2.3.4:80|nguid:6BB32FB5-99AA-4A4C-A4E7-30B7787BBD66|proj:proj3",
-	"mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:v3.4",
-	"mgmt:1.0.0.1:80,1.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:r-n-d",
-	"mgmt:lb01.net:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:r.n.d-12-06-78",
-	"mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:abababababababbabababababba",
-	"mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:aaa",
-	"mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:bbb",
-
-	"mgmt:10.19.151.24:443,10.19.151.2:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs",
-	"mgmt:10.19.151.24:443,10.19.151.2:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs",
-	"mgmt:10.19.151.24:443,10.19.151.2:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc",
+type testCase struct {
+	id string
+	pr string
+	sc string
 }
 
+//nolint:lll
+var goodIDs = []testCase{
+	{id: "mgmt:1.2.3.4:80|nguid:00000000-0000-0000-0000-000000000001"}, // keep first
+	{id: "mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+	{id: "mgmt:1.2.3.4:80|nguid:6BB32FB5-99AA-4A4C-A4E7-30B7787BBD66"},
+	{id: "mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+	{id: "mgmt:1.0.0.1:80,1.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+	{id: "mgmt:lb01.net:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+	{id: "mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+	{id: "mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+	{id: "mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66"},
+
+	{id: "mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:3", pr: "3"},
+	{id: "mgmt:1.2.3.4:80|nguid:6BB32FB5-99AA-4A4C-A4E7-30B7787BBD66|proj:proj3", pr: "proj3"},
+	{id: "mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:v3.4", pr: "v3.4"},
+	{id: "mgmt:1.0.0.1:80,1.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:r-n-d", pr: "r-n-d"},
+	{id: "mgmt:lb01.net:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:r.n.d-12-06-78", pr: "r.n.d-12-06-78"},
+	{id: "mgmt:1.0.0.1:80,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:abababababababbabababababba", pr: "abababababababbabababababba"},
+	{id: "mgmt:1.0.0.1:80,1.0.0.2:80,1.0.0.3:80,1.0.0.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:aaa", pr: "aaa"},
+	{id: "mgmt:lb01.net:80,lb02.net:80,lb03.net:80,lb04.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:bbb", pr: "bbb"},
+
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:grpcs|scheme:grpcs", pr: "grpcs", sc: "grpcs"},
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs", pr: "a", sc: "grpcs"},
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs", sc: "grpcs"},
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc", sc: "grpc"},
+}
+
+//nolint:lll
 var badIDs = []string{
 	"",
 	"\n",
@@ -51,6 +59,9 @@ var badIDs = []string{
 	"nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|mgmt:1.2.3.4:80",
 	"mgmt:1.2.3.4:80| |nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"mgmt:1.2.3.4:80|mgmt:5.6.7.8:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|mgmt:5.6.7.8:80",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:80",
 	"mgmt:1.2.3.4:80|node:|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:x|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
@@ -106,7 +117,6 @@ var badIDs = []string{
 	"m9mt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:8000000|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:99999999999999999999999|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-
 	"mgmt:1.0.0.1:80,|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:foo@1.0.0.1:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:foo@1.0.0.1/bar:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
@@ -128,36 +138,73 @@ var badIDs = []string{
 	"mgmt:lb01.net:80,,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:lb01.net:80, ,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:lb01.net:80,x,lb02.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
-	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66'); DROP TABLE Students;--",
-
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj",
+	"mgmt:1.2.3.4:80|proj:nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"mgmt:1.2.3.4:80|proj:nguid|6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"mgmt:1.2.3.4:80|proj:nguid",
+	"mgmt:1.2.3.4:80|proj:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a:b",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|:proj-a",
+	"mgmt:1.2.3.4:80|proj:a|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"proj:a|mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|proj:b",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|project:",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj=123",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66||proj:proj1 ",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:3|unknown:field",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|:grpcs",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs:grpc",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:http",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:https",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:tcp",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|scheme:grpc",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a:scheme:grpcs",
+	"scheme:grpcs|mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs|proj:a",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme",
+	"mgmt:1.2.3.4:80|scheme:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
+	"mgmt:1.2.3.4:80|scheme:nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs",
+	"mgmt:1.2.3.4:80|scheme:nguid|6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs",
+	"mgmt:1.2.3.4:80|scheme:grpcs",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|unknown:field",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|unknown:field",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66'); DROP TABLE Students;--",
 }
 
 func TestParseCSIResourceID(t *testing.T) {
 	first := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	golden := uuid.MustParse("6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66")
-	checkGood := func(t *testing.T, i int, id string, chk uuid.UUID) {
-		vol, err := parseCSIResourceID(id)
+	checkGood := func(t *testing.T, tc testCase, chk uuid.UUID) {
+		if tc.sc == "" {
+			tc.sc = "grpcs" // default
+		}
+		vol, err := parseCSIResourceID(tc.id)
 		if err != nil {
-			t.Errorf("BUG: failed on '%s':\n%s", id, err)
+			t.Errorf("BUG: failed on '%s':\n%s", tc.id, err)
 		} else if vol.uuid != chk {
-			t.Errorf("BUG: botched parsing NGUID in '%s:\ngot '%s' instead of %s",
-				id, vol.uuid, chk)
+			t.Errorf("BUG: botched parsing NGUID in '%s':\ngot '%s' instead of '%s'",
+				tc.id, vol.uuid, chk)
+		} else if tc.pr != "" && vol.projName != tc.pr {
+			t.Errorf("BUG: botched parsing proj name in '%s':\ngot '%s' instead of '%s'",
+				tc.id, vol.projName, tc.pr)
+		} else if vol.scheme != tc.sc {
+			t.Errorf("BUG: botched parsing scheme in '%s':\ngot '%s' instead of '%s'",
+				tc.id, vol.scheme, tc.sc)
 		} else if testing.Verbose() {
 			t.Logf("OK: parsed '%s':\nmgmt EPs: '%s', NGUID: '%s'",
-				id, vol.mgmtEPs, vol.uuid)
+				tc.id, vol.mgmtEPs, vol.uuid)
 		}
 	}
 	for i, goodID := range goodIDs {
-		t.Run("good:"+goodID, func(t *testing.T) {
+		t.Run("good:"+goodID.id, func(t *testing.T) {
 			if i != 0 {
-				checkGood(t, i, goodID, golden)
+				checkGood(t, goodID, golden)
 			} else {
-				checkGood(t, i, goodID, first)
+				checkGood(t, goodID, first)
 			}
 		})
 	}
@@ -165,8 +212,9 @@ func TestParseCSIResourceID(t *testing.T) {
 		t.Run("bad:"+badID, func(t *testing.T) {
 			vol, err := parseCSIResourceID(badID)
 			if err == nil {
-				t.Errorf("BUG: passed on '%s':\nmgmt EPs: '%s', NGUID: '%s'",
-					badID, vol.mgmtEPs, vol.uuid)
+				t.Errorf("BUG: passed on '%s':\nmgmt EPs: '%s', NGUID: '%s', "+
+					"proj: '%s', scheme: '%s'",
+					badID, vol.mgmtEPs, vol.uuid, vol.projName, vol.scheme)
 			} else if testing.Verbose() {
 				t.Logf("OK: refused '%s' with err:\n%s", badID, err)
 			}
@@ -174,6 +222,7 @@ func TestParseCSIResourceID(t *testing.T) {
 	}
 	for i := 0; i < 1000; i++ {
 		id := rand.Uint64()>>uint(rand.Intn(63)) + 1
+		var tc testCase
 		var nguid uuid.UUID
 		if i%2 == 0 {
 			for nguid == uuid.Nil {
@@ -184,10 +233,25 @@ func TestParseCSIResourceID(t *testing.T) {
 				nguid, _ = uuid.NewUUID()
 			}
 		}
-		rndGoodID := fmt.Sprintf("mgmt:%d.%d.%d.%d:%d|nguid:%s",
-			id%19, id%41, id%127, id%256, id%65535, nguid)
-		t.Run("rndGood:"+rndGoodID, func(t *testing.T) {
-			checkGood(t, i, rndGoodID, nguid)
+		proj := ""
+		if i%3 < 2 {
+			tc.pr = fmt.Sprintf("proj-%d", id)
+			proj = "|proj:" + tc.pr
+		}
+		scheme := ""
+		switch id % 6 {
+		case 0, 1:
+			tc.sc = "grpcs"
+			scheme = "|scheme:grpcs"
+		case 2, 3:
+			tc.sc = "grpc"
+			scheme = "|scheme:grpc"
+		default: // nada
+		}
+		tc.id = fmt.Sprintf("mgmt:%d.%d.%d.%d:%d|nguid:%s%s%s",
+			id%19, id%41, id%127, id%256, id%65535, nguid, proj, scheme)
+		t.Run("rndGood:"+tc.id, func(t *testing.T) {
+			checkGood(t, tc, nguid)
 		})
 	}
 }
