@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/dell/gofsutil"
 	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -468,7 +467,7 @@ func MakeFile(path string) error {
 }
 
 func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error) {
-	info, err := gofsutil.GetMounts(ctx)
+	info, err := mountutils.ListProcMounts(tgtPath)
 	if err != nil {
 		return "", err
 	}
