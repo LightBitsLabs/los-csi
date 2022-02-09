@@ -13,6 +13,8 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
@@ -20,6 +22,8 @@ import (
 var (
 	ErrNotSpecifiedOrEmpty = errors.New("unspecified or empty")
 	ErrMalformed           = errors.New("malformed")
+
+	errDevicePathIsNotDevice = errors.New("device path does not point on a block device")
 )
 
 // this file holds the definitions of - and helper functions for handling of -
@@ -44,6 +48,10 @@ const (
 	volParCompressKey   = "compression"
 	volParProjNameKey   = "project-name"
 	volParMgmtSchemeKey = "mgmt-scheme"
+
+	volEncryptedKey = "encrypted"
+	// name of the secret for the encryption passphrase
+	volEncryptionPassphraseKey = "encryptionPassphrase"
 )
 
 // lbCreateVolumeParams represents the contents of the `parameters` field
@@ -73,6 +81,7 @@ type lbCreateVolumeParams struct {
 	compression  bool           // whether compression is enabled.
 	projectName  string         // project name.
 	mgmtScheme   string         // one of [grpc, grpcs]
+	encrypted    bool           // if set to true, volume must be encrypted
 }
 
 func volParKey(key string) string {
@@ -139,7 +148,24 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		return res, mkEinval(key, mgmtScheme)
 	}
 
+	isEncrypted, err := isVolumeEncryptionSet(params)
+	if err != nil {
+		return res, err
+	}
+	res.encrypted = isEncrypted
+
 	return res, nil
+}
+
+func isVolumeEncryptionSet(params map[string]string) (bool, error) {
+	if encryptedStringValue, ok := params[volEncryptedKey]; ok {
+		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
+		if err != nil {
+			return false, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, volEncryptedKey, err)
+		}
+		return encryptedValue, nil
+	}
+	return false, nil
 }
 
 // lbResourceID: ---------------------------------------------------------------

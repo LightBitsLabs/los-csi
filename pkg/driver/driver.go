@@ -110,6 +110,8 @@ type Driver struct {
 
 	be backend.Backend
 
+	diskUtils *diskUtils
+
 	// only 'tcp' is properly supported, 'rdma' is a dev/test-only hack
 	transport string
 
@@ -302,6 +304,7 @@ func New(cfg Config) (*Driver, error) { // nolint:gocritic
 	}
 	d.lbclients = lb.NewClientPool(lbdialer)
 
+	d.diskUtils = newDiskUtils(d.log)
 	return d, nil
 }
 

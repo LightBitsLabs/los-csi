@@ -22,6 +22,7 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_LOG_FMT=text
 
 RUN apk add --no-cache \
+    cryptsetup \
     e2fsprogs e2fsprogs-extra \
     xfsprogs xfsprogs-extra \
     blkid \

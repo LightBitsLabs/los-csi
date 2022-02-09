@@ -230,12 +230,18 @@ func (d *Driver) NodeStageVolume(
 		return nil, mkEinval("volume_id", err.Error())
 	}
 
+	encrypted, err := isVolumeEncryptionSet(req.GetPublishContext())
+	if err != nil {
+		return nil, err
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "NodeStageVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-		"scheme":   vid.scheme,
+		"op":        "NodeStageVolume",
+		"mgmt-ep":   vid.mgmtEPs,
+		"vol-uuid":  vid.uuid,
+		"project":   vid.projName,
+		"scheme":    vid.scheme,
+		"encrypted": encrypted,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
@@ -314,6 +320,17 @@ func (d *Driver) NodeStageVolume(
 	if req.VolumeCapability.GetBlock() != nil {
 		// block volume - we are done for now.
 		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	if encrypted {
+		passhrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
+		}
+		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passhrase)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %s", vid.uuid, err.Error())
+		}
 	}
 
 	mntCap := req.VolumeCapability.GetMount()
@@ -410,6 +427,11 @@ func (d *Driver) NodeUnstageVolume(
 		}
 	}
 
+	err = d.diskUtils.CloseDevice(vid.uuid.String())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error closing device with ID %s: %s", vid.uuid, err.Error())
+	}
+
 	if st := d.be.Detach(ctx, vid.uuid); st != nil {
 		return nil, st.Err()
 	}
@@ -421,8 +443,22 @@ func (d *Driver) nodePublishVolumeForBlock(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
+	encrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	if err != nil {
+		return nil, err
+	}
+
 	target := req.GetTargetPath()
 	source, err := d.getDevicePath(vid.uuid)
+
+	// if block device is encrypted, we should use the mapped path as the source path
+	if encrypted {
+		source, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device %s: %s", source, err.Error())
+		}
+	}
+
 	if err != nil {
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
 	}
@@ -486,13 +522,29 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
+	var err error
+
+	encrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	if err != nil {
+		return nil, err
+	}
+
 	stagingPath := req.StagingTargetPath
+
+	// if block device is encrypted, we should use the mapped path as the source path
+	if encrypted {
+		stagingPath, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device with ID %s: %s", vid.uuid.String(), err.Error())
+		}
+	}
+
 	tgtPath := req.TargetPath
 	if err := os.MkdirAll(tgtPath, 0750); err != nil {
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
 
-	err := d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
+	err = d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
 		return nil, mkEExec("failed to bind mount: %s", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -108,7 +109,7 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 	return uint64(volCap), nil
 }
 
-func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string) *csi.CreateVolumeResponse {
+func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, encrypted bool, mgmtScheme string) *csi.CreateVolumeResponse {
 	volID := lbResourceID{
 		mgmtEPs:  mgmtEPs,
 		uuid:     vol.UUID,
@@ -119,6 +120,9 @@ func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string)
 		Volume: &csi.Volume{
 			CapacityBytes: int64(vol.Capacity),
 			VolumeId:      volID.String(),
+			VolumeContext: map[string]string{
+				volEncryptedKey: strconv.FormatBool(encrypted),
+			},
 		},
 	}
 }
@@ -214,7 +218,7 @@ func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volu
 }
 
 func (d *Driver) doCreateVolume(
-	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume,
+	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, encrypted bool, req lb.Volume,
 ) (*csi.CreateVolumeResponse, error) {
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "CreateVolume",
@@ -256,7 +260,7 @@ func (d *Driver) doCreateVolume(
 	}
 
 	log.WithField("vol-uuid", vol.UUID).Info("volume created successfully")
-	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme), nil
+	return mkVolumeResponse(mgmtEPs, vol, encrypted, mgmtScheme), nil
 }
 
 // CreateVolume uses info extracted from request `parameters` field to connect
@@ -326,6 +330,7 @@ func (d *Driver) CreateVolume(
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
+		params.encrypted,
 		lb.Volume{
 			Name:         req.Name,
 			Capacity:     capacity,
