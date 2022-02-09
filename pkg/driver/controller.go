@@ -42,29 +42,25 @@ var (
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	}
-	capsCache []*csi.ControllerServiceCapability
 )
-
-func init() {
-	// ah, the wonders of flat structuring and concise naming...
-	for _, cap := range controllerCaps {
-		capsCache = append(capsCache,
-			&csi.ControllerServiceCapability{
-				Type: &csi.ControllerServiceCapability_Rpc{
-					Rpc: &csi.ControllerServiceCapability_RPC{
-						Type: cap,
-					},
-				},
-			},
-		)
-	}
-}
 
 func (d *Driver) ControllerGetCapabilities(
 	ctx context.Context, req *csi.ControllerGetCapabilitiesRequest,
 ) (*csi.ControllerGetCapabilitiesResponse, error) {
+
+	var capabilities []*csi.ControllerServiceCapability
+	for _, capability := range controllerCaps {
+		capabilities = append(capabilities, &csi.ControllerServiceCapability{
+			Type: &csi.ControllerServiceCapability_Rpc{
+				Rpc: &csi.ControllerServiceCapability_RPC{
+					Type: capability,
+				},
+			},
+		})
+	}
+
 	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: capsCache,
+		Capabilities: capabilities,
 	}, nil
 }
 
