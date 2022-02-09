@@ -69,20 +69,20 @@ func (d *diskUtils) EncryptAndOpenDevice(volumeID string, passphrase string) (st
 	if err != nil {
 		return "", fmt.Errorf("error getting device path for volume %s: %w", volumeID, err)
 	}
-	isLuks, err := luksIsLuks(devicePath)
+	isLuks, err := d.luksIsLuks(devicePath)
 	if err != nil {
 		return "", fmt.Errorf("error checking if device %s is a luks device: %w", devicePath, err)
 	}
 
 	if !isLuks {
 		// need to format the device
-		err = luksFormat(devicePath, passphrase)
+		err = d.luksFormat(devicePath, passphrase)
 		if err != nil {
 			return "", fmt.Errorf("error formating device %s: %w", devicePath, err)
 		}
 	}
 
-	err = luksOpen(devicePath, diskLuksMapperPrefix+volumeID, passphrase)
+	err = d.luksOpen(devicePath, diskLuksMapperPrefix+volumeID, passphrase)
 	if err != nil {
 		return "", fmt.Errorf("error luks opening device %s: %w", devicePath, err)
 	}
@@ -96,7 +96,7 @@ func (d *diskUtils) CloseDevice(volumeID string) error {
 	}
 
 	if encryptedDevicePath != "" {
-		err = luksClose(diskLuksMapperPrefix + volumeID)
+		err = d.luksClose(diskLuksMapperPrefix + volumeID)
 		if err != nil {
 			return fmt.Errorf("error luks closing %s: %w", encryptedDevicePath, err)
 		}
@@ -116,7 +116,7 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 		return "", fmt.Errorf("error checking stat on %s: %w", mappedPath, err)
 	}
 
-	statusStdout, err := luksStatus(diskLuksMapperPrefix + volumeID)
+	statusStdout, err := d.luksStatus(diskLuksMapperPrefix + volumeID)
 	if err != nil {
 		return "", fmt.Errorf("error checking luks status on %s: %w", diskLuksMapperPrefix+volumeID, err)
 	}
@@ -203,6 +203,8 @@ func (d *diskUtils) getDeviceType(devicePath string) (string, error) {
 	}
 
 	blkidArgs := []string{"-p", "-s", "TYPE", "-s", "PTTYPE", "-o", "export", devicePath}
+
+	d.log.Infof("getDeviceType", "args", blkidArgs)
 	blkidOutputBytes, err := exec.Command(blkidPath, blkidArgs...).Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
