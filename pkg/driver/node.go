@@ -174,8 +174,8 @@ func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	return devPath, nil
 }
 
-// ConstructMountOptions returns only unique mount options in slice.
-func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
+// constructMountOptions returns only unique mount options in slice.
+func constructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
 	if m := volCap.GetMount(); m != nil {
 		hasOption := func(options []string, opt string) bool {
 			for _, o := range options {
@@ -331,6 +331,7 @@ func (d *Driver) NodeStageVolume(
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %s", vid.uuid, err.Error())
 		}
+		log.Infof("volume should be encrypted, passphrase:%q devPath:%q", passphrase, devPath)
 	}
 
 	mntCap := req.VolumeCapability.GetMount()
@@ -356,7 +357,7 @@ func (d *Driver) NodeStageVolume(
 	// TODO: actually, derive them from `mntCap.MountFlags` and `wantRO`
 	// above, if any.
 	mntOpts := []string{}
-	mntOpts = ConstructMountOptions(mntOpts, req.GetVolumeCapability())
+	mntOpts = constructMountOptions(mntOpts, req.GetVolumeCapability())
 	ro := IsVolumeReadOnly(req.GetVolumeCapability())
 
 	if ro {

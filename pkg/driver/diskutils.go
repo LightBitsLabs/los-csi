@@ -54,13 +54,16 @@ func newDiskUtils(log *logrus.Entry) *diskUtils {
 }
 
 func (d *diskUtils) EncryptAndOpenDevice(volumeID string, passphrase string) (string, error) {
+	d.log.Infof("encryptAndOpenDevice volumeID:%q", volumeID)
 	encryptedDevicePath, err := d.GetMappedDevicePath(volumeID)
 	if err != nil {
+		d.log.Errorf("encryptAndOpenDevice volumeID:%q error getting mapped device %v", volumeID, err)
 		return "", err
 	}
 
 	if encryptedDevicePath != "" {
 		// device is already encrypted and open
+		d.log.Infof("encryptAndOpenDevice volumeID:%q is already encrypted", volumeID)
 		return encryptedDevicePath, nil
 	}
 
