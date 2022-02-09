@@ -714,7 +714,7 @@ func (c *Client) CreateVolume(
 	}
 	if snapshotID != guuid.Nil {
 		req.SourceSnapshotUUID = snapshotID.String()
-		c.log.Debugf("creating volume %s from source snapshot uuid: %s",
+		c.log.Debugf("creating volume '%s' from source snapshot uuid: %s",
 			req.Name, req.SourceSnapshotUUID)
 	}
 	vol, err := c.clnt.CreateVolume(ctx, &req)
@@ -853,7 +853,7 @@ func isStatusNotFound(err error) bool {
 }
 
 func (c *Client) DeleteVolume(
-	ctx context.Context, uuid guuid.UUID, projectName string, blocking bool, // TODO: refactor options
+	ctx context.Context, uuid guuid.UUID, projectName string, blocking bool,
 ) error {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -1157,7 +1157,6 @@ func (c *Client) getSnapshot(
 		req.UUID = uuid.String()
 	}
 
-	// TODO add projectName for multi-tenancy support
 	snap, err := c.clnt.GetSnapshot(ctx, &req)
 	if err != nil {
 		return nil, err
@@ -1196,11 +1195,11 @@ func (c *Client) CreateSnapshot(
 			return nil, err
 		}
 		code := st.Code()
-		switch code {
+		switch code { //nolint:exhaustive
 		case codes.InvalidArgument:
 			c.log.Errorf("create snapshot refused by LB on bad arg: %s", st.Message())
 			return nil, status.Errorf(codes.Internal,
-				"failed to create snapshot %s on LB: %s", name, st.Message())
+				"failed to create snapshot '%s' on LB: %s", name, st.Message())
 		case codes.FailedPrecondition:
 			// most likely source volume is being updated, tell
 			// upper layers to retry the whole thing and
@@ -1310,7 +1309,7 @@ func (c *Client) DeleteSnapshot(
 			return err
 		}
 		code := st.Code()
-		switch code {
+		switch code { //nolint:exhaustive
 		case codes.InvalidArgument:
 			c.log.Errorf("delete snapshot refused by LB on bad arg: %s", st.Message())
 			return status.Errorf(codes.Internal,

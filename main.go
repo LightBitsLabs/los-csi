@@ -64,6 +64,9 @@ const (
 	defaultCfgDirPath         = "/etc/lb-csi"
 	defaultJWTFileName        = "jwt"
 	defaultBackendCfgFileName = "backend.yaml"
+
+	statusOk      = 0
+	statusBadArgs = 2
 )
 
 var defaults = driver.Config{
@@ -123,6 +126,8 @@ var (
 			"test log formatter.")
 )
 
+//revive:disable:deep-exit,unhandled-error // er... DIE funcs?
+
 func usageAndDie() {
 	t := template.Must(template.New("usage").Parse(usageTemplate))
 	usageBuf := new(bytes.Buffer)
@@ -130,19 +135,21 @@ func usageAndDie() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "\nOops, fumbled usage. please report this!\n\n")
 	} else {
-		fmt.Fprint(os.Stderr, usageBuf.String())
+		fmt.Fprint(os.Stderr, usageBuf.String()) //nolint:revive
 	}
 	flagsHelp := flag.CommandLine.FlagUsagesWrapped(80)
 	fmt.Fprint(os.Stderr, flagsHelp)
-	os.Exit(2)
+	os.Exit(statusBadArgs)
 }
 
 func errorAndDie(format string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, "ERROR: "+format+"\n", args...)
 	fmt.Fprintf(os.Stderr, "\nTry '%s --help' for more information.\n",
 		defaults.BinaryName)
-	os.Exit(2)
+	os.Exit(statusBadArgs)
 }
+
+//revive:enable:deep-exit,unhandled-error
 
 // populate config from: flags, env vars, defaults in that order:
 func pickStr(flagVal string, envVar string, def string) string {
@@ -158,21 +165,20 @@ func pickStr(flagVal string, envVar string, def string) string {
 
 func main() {
 	flag.CommandLine.Init(os.Args[0], flag.ContinueOnError)
-	flag.CommandLine.MarkHidden("transport")
-	flag.CommandLine.MarkHidden("squelch-panics")
-	flag.CommandLine.MarkHidden("pretty-json")
+	flag.CommandLine.MarkHidden("transport")      //nolint
+	flag.CommandLine.MarkHidden("squelch-panics") //nolint
+	flag.CommandLine.MarkHidden("pretty-json")    //nolint
 	flag.SetInterspersed(false)
 	err := flag.CommandLine.Parse(os.Args[1:])
 	if err != nil {
 		errorAndDie(err.Error())
-		os.Exit(2)
 	}
 	if *help {
 		usageAndDie()
 	}
 	if *version {
 		fmt.Printf("%s %s\n", defaults.BinaryName, driver.GetFullVersionStr())
-		os.Exit(0)
+		os.Exit(statusOk)
 	}
 
 	if !*logTimestamps {

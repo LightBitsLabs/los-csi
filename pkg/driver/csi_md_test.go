@@ -14,7 +14,7 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
 
-// nolint:lll
+//nolint:lll
 var goodIDs = []string{
 	"mgmt:1.2.3.4:80|nguid:00000000-0000-0000-0000-000000000001", // keep first
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
@@ -193,7 +193,7 @@ func TestParseCSIResourceID(t *testing.T) {
 }
 
 func TestParseCSICreateVolumeParams(t *testing.T) {
-	// nolint:lll
+	//nolint:lll
 	testCases := []struct {
 		name   string
 		params map[string]string

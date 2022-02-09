@@ -100,7 +100,7 @@ func (ep EP) String() string {
 	return net.JoinHostPort(ep.host, ep.PortString())
 }
 
-func (ep EP) MarshalJSON() ([]byte, error) { // nolint:unparam
+func (ep EP) MarshalJSON() ([]byte, error) { //nolint:unparam
 	return []byte(`"` + ep.String() + `"`), nil
 }
 

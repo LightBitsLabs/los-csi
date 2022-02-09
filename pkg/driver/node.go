@@ -738,6 +738,7 @@ func filesystemNodeGetVolumeStats(
 			"failed to collect FS info for mount '%s': %s", targetPath, err)
 	}
 
+	//nolint:unconvert // unix.Statfs_t fields have diff sizes on diff architectures.
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{

@@ -31,7 +31,7 @@ const (
 )
 
 func (s VolumeState) String() string {
-	switch s {
+	switch s { //nolint:exhaustive
 	case VolumeCreating:
 		return "creating"
 	case VolumeAvailable:
@@ -62,7 +62,7 @@ const (
 )
 
 func (s VolumeProtection) String() string {
-	switch s {
+	switch s { //nolint:exhaustive
 	case VolumeProtected:
 		return "fully-protected"
 	case VolumeDegraded:
@@ -148,7 +148,7 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 			lDescr, v.ReplicaCount, rDescr, other.ReplicaCount)
 	}
 	if v.Capacity != other.Capacity {
-		diffs.and("rounded up %scapacity %db differs from the %s volume capacity %db",
+		diffs.and("rounded up %scapacity %dB differs from the %s volume capacity %dB",
 			lDescr, v.Capacity, rDescr, other.Capacity)
 	}
 	if v.Compression != other.Compression {
@@ -170,6 +170,7 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 	return diffs
 }
 
+//revive:disable:var-naming // prefer to match the underlying LB API capitalisation
 type ClusterInfo struct {
 	UUID               guuid.UUID
 	SubsysNQN          string
@@ -190,6 +191,8 @@ type Cluster struct {
 	Capacity           uint64
 }
 
+//revive:enable:var-naming
+
 type NodeState int32
 
 // match present LB API values. here's to API stability!
@@ -204,7 +207,7 @@ const (
 )
 
 func (s NodeState) String() string {
-	switch s {
+	switch s { //nolint:exhaustive
 	case NodeActive:
 		return "active"
 	case NodeActivating:
@@ -277,7 +280,7 @@ const (
 )
 
 func (s SnapshotState) String() string {
-	switch s {
+	switch s { //nolint:exhaustive
 	case SnapshotCreating:
 		return "creating"
 	case SnapshotAvailable:
@@ -308,6 +311,7 @@ type Snapshot struct {
 	ProjectName string
 }
 
+//nolint:gofumpt
 type Client interface {
 	Close()
 	// ID() returns a unique opaque string ID of this client.
@@ -321,13 +325,19 @@ type Client interface {
 	ListNodes(ctx context.Context) ([]*Node, error)
 
 	CreateVolume(ctx context.Context, name string, capacity uint64,
-		replicaCount uint32, compress bool, acl []string, projectName string, snapshotID guuid.UUID, blocking bool, // TODO: refactor options
+		replicaCount uint32, compress bool, acl []string, projectName string,
+		snapshotID guuid.UUID, blocking bool,
 	) (*Volume, error)
 	DeleteVolume(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*Volume, error)
 	GetVolumeByName(ctx context.Context, name string, projectName string) (*Volume, error)
-	UpdateVolume(ctx context.Context, uuid guuid.UUID, projectName string, hook VolumeUpdateHook) (*Volume, error)
-	CreateSnapshot(ctx context.Context, name string, projectName string, srcVolUUID guuid.UUID, blocking bool) (*Snapshot, error)
+	UpdateVolume(ctx context.Context, uuid guuid.UUID, projectName string,
+		hook VolumeUpdateHook,
+	) (*Volume, error)
+
+	CreateSnapshot(ctx context.Context, name string, projectName string, srcVolUUID guuid.UUID,
+		blocking bool,
+	) (*Snapshot, error)
 	DeleteSnapshot(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*Snapshot, error)
 	GetSnapshotByName(ctx context.Context, name string, projectName string) (*Snapshot, error) // TODO: allow name repetition for different source volumes

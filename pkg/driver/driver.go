@@ -208,7 +208,7 @@ func createBackend(
 	return be, nil
 }
 
-func New(cfg Config) (*Driver, error) { // nolint:gocritic
+func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	d := &Driver{
 		jwtPath:       cfg.JWTPath,
 		nodeID:        cfg.NodeID,

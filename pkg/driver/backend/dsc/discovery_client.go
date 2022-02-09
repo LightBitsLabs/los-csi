@@ -38,7 +38,7 @@ type Backend struct {
 	log *logrus.Entry
 }
 
-func New(log *logrus.Entry, hostNQN string) (*Backend, error) { // nolint:unparam
+func New(log *logrus.Entry, hostNQN string) (*Backend, error) { //nolint:unparam
 	be := Backend{
 		hostNQN:    hostNQN,
 		dscCfgPath: defaultDSCConfigPath,

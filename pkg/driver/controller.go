@@ -61,7 +61,7 @@ func init() {
 }
 
 func (d *Driver) ControllerGetCapabilities(
-	ctx context.Context, req *csi.ControllerGetCapabilitiesRequest,
+	_ context.Context, _ *csi.ControllerGetCapabilitiesRequest,
 ) (*csi.ControllerGetCapabilitiesResponse, error) {
 	return &csi.ControllerGetCapabilitiesResponse{
 		Capabilities: capsCache,
@@ -359,7 +359,7 @@ func (d *Driver) CreateVolume(
 }
 
 func (d *Driver) ControllerGetVolume(
-	ctx context.Context, req *csi.ControllerGetVolumeRequest,
+	_ context.Context, _ *csi.ControllerGetVolumeRequest,
 ) (*csi.ControllerGetVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }
@@ -435,7 +435,7 @@ func (d *Driver) DeleteVolume(
 		return nil, mkEagain("volume %s is being updated", vol.UUID)
 	default:
 		return nil, mkInternal("found volume '%s' (%s) in unexpected state '%s' (%d)",
-			vol.Name, vol.UUID.String(), vol.State, vol.State)
+			vol.Name, vol.UUID, vol.State, vol.State)
 	}
 
 	// TODO: consider checking if the volume is in use at this time? e.g.
@@ -685,7 +685,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 }
 
 func (d *Driver) ListVolumes(
-	ctx context.Context, req *csi.ListVolumesRequest,
+	_ context.Context, _ *csi.ListVolumesRequest,
 ) (*csi.ListVolumesResponse, error) {
 	// TODO: er... impl?
 

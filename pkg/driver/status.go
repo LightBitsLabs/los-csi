@@ -25,7 +25,7 @@ func shouldRetryOn(err error) bool {
 	if !ok {
 		return false
 	}
-	switch st.Code() { // nolint:exhaustive
+	switch st.Code() { //nolint:exhaustive
 	case codes.DeadlineExceeded,
 		codes.Aborted,
 		codes.ResourceExhausted,
