@@ -323,11 +323,11 @@ func (d *Driver) NodeStageVolume(
 	}
 
 	if encrypted {
-		passhrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
+		passphrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
-		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passhrase)
+		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passphrase)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %s", vid.uuid, err.Error())
 		}
@@ -543,6 +543,13 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	if err := os.MkdirAll(tgtPath, 0750); err != nil {
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
+	logFields := logrus.Fields{
+		"encrypted":    encrypted,
+		"staging":      stagingPath,
+		"target":       tgtPath,
+		"mountoptions": mountOptions,
+	}
+	log.WithFields(logFields).Info("nodePublishVolumeForFilesystem")
 
 	err = d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
