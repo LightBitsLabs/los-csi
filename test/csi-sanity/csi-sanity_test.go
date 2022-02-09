@@ -45,7 +45,7 @@ func TestCSISanity(t *testing.T) {
 		LogTimestamps: false,
 		Transport:     "tcp",
 		SquelchPanics: false,
-		PrettyJson:    true,
+		PrettyJSON:    true,
 	}
 
 	d, err := driver.New(cfg)

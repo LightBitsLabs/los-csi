@@ -91,7 +91,7 @@ type Config struct {
 	BinaryName    string
 	Transport     string // one of: tcp/rdma
 	SquelchPanics bool
-	PrettyJson    bool
+	PrettyJSON    bool
 }
 
 type Driver struct {
@@ -254,7 +254,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	case "json":
 		logFmt = &logrus.JSONFormatter{
 			DisableTimestamp: !cfg.LogTimestamps,
-			PrettyPrint:      cfg.PrettyJson,
+			PrettyPrint:      cfg.PrettyJSON,
 			TimestampFormat:  logTimestampFmt,
 		}
 	case "text":

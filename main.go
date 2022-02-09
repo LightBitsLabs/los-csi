@@ -88,7 +88,7 @@ var defaults = driver.Config{
 	BinaryName:    "lb-csi-plugin",
 	Transport:     "tcp",
 	SquelchPanics: false,
-	PrettyJson:    false,
+	PrettyJSON:    false,
 }
 
 var (
@@ -119,7 +119,7 @@ var (
 	squelchPanics = flag.BoolP("squelch-panics", "P", defaults.SquelchPanics,
 		"Recover panics and return them to the remote client as gRPC "+
 			"errors. NOT safe for use in production environments!")
-	prettyJson = flag.BoolP("pretty-json", "J", defaults.PrettyJson,
+	prettyJSON = flag.BoolP("pretty-json", "J", defaults.PrettyJSON,
 		"Pretty-print JSON log output, with indentations and all. "+
 			"Useful mainly for dev/test as this bloats the logs "+
 			"even more than they already are. Has no effect on "+
@@ -209,7 +209,7 @@ func main() {
 		LogTimestamps: *logTimestamps,
 		Transport:     *transport,
 		SquelchPanics: *squelchPanics,
-		PrettyJson:    *prettyJson,
+		PrettyJSON:    *prettyJSON,
 	}
 
 	d, err := driver.New(cfg)
