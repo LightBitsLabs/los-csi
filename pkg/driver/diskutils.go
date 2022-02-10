@@ -17,7 +17,7 @@ import (
 const (
 	diskByIDPath         = "/dev/disk/by-id"
 	diskPrefix           = "lb-volume-"
-	diskLuksMapperPrefix = "lb-luks-"
+	diskLuksMapperPrefix = "nvme-uuid."
 	diskLuksMapperPath   = "/dev/mapper/"
 
 	defaultFSType = "ext4"
@@ -109,7 +109,7 @@ func (d *diskUtils) CloseDevice(volumeID string) error {
 }
 
 func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
-	mappedPath := diskLuksMapperPath + diskLuksMapperPrefix + volumeID
+	mappedPath := filepath.Join("/dev/disk/by-id", diskLuksMapperPrefix+volumeID)
 	_, err := os.Stat(mappedPath)
 	if err != nil {
 		// if the mapped device does not exists on disk, it's not open
