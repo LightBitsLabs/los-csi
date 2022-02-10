@@ -120,26 +120,11 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 		return "", fmt.Errorf("error checking stat on %s: %w", mappedPath, err)
 	}
 
-	statusStdout, err := d.luksStatus(volume)
-	if err != nil {
-		return "", fmt.Errorf("error checking luks status on %s: %w", volume, err)
+	isActive := d.luksStatus(volume)
+	if isActive {
+		return mappedPath, nil
 	}
-
-	statusLines := strings.Split(string(statusStdout), "\n")
-
-	if len(statusLines) == 0 {
-		return "", fmt.Errorf("luksStatus stdout have 0 lines")
-	}
-
-	// first line should look like
-	// /dev/mapper/<name> is active.
-	if !strings.HasSuffix(statusLines[0], "is active.") {
-		// when a device is not active, an error exit code is thrown
-		// something went wrong if we reach here
-		return "", fmt.Errorf("luksStatus returned ok, but device %s is not active", volume)
-	}
-
-	return mappedPath, nil
+	return "", fmt.Errorf("luksStatus of device %s is not active", volume)
 }
 
 func (d *diskUtils) FormatAndMount(targetPath string, devicePath string, fsType string, mountOptions []string) error {

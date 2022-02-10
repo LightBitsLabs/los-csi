@@ -3,7 +3,6 @@
 package driver
 
 import (
-	"bytes"
 	"errors"
 	"os/exec"
 	"strings"
@@ -61,26 +60,31 @@ func (d *diskUtils) luksClose(mapperFile string) error {
 	return luksCloseCmd.Run()
 }
 
-func (d *diskUtils) luksStatus(mapperFile string) ([]byte, error) {
+// luksStatus returns true if mapperFile is active, otherwise false
+func (d *diskUtils) luksStatus(mapperFile string) bool {
 	args := []string{
 		"status",   // status
 		mapperFile, // mapper file to get status
 	}
-
-	var stdout bytes.Buffer
-
 	d.log.Info("luksStatus", "args", args)
 	luksStatusCmd := exec.Command(cryptsetupCmd, args...)
-	luksStatusCmd.Stdout = &stdout
 
-	err := luksStatusCmd.Run()
-	if err != nil {
-		d.log.Errorf("luksStatus output:%v ", err)
-		return nil, err
+	stdout, _ := luksStatusCmd.CombinedOutput()
+	d.log.Infof("luksStatus output:%q ", string(stdout))
+
+	statusLines := strings.Split(string(stdout), "\n")
+
+	if len(statusLines) == 0 {
+		d.log.Error("luksStatus output has 0 lines")
+		return false
 	}
-	d.log.Infof("luksStatus output:%q ", stdout.Bytes())
+	// first line should look like
+	// /dev/mapper/<name> is active.
+	if strings.HasSuffix(statusLines[0], "is active.") {
+		return true
+	}
 
-	return stdout.Bytes(), nil
+	return false
 }
 
 func (d *diskUtils) luksIsLuks(devicePath string) (bool, error) {
