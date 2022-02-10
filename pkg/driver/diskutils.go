@@ -109,7 +109,8 @@ func (d *diskUtils) CloseDevice(volumeID string) error {
 }
 
 func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
-	mappedPath := filepath.Join("/dev/disk/by-id", diskLuksMapperPrefix+volumeID)
+	volume := diskLuksMapperPrefix + volumeID
+	mappedPath := filepath.Join("/dev/disk/by-id", volume)
 	_, err := os.Stat(mappedPath)
 	if err != nil {
 		// if the mapped device does not exists on disk, it's not open
@@ -119,9 +120,9 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 		return "", fmt.Errorf("error checking stat on %s: %w", mappedPath, err)
 	}
 
-	statusStdout, err := d.luksStatus(mappedPath)
+	statusStdout, err := d.luksStatus(volume)
 	if err != nil {
-		return "", fmt.Errorf("error checking luks status on %s: %w", diskLuksMapperPrefix+volumeID, err)
+		return "", fmt.Errorf("error checking luks status on %s: %w", volume, err)
 	}
 
 	statusLines := strings.Split(string(statusStdout), "\n")
@@ -135,7 +136,7 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 	if !strings.HasSuffix(statusLines[0], "is active.") {
 		// when a device is not active, an error exit code is thrown
 		// something went wrong if we reach here
-		return "", fmt.Errorf("luksStatus returned ok, but device %s is not active", diskLuksMapperPrefix+volumeID)
+		return "", fmt.Errorf("luksStatus returned ok, but device %s is not active", volume)
 	}
 
 	return mappedPath, nil
