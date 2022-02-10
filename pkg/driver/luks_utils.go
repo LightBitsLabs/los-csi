@@ -80,7 +80,7 @@ func (d *diskUtils) luksStatus(mapperFile string) bool {
 	}
 	// first line should look like
 	// /dev/mapper/<name> is active.
-	if strings.HasSuffix(statusLines[0], "is active.") {
+	if strings.HasSuffix(statusLines[0], "is active") {
 		return true
 	}
 
