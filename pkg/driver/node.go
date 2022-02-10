@@ -231,7 +231,7 @@ func (d *Driver) NodeStageVolume(
 		return nil, mkEinval("volume_id", err.Error())
 	}
 
-	encrypted, err := isVolumeEncryptionSet(req.GetPublishContext())
+	encrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (d *Driver) NodeStageVolume(
 		"encrypted": encrypted,
 	})
 
-	log.Infof("NodeStageVolume with publishContext: %q", req.GetPublishContext())
+	log.Infof("NodeStageVolume with volumeContext: %q", req.GetVolumeContext())
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
