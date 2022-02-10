@@ -124,7 +124,7 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 	if isActive {
 		return mappedPath, nil
 	}
-	return "", fmt.Errorf("luksStatus of device %s is not active", volume)
+	return "", nil
 }
 
 func (d *diskUtils) FormatAndMount(targetPath string, devicePath string, fsType string, mountOptions []string) error {
