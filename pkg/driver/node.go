@@ -331,7 +331,7 @@ func (d *Driver) NodeStageVolume(
 		}
 		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passphrase)
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %s", vid.uuid, err.Error())
+			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %v", vid.uuid, err)
 		}
 		log.Infof("volume should be encrypted, passphrase:%q devPath:%q", passphrase, devPath)
 	}
