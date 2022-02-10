@@ -218,6 +218,7 @@ func IsVolumeReadOnly(capability *csi.VolumeCapability) bool {
 func (d *Driver) NodeStageVolume(
 	ctx context.Context, req *csi.NodeStageVolumeRequest,
 ) (*csi.NodeStageVolumeResponse, error) {
+	d.log.Infof("NodeStageVolume with req: %#v", req)
 	if req.StagingTargetPath == "" {
 		return nil, mkEinvalMissing("staging_target_path")
 	}
@@ -566,6 +567,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 func (d *Driver) NodePublishVolume(
 	ctx context.Context, req *csi.NodePublishVolumeRequest,
 ) (*csi.NodePublishVolumeResponse, error) {
+	d.log.Infof("NodePublishVolume with req: %#v", req)
 	vid, err := ParseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
