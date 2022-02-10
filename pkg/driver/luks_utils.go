@@ -75,8 +75,10 @@ func (d *diskUtils) luksStatus(mapperFile string) ([]byte, error) {
 
 	err := luksStatusCmd.Run()
 	if err != nil {
+		d.log.Errorf("luksStatus output:%q ", stdout.Bytes())
 		return nil, err
 	}
+	d.log.Infof("luksStatus output:%q ", stdout.Bytes())
 
 	return stdout.Bytes(), nil
 }
