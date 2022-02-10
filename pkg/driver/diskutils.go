@@ -119,7 +119,7 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 		return "", fmt.Errorf("error checking stat on %s: %w", mappedPath, err)
 	}
 
-	statusStdout, err := d.luksStatus(diskLuksMapperPrefix + volumeID)
+	statusStdout, err := d.luksStatus(mappedPath)
 	if err != nil {
 		return "", fmt.Errorf("error checking luks status on %s: %w", diskLuksMapperPrefix+volumeID, err)
 	}
