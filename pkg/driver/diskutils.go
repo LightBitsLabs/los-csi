@@ -226,7 +226,8 @@ func (d *diskUtils) getDeviceType(devicePath string) (string, error) {
 }
 
 func (d *diskUtils) GetDevicePath(volumeID string) (string, error) {
-	devicePath := path.Join(diskByIDPath, diskPrefix+volumeID)
+	volume := diskLuksMapperPrefix + volumeID
+	devicePath := path.Join(diskByIDPath, volume)
 	realDevicePath, err := filepath.EvalSymlinks(devicePath)
 	if err != nil {
 		return "", err
