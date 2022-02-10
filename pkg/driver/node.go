@@ -244,6 +244,7 @@ func (d *Driver) NodeStageVolume(
 		"encrypted": encrypted,
 	})
 
+	log.Infof("NodeStageVolume with publishContext: %q", req.GetPublishContext())
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
 	if err != nil {
