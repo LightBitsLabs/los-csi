@@ -49,7 +49,8 @@ const (
 	volParProjNameKey   = "project-name"
 	volParMgmtSchemeKey = "mgmt-scheme"
 
-	volEncryptedKey = "encrypted"
+	// parameter in the storageclass parameter, can be either enabled|disabled
+	volEncryptedKey = "encryption"
 	// name of the secret for the encryption passphrase
 	volEncryptionPassphraseKey = "encryptionPassphrase"
 )
@@ -159,11 +160,14 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 
 func isVolumeEncryptionSet(params map[string]string) (bool, error) {
 	if encryptedStringValue, ok := params[volEncryptedKey]; ok {
-		encryptedValue, err := strconv.ParseBool(encryptedStringValue)
-		if err != nil {
-			return false, status.Errorf(codes.InvalidArgument, "invalid bool value (%s) for parameter %s: %v", encryptedStringValue, volEncryptedKey, err)
+		switch encryptedStringValue {
+		case "enabled":
+			return true, nil
+		case "", "disabled":
+			return false, nil
+		default:
+			return false, status.Errorf(codes.InvalidArgument, "invalid value (%s) for parameter %s, only enabled|disabled allowed", encryptedStringValue, volEncryptedKey)
 		}
-		return encryptedValue, nil
 	}
 	return false, nil
 }
