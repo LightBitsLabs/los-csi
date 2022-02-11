@@ -5,21 +5,14 @@
 package driver
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
 
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
-)
-
-var (
-	ErrNotSpecifiedOrEmpty = errors.New("unspecified or empty")
-	ErrMalformed           = errors.New("malformed")
 )
 
 // this file holds the definitions of - and helper functions for handling of -
@@ -55,6 +48,12 @@ const (
 	volParMgmtSchemeKey = "mgmt-scheme"
 )
 
+var projNameRegex *regexp.Regexp
+
+func init() {
+	projNameRegex = regexp.MustCompile(`^[a-z0-9-.]{1,63}$`)
+}
+
 // lbCreateVolumeParams represents the contents of the `parameters` field
 // (`CreateVolumeRequest.parameters`) passed to the plugin by the CO on
 // CreateVolume() CSI API entrypoint invocation. this supplementary info
@@ -66,22 +65,23 @@ const (
 // `parameters` as passed to CreateVolume() is a string-to-string (!) KV map
 // that must include:
 //     mgmt-endpoint: <host>:<port>[,<host>:port>...]
+//     mgmt-scheme: "grpcs"
+//     project-name: <project-name>
 //     replica-count: <num-replicas>
 // may optionally include (if omitted - the default is "disabled"):
 //     compression: <"enabled"|"disabled">
-// and may optionally include (if omitted - the default is empty string - ""):
-//     project-name: <valid-project-name>
 // e.g.:
 //     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
+//     mgmt-scheme: grpcs
+//     project-name: proj-3
 //     replica-count: 2
 //     compression: enabled
-//     project-name: proj-3
 type lbCreateVolumeParams struct {
 	mgmtEPs      endpoint.Slice // LightOS mgmt API server endpoints.
 	replicaCount uint32         // total number of volume replicas.
 	compression  bool           // whether compression is enabled.
 	projectName  string         // project name.
-	mgmtScheme   string         // one of [grpc, grpcs]
+	mgmtScheme   string         // currently must be 'grpcs'
 }
 
 func volParKey(key string) string {
@@ -153,21 +153,18 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 
 // lbResourceID: ---------------------------------------------------------------
 
-// resIDRegex is used for initial syntactic validation of LB resource IDS (volumes, snapshots, etc.)
-// as serialised into a string.
-var (
-	resIDRegex    *regexp.Regexp
-	projNameRegex *regexp.Regexp
-)
+// resIDRegex is used for initial syntactic validation of `lbResourceID`
+// string form: LB CSI plugin generated resource IDs that the COs use to
+// uniquely identify volumes, snapshots, etc.
+var resIDRegex *regexp.Regexp
 
 func init() {
-	projNameRegex = regexp.MustCompile(`^[a-z0-9-\.]{1,63}$`)
-
+	//nolint:lll
 	resIDRegex = regexp.MustCompile(
-		`^mgmt:(?P<ep>[^|]+)\|` +
-			`nguid:(?P<nguid>[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
-			`(\|(?P<proj>proj:[a-z0-9-\.]{1,63}))?` +
-			`(\|(?P<scheme>scheme:(grpc|grpcs)))?$`)
+		`^mgmt:([^|]+)\|` +
+			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
+			`(\|proj:([a-z0-9-\.]{1,63}))?` +
+			`(\|scheme:(grpc|grpcs))?$`)
 }
 
 // lbResourceID uniquely identifies a lightbits resource such as a volume / snapshot / etc.
@@ -178,7 +175,7 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>|proj:<proj>||scheme:<grpc|grpcs>
+//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>]
 // where:
 //    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
 //            volume. can be a hostname or an IP address. more than one
@@ -190,17 +187,18 @@ func init() {
 //    <nguid>   - volume NGUID (see NVMe spec, Identify NS Data Structure)
 //            in its "canonical", 36-character long, RFC-4122 compliant string
 //            representation.
-//    <proj>    - project name on LightOS cluster. this field is OPTIONAL, in
-//			  which case the cluster is configured with multi-tenancy disabled.
-//    <scheme> - project name on LightOS cluster. this field is OPTIONAL, in
-//			  which case the scheme is set to grpcs.
+//    <proj>    - project/tenant name on the LB cluster. this field is
+//            temporarily optional in resource IDs for reverse compatibility,
+//            though modern LB clusters will refuse requests without it.
+//            see notes below in parseCSIResourceID().
+//    <scheme>  - transport scheme for communicating with the LB cluster.
+//            the only valid value is currently 'grpcs' (gRPC over TLS), and
+//            scheme is temporarily optional, in which case it defaults to...
+//            'grpcs'! modern LB clusters will refuse plain unencrypted gRPC
+//            requests anyway. see below in parseCSIResourceID().
 // e.g.:
-//   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:p1
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:project-4
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:project-4|scheme:grpc
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs
+//   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs
 //
 // TODO: the CSI spec mandates that strings "SHALL NOT" exceed 128 bytes.
 // K8s is more lenient (at least 253 bytes, likely more). in any case, with
@@ -211,7 +209,7 @@ type lbResourceID struct {
 	mgmtEPs  endpoint.Slice // LightOS mgmt API server endpoints.
 	uuid     guuid.UUID     // NVMe "Identify NS Data Structure".
 	projName string
-	scheme   string // one of [grpc, grpcs]
+	scheme   string // currently must be 'grpcs'
 }
 
 // String generates the string representation of lbResourceID that will be
@@ -234,62 +232,42 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	vid := lbResourceID{}
 
 	if id == "" {
-		return vid, ErrNotSpecifiedOrEmpty
+		return vid, fmt.Errorf("unspecified or empty")
 	}
 
 	match := resIDRegex.FindStringSubmatch(id)
 	if len(match) < 2 {
-		return vid, fmt.Errorf("bad volume id: '%s'. must contain at least 2 items. err: %w", id, ErrMalformed)
-	}
-	result := make(map[string]string)
-	for i, name := range resIDRegex.SubexpNames() {
-		if i != 0 && name != "" {
-			result[name] = match[i]
-		}
+		return vid, fmt.Errorf("'%s' is malformed", id)
 	}
 	var err error
-	if ep, ok := result["ep"]; ok {
-		vid.mgmtEPs, err = endpoint.ParseCSV(ep)
-		if err != nil {
-			return vid, fmt.Errorf("'%s' has invalid mgmt hunk: %s", id, err)
-		}
-	} else {
-		return vid, fmt.Errorf("bad volume id: '%s'. missing mgmt-ep part. err: %w", id, ErrMalformed)
+	vid.mgmtEPs, err = endpoint.ParseCSV(match[1])
+	if err != nil {
+		return vid, fmt.Errorf("'%s' has invalid mgmt endpoints list: %s", id, err)
 	}
 
-	if ep, ok := result["nguid"]; ok {
-		vid.uuid, err = guuid.Parse(ep)
-		if err != nil {
-			return vid, fmt.Errorf("'%s' has invalid NGUID: %s", id, err)
-		} else if vid.uuid == guuid.Nil {
-			return vid, fmt.Errorf("'%s' has invalid nil NGUID", id)
-		}
-	} else {
-		return vid, fmt.Errorf("bad volume id: '%s'. missing nguid part. err: %w", id, ErrMalformed)
+	vid.uuid, err = guuid.Parse(match[2])
+	if err != nil {
+		return vid, fmt.Errorf("'%s' has invalid NGUID: %s", id, err)
+	} else if vid.uuid == guuid.Nil {
+		return vid, fmt.Errorf("'%s' has invalid nil NGUID", id)
 	}
 
-	if proj, ok := result["proj"]; ok {
-		// optional field
-		if proj != "" {
-			splitted := strings.Split(proj, ":")
-			if len(splitted) != 2 {
-				return vid, fmt.Errorf("'%s' invalid projName", proj)
-			}
-			vid.projName = splitted[1]
-		}
-	}
+	// optional field, originally defaulting to empty.
+	//
+	// TODO: this was only optional during the transition period and has been
+	// MANDATORY for a long time. make it so!
+	vid.projName = match[4]
 
-	if scheme, ok := result["scheme"]; ok {
-		// optional field
-		if scheme != "" {
-			splitted := strings.Split(scheme, ":")
-			if len(splitted) != 2 {
-				return vid, fmt.Errorf("'%s' invalid scheme", scheme)
-			}
-			vid.scheme = splitted[1]
-		} else {
-			vid.scheme = "grpcs"
-		}
+	// optional field, defaulting to 'grpcs'.
+	//
+	// TODO: the option of NOT using 'grpcs' was only viable during the transition
+	// period and 'grpcs' became MANDATORY a long time ago, so:
+	// 1. the regex should be updated to only accept 'grpcs' as a valid value for
+	//    reverse compatibility?
+	// 2. lbResourceID formatter should probably stop generating this field.
+	vid.scheme = match[6]
+	if vid.scheme == "" {
+		vid.scheme = "grpcs"
 	}
 
 	return vid, nil
