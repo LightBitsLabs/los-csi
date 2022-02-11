@@ -161,12 +161,12 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 func isVolumeEncryptionSet(params map[string]string) (bool, error) {
 	if encryptedStringValue, ok := params[volEncryptedKey]; ok {
 		switch encryptedStringValue {
-		case "enabled":
+		case "enabled", "true":
 			return true, nil
-		case "", "disabled":
+		case "", "disabled", "false":
 			return false, nil
 		default:
-			return false, status.Errorf(codes.InvalidArgument, "invalid value (%s) for parameter %s, only enabled|disabled allowed", encryptedStringValue, volEncryptedKey)
+			return false, status.Errorf(codes.InvalidArgument, "invalid value %q for parameter %q, only enabled|disabled|true|false allowed", encryptedStringValue, volEncryptedKey)
 		}
 	}
 	return false, nil
