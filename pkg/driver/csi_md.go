@@ -79,10 +79,10 @@ func volParKey(key string) string {
 	return volParRoot + "." + key
 }
 
-// ParseCSICreateVolumeParams parses the `parameters` K:V map passed to
+// parseCSICreateVolumeParams parses the `parameters` K:V map passed to
 // CreateVolume() and validates the contents. the returned lbCreateVolumeParams
 // is only valid if the returned error is 'nil'.
-func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams, error) {
+func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams, error) {
 	res := lbCreateVolumeParams{}
 	var err error
 
@@ -218,10 +218,10 @@ func (vid lbResourceID) String() string {
 	return res
 }
 
-// ParseCSIResourceID parses CSI wire-protocol-level `volume_id` string into its
+// parseCSIResourceID parses CSI wire-protocol-level `volume_id` string into its
 // constituents and syntactically validates it. the returned lbResourceID is
 // only valid if the returned error is 'nil'.
-func ParseCSIResourceID(id string) (lbResourceID, error) {
+func parseCSIResourceID(id string) (lbResourceID, error) {
 	vid := lbResourceID{}
 
 	if id == "" {

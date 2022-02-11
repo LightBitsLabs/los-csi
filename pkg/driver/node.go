@@ -224,7 +224,7 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -382,7 +382,7 @@ func (d *Driver) NodeUnstageVolume(
 	}
 	tgtPath := req.StagingTargetPath
 
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -504,7 +504,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 func (d *Driver) NodePublishVolume(
 	ctx context.Context, req *csi.NodePublishVolumeRequest,
 ) (*csi.NodePublishVolumeResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -598,7 +598,7 @@ func (d *Driver) NodeUnpublishVolume(
 		return nil, mkEinvalMissing("target_path")
 	}
 
-	_, err := ParseCSIResourceID(req.VolumeId)
+	_, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -668,7 +668,7 @@ func (d *Driver) NodeGetInfo(
 func (d *Driver) NodeGetVolumeStats(
 	ctx context.Context, req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -795,7 +795,7 @@ func blockNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, targetPath 
 func (d *Driver) NodeExpandVolume(
 	ctx context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}

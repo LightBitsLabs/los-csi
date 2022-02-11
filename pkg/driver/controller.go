@@ -283,7 +283,7 @@ func (d *Driver) CreateVolume(
 		return nil, err
 	}
 
-	params, err := ParseCSICreateVolumeParams(req.Parameters)
+	params, err := parseCSICreateVolumeParams(req.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -316,7 +316,7 @@ func (d *Driver) CreateVolume(
 			log.Debugf("clone volume from snapshot")
 			snapshotID = contentSource.GetSnapshot().SnapshotId
 		}
-		sid, err := ParseCSIResourceID(snapshotID)
+		sid, err := parseCSIResourceID(snapshotID)
 		if err != nil {
 			return nil, mkEinval("SnapshotID", err.Error())
 		}
@@ -367,7 +367,7 @@ func (d *Driver) ControllerGetVolume(
 func (d *Driver) DeleteVolume(
 	ctx context.Context, req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		if errors.Is(err, ErrMalformed) {
 			d.log.WithFields(logrus.Fields{
@@ -457,7 +457,7 @@ func (d *Driver) DeleteVolume(
 func (d *Driver) ControllerPublishVolume(
 	ctx context.Context, req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -551,7 +551,7 @@ func (d *Driver) ControllerPublishVolume(
 func (d *Driver) ControllerUnpublishVolume(
 	ctx context.Context, req *csi.ControllerUnpublishVolumeRequest,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -638,7 +638,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 		return nil, mkEinvalMissing("volume_capabilities")
 	}
 
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		if errors.Is(err, ErrMalformed) {
 			d.log.WithFields(logrus.Fields{
@@ -701,7 +701,7 @@ func (d *Driver) GetCapacity(
 		}
 	}
 
-	params, err := ParseCSICreateVolumeParams(req.GetParameters())
+	params, err := parseCSICreateVolumeParams(req.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -725,7 +725,7 @@ func (d *Driver) GetCapacity(
 func (d *Driver) ControllerExpandVolume(
 	ctx context.Context, req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
-	vid, err := ParseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceID(req.VolumeId)
 	if err != nil {
 		return nil, mkEinval("volume_id", err.Error())
 	}
@@ -809,7 +809,7 @@ func mkSnapshotResponse(
 func (d *Driver) CreateSnapshot(
 	ctx context.Context, req *csi.CreateSnapshotRequest,
 ) (*csi.CreateSnapshotResponse, error) {
-	vid, err := ParseCSIResourceID(req.SourceVolumeId)
+	vid, err := parseCSIResourceID(req.SourceVolumeId)
 	if err != nil {
 		return nil, mkEinval("SrcVolumeId", err.Error())
 	}
@@ -862,7 +862,7 @@ func (d *Driver) CreateSnapshot(
 func (d *Driver) DeleteSnapshot(
 	ctx context.Context, req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
-	sid, err := ParseCSIResourceID(req.SnapshotId)
+	sid, err := parseCSIResourceID(req.SnapshotId)
 	if err != nil {
 		return nil, mkEinval("SnapshotID", err.Error())
 	}

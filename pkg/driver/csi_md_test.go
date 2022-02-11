@@ -141,7 +141,7 @@ func TestParseCSIResourceID(t *testing.T) {
 	first := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	golden := uuid.MustParse("6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66")
 	checkGood := func(t *testing.T, i int, id string, chk uuid.UUID) {
-		vol, err := ParseCSIResourceID(id)
+		vol, err := parseCSIResourceID(id)
 		if err != nil {
 			t.Errorf("BUG: failed on '%s':\n%s", id, err)
 		} else if vol.uuid != chk {
@@ -163,7 +163,7 @@ func TestParseCSIResourceID(t *testing.T) {
 	}
 	for _, badID := range badIDs {
 		t.Run("bad:"+badID, func(t *testing.T) {
-			vol, err := ParseCSIResourceID(badID)
+			vol, err := parseCSIResourceID(badID)
 			if err == nil {
 				t.Errorf("BUG: passed on '%s':\nmgmt EPs: '%s', NGUID: '%s'",
 					badID, vol.mgmtEPs, vol.uuid)
@@ -270,7 +270,7 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := ParseCSICreateVolumeParams(tc.params)
+			resp, err := parseCSICreateVolumeParams(tc.params)
 			if tc.err != nil {
 				require.EqualError(t, err, tc.err.Error(), "expected err")
 			} else {
