@@ -93,10 +93,10 @@ help: ## Display this help.
 # TODO: consider adding a separate target 'lint' to push it through the entire 'gometalinter' (or,
 # preferably, 'golangci-lint'!) with custom config - but that implies quite a
 # bit of external dependencies as part of the toolchain...
-test: fmt vet ## Run short test suite
+test: ## Run short test suite
 	$(GO_VARS) go test $(GO_VERBOSE) -short -cover ./...
 
-test_long: fmt vet ## Run long test suite (you're looking at over 10min here...)
+test_long: ## Run long test suite (you're looking at over 10min here...)
 	$(GO_VARS) go test $(GO_VERBOSE) -cover ./...
 
 fmt: ## Run go fmt against code
@@ -105,7 +105,7 @@ fmt: ## Run go fmt against code
 vet: ## Run go vet against code.
 	go vet ./...
 
-build: fmt ## Build plugin binary.
+build: ## Build plugin binary.
 	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
 
 deploy/k8s:
