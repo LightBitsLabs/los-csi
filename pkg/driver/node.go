@@ -535,12 +535,12 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	stagingPath := req.StagingTargetPath
 
 	// if block device is encrypted, we should use the mapped path as the source path
-	if encrypted {
-		stagingPath, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device with ID %s: %s", vid.uuid.String(), err.Error())
-		}
-	}
+	// if encrypted {
+	// 	stagingPath, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
+	// 	if err != nil {
+	// 		return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device with ID %s: %s", vid.uuid.String(), err.Error())
+	// 	}
+	// }
 
 	tgtPath := req.TargetPath
 	if err := os.MkdirAll(tgtPath, 0750); err != nil {
