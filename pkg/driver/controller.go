@@ -844,19 +844,60 @@ func (d *Driver) CreateSnapshot(
 	return mkSnapshotResponse(vid.mgmtEPs, req.SourceVolumeId, snap, ready2use, vid.scheme), nil
 }
 
+func doDeleteSnapshot(
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, sid lbResourceID,
+) error {
+	snap, err := clnt.GetSnapshot(ctx, sid.uuid, sid.projName)
+	if err != nil {
+		if isStatusNotFound(err) {
+			log.Info("snapshot already gone")
+			return nil
+		}
+		return mungeLBErr(log, err, "failed to get snapshot %s from LB", sid.uuid)
+	}
+
+	switch snap.State {
+	case lb.SnapshotAvailable:
+		// this is really the only one that can and should be deleted.
+	case lb.SnapshotDeleting,
+		lb.SnapshotFailed:
+		log.Info("snapshot effectively already gone")
+		return nil
+	case lb.SnapshotCreating:
+		return mkEagain("snapshot %s is still being created", snap.UUID)
+	default:
+		return mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
+			snap.Name, snap.UUID, snap.State, snap.State)
+	}
+
+	err = clnt.DeleteSnapshot(ctx, sid.uuid, sid.projName, true)
+	if err != nil {
+		return mungeLBErr(log, err, "failed to delete snapshot %s from LB", sid.uuid)
+	}
+
+	log.Info("snapshot deleted")
+	return nil
+}
+
 func (d *Driver) DeleteSnapshot(
 	ctx context.Context, req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
-	sid, err := parseCSIResourceID(req.SnapshotId)
+	log := d.log.WithField("op", "DeleteSnapshot")
+	sid, err := parseCSIResourceIDEnoent(snapIDField, req.SnapshotId)
 	if err != nil {
-		return nil, mkEinval("SnapshotID", err.Error())
+		if isStatusNotFound(err) {
+			log.Errorf("bad value of '%s': %s", snapIDField, err)
+			// returning success instead of error to pacify some of the more
+			// simple-minded external tests:
+			return &csi.DeleteSnapshotResponse{}, nil
+		}
+		return nil, err
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":          "DeleteSnapshot",
-		"mgmt-ep":     sid.mgmtEPs,
-		"snapshot-id": req.SnapshotId,
-		"project":     sid.projName,
+	log = d.log.WithFields(logrus.Fields{
+		"mgmt-ep":   sid.mgmtEPs,
+		"snap-uuid": sid.uuid,
+		"project":   sid.projName,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
@@ -866,35 +907,10 @@ func (d *Driver) DeleteSnapshot(
 	}
 	defer d.PutLBClient(clnt)
 
-	snap, err := clnt.GetSnapshot(ctx, sid.uuid, sid.projName)
-	if err != nil {
-		if isStatusNotFound(err) {
-			log.Info("snapshot already gone")
-			return &csi.DeleteSnapshotResponse{}, nil
-		}
-		return nil, mkEagain("failed to get snapshot %q on project %q from LB", sid.uuid, sid.projName)
-	}
-
-	switch snap.State {
-	case lb.SnapshotAvailable:
-		// this is really the only one that can and should be deleted.
-	case lb.SnapshotDeleting,
-		lb.SnapshotFailed:
-		log.Info("snapshot effectively already gone")
-		return &csi.DeleteSnapshotResponse{}, nil
-	case lb.SnapshotCreating:
-		return nil, mkEagain("snapshot %s is still being created", snap.UUID)
-	default:
-		return nil, mkInternal("found snapshot '%s' (%s) in project %q in unexpected state '%s' (%d)",
-			snap.Name, snap.UUID.String(), sid.projName, snap.State, snap.State)
-	}
-
-	err = clnt.DeleteSnapshot(ctx, sid.uuid, sid.projName, true)
+	err = doDeleteSnapshot(ctx, log, clnt, sid)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Info("snapshot deleted")
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 

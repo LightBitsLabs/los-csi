@@ -38,6 +38,7 @@ var (
 const (
 	volPathField = "volume_path"
 	volIDField   = "volume_id"
+	snapIDField  = "snapshot_id"
 )
 
 // lbCreateVolumeParams: -----------------------------------------------------
