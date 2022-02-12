@@ -48,14 +48,17 @@ func (d *diskUtils) luksOpen(devicePath string, mapperFile string, passphrase st
 	return luksOpenCmd.Run()
 }
 
-func (d *diskUtils) luksResize(devicePath string) error {
+func (d *diskUtils) luksResize(mapperFile string, passphrase string) error {
 	args := []string{
 		"resize",
-		devicePath,
+		mapperFile,
+		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
 	d.log.Info("resize", "args", args)
 	luksOpenCmd := exec.Command(cryptsetupCmd, args...)
+	luksOpenCmd.Stdin = strings.NewReader(passphrase)
+
 	return luksOpenCmd.Run()
 }
 

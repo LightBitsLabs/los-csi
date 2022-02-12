@@ -890,13 +890,14 @@ func (d *Driver) NodeExpandVolume(
 		return nil, err
 	}
 
-	isEncrypted, err := d.diskUtils.luksIsLuks(devicePath)
-	if err != nil {
-		return nil, err
-	}
-
+	volume := diskMapperPrefix + vid.uuid.String()
+	isEncrypted := d.diskUtils.luksStatus(volume)
 	if isEncrypted {
-		err = d.diskUtils.luksResize(devicePath)
+		passphrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
+		}
+		err = d.diskUtils.luksResize(volume, passphrase)
 		if err != nil {
 			return nil, err
 		}
