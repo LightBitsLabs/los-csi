@@ -330,6 +330,9 @@ func (d *Driver) NodeStageVolume(
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
+		if len(passphrase) > volEncryptionPassphraseKeyMaxLen {
+			return nil, status.Errorf(codes.InvalidArgument, "passphrase %s for encryption must no longer than %d char but is:%d", volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase))
+		}
 		devPath, err = d.encryptAndOpenDevice(vid.uuid.String(), passphrase)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %v", vid.uuid, err)
@@ -888,6 +891,9 @@ func (d *Driver) NodeExpandVolume(
 		passphrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
+		}
+		if len(passphrase) > volEncryptionPassphraseKeyMaxLen {
+			return nil, status.Errorf(codes.InvalidArgument, "passphrase %s for encryption must no longer than %d char but is:%d", volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase))
 		}
 		err = d.luksResize(volume, passphrase)
 		if err != nil {

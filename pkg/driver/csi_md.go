@@ -49,10 +49,13 @@ const (
 	volParProjNameKey   = "project-name"
 	volParMgmtSchemeKey = "mgmt-scheme"
 
-	// parameter in the storageclass parameter, can be either enabled|disabled
+	// volEncryptedKey parameter in the storageclass parameter, can be either enabled|disabled
 	volEncryptedKey = "encryption"
-	// name of the secret for the encryption passphrase
+	// volEncryptionPassphraseKey name of the secret for the encryption passphrase
 	volEncryptionPassphraseKey = "encryptionPassphrase"
+	// volEncryptionPassphraseKeyMaxLen defines the maximum len of the encryption passphrase
+	// this is according to the cryptsetup man page
+	volEncryptionPassphraseKeyMaxLen = 512
 )
 
 // lbCreateVolumeParams represents the contents of the `parameters` field
