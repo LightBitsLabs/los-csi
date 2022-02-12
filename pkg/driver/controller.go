@@ -37,7 +37,6 @@ var (
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
 		csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 		csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
-		csi.ControllerServiceCapability_RPC_GET_CAPACITY,
 		csi.ControllerServiceCapability_RPC_CREATE_DELETE_SNAPSHOT,
 		csi.ControllerServiceCapability_RPC_CLONE_VOLUME,
 	}
@@ -62,9 +61,38 @@ func init() {
 func (d *Driver) ControllerGetCapabilities(
 	_ context.Context, _ *csi.ControllerGetCapabilitiesRequest,
 ) (*csi.ControllerGetCapabilitiesResponse, error) {
-	return &csi.ControllerGetCapabilitiesResponse{
-		Capabilities: capsCache,
-	}, nil
+	// a bit of a conundrum... in order to implement the GetCapacity()
+	// CSI API entrypoint, this plugin needs the ability to authenticate
+	// to a LightOS server, therefore it needs a JWT. however, the
+	// GetCapacity() CSI entrypoint doesn't include a `secrets` param. so,
+	// this can only work if the plugin is running in a global JWT mode
+	// (i.e. a single JWT file is specified at deployment time via the
+	// $LB_CSI_JWT_PATH env var or the `--jwt-path` cmd-line arg, though
+	// the contents of the file are monitored for changes at runtime).
+	//
+	// having ControllerGetCapabilities() response potentially vary from
+	// call to call is not ideal, especially since some/most COs might not
+	// even bother calling it more than once. unfortunately, this seems
+	// like the best balance between allowing at least some deployments
+	// (those running in global JWT mode) to "enjoy" GetCapacity() access,
+	// and not misleadingly reporting bogus support for it on other
+	// deployments, where it'll just fail on authZ errors...
+	//
+	// the whole secrets/credentials story both in CSI and K8s could
+	// certainly use some fixing...
+	caps := capsCache
+	if d.jwt != "" {
+		caps = append([]*csi.ControllerServiceCapability{
+			&csi.ControllerServiceCapability{ //nolint:gofumpt // tool version diffs
+				Type: &csi.ControllerServiceCapability_Rpc{
+					Rpc: &csi.ControllerServiceCapability_RPC{
+						Type: csi.ControllerServiceCapability_RPC_GET_CAPACITY,
+					},
+				},
+			},
+		}, caps...)
+	}
+	return &csi.ControllerGetCapabilitiesResponse{Capabilities: caps}, nil
 }
 
 func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
@@ -693,17 +721,46 @@ func (d *Driver) GetCapacity(
 		}
 	}
 
+	// non-cluster-specific requests are meaningless:
+	if req.Parameters == nil {
+		return &csi.GetCapacityResponse{AvailableCapacity: 0}, nil
+	}
+	// a minor hack to allow querying capacity without having to specify
+	// the replication factor (other non-vital params have defaults):
+	if rc := req.Parameters[volParRepCntKey]; rc == "" {
+		req.Parameters[volParRepCntKey] = "1"
+	}
 	params, err := parseCSICreateVolumeParams(req.Parameters)
 	if err != nil {
 		return nil, err
 	}
 
+	// a major hack: the CSI API GetCapacity() entrypoint doesn't have a
+	// `secrets` param, so unless the CSI plugin is running in a global
+	// JWT mode (i.e. a single JWT is specified via $LB_CSI_JWT_PATH env
+	// var, or `--jwt-path` cmd-line arg, e.g. seeded from a K8s Secret) -
+	// this can't work at all...
+	//
+	// NOTE: this is orthogonal to the cluster-level vs project-specific
+	// credentials discussed in the comment below; whether the JWT is
+	// specified globally or not doesn't affect the scope of the
+	// permissions granted by the JWT and vice versa.
+	ctx = d.cloneCtxWithCreds(ctx, map[string]string{})
 	clnt, err := d.GetLBClient(ctx, params.mgmtEPs, params.mgmtScheme)
 	if err != nil {
 		return nil, err
 	}
 	defer d.PutLBClient(clnt)
 
+	// TODO: several issues here:
+	// * GetCluster() requires cluster-level access permissions, which
+	//   the caller might not have if it has project-level credentials.
+	// * if `project-name` was specified, we should start using GetProject()
+	//   once quotas are in place, in which case the scope of the creds
+	//   won't matter.
+	// * if `project-name` was NOT specified, we can probably continue using
+	//   GetCluster() and just return an authZ error if the caller didn't
+	//   have cluster-wide perms.
 	cluster, err := clnt.GetCluster(ctx)
 	if err != nil {
 		return nil, err
