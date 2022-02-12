@@ -329,7 +329,7 @@ func (d *Driver) NodeStageVolume(
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
-		devPath, err = d.diskUtils.EncryptAndOpenDevice(vid.uuid.String(), passphrase)
+		devPath, err = d.diskUtils.encryptAndOpenDevice(vid.uuid.String(), passphrase)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %v", vid.uuid, err)
 		}
@@ -430,7 +430,7 @@ func (d *Driver) NodeUnstageVolume(
 		}
 	}
 
-	err = d.diskUtils.CloseDevice(vid.uuid.String())
+	err = d.diskUtils.closeDevice(vid.uuid.String())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error closing device with ID %s: %s", vid.uuid, err.Error())
 	}
@@ -456,7 +456,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 
 	// if block device is encrypted, we should use the mapped path as the source path
 	if encrypted {
-		source, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
+		source, err = d.diskUtils.getMappedDevicePath(vid.uuid.String())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device %s: %s", source, err.Error())
 		}
@@ -887,6 +887,18 @@ func (d *Driver) NodeExpandVolume(
 	devicePath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return nil, err
+	}
+
+	isEncrypted, err := d.diskUtils.luksIsLuks(devicePath)
+	if err != nil {
+		return nil, err
+	}
+
+	if isEncrypted {
+		err = d.diskUtils.luksResize(devicePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resizer := mountutils.NewResizeFs(d.mounter.Exec)

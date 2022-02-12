@@ -48,6 +48,17 @@ func (d *diskUtils) luksOpen(devicePath string, mapperFile string, passphrase st
 	return luksOpenCmd.Run()
 }
 
+func (d *diskUtils) luksResize(devicePath string) error {
+	args := []string{
+		"resize",
+		devicePath,
+	}
+
+	d.log.Info("resize", "args", args)
+	luksOpenCmd := exec.Command(cryptsetupCmd, args...)
+	return luksOpenCmd.Run()
+}
+
 func (d *diskUtils) luksClose(mapperFile string) error {
 	args := []string{
 		"luksClose", // close

@@ -23,28 +23,6 @@ const (
 	defaultFSType = "ext4"
 )
 
-type DiskUtils interface {
-	// FormatAndMount tries to mount `devicePath` on `targetPath` as `fsType` with `mountOptions`
-	// If it fails it will try to format `devicePath` as `fsType` first and retry
-	FormatAndMount(targetPath string, devicePath string, fsType string, mountOptions []string) error
-
-	// MountToTarget tries to mount `sourcePath` on `targetPath` as `fsType` with `mountOptions`
-	MountToTarget(sourcePath, targetPath, fsType string, mountOptions []string) error
-
-	// GetDevicePath returns the path for the specified volumeID
-	GetDevicePath(volumeID string) (string, error)
-
-	// EncryptAndOpenDevice encrypts the volume with the given ID with the given passphrase and open it
-	// If the device is already encrypted (LUKS header present), it will only open the device
-	EncryptAndOpenDevice(volumeID string, passphrase string) (string, error)
-
-	// CloseDevice closes the encrypted device with the given ID
-	CloseDevice(volumeID string) error
-
-	// GetMappedDevicePath returns the path on where the encrypted device with the given ID is mapped
-	GetMappedDevicePath(volumeID string) (string, error)
-}
-
 type diskUtils struct {
 	log *logrus.Entry
 }
@@ -53,9 +31,11 @@ func newDiskUtils(log *logrus.Entry) *diskUtils {
 	return &diskUtils{log: log}
 }
 
-func (d *diskUtils) EncryptAndOpenDevice(volumeID string, passphrase string) (string, error) {
+// encryptAndOpenDevice encrypts the volume with the given ID with the given passphrase and open it
+// If the device is already encrypted (LUKS header present), it will only open the device
+func (d *diskUtils) encryptAndOpenDevice(volumeID string, passphrase string) (string, error) {
 	d.log.Infof("encryptAndOpenDevice volumeID:%q", volumeID)
-	encryptedDevicePath, err := d.GetMappedDevicePath(volumeID)
+	encryptedDevicePath, err := d.getMappedDevicePath(volumeID)
 	if err != nil {
 		d.log.Errorf("encryptAndOpenDevice volumeID:%q error getting mapped device %v", volumeID, err)
 		return "", err
@@ -68,7 +48,7 @@ func (d *diskUtils) EncryptAndOpenDevice(volumeID string, passphrase string) (st
 	}
 
 	// let's check if the device is already a luks device
-	devicePath, err := d.GetDevicePath(volumeID)
+	devicePath, err := d.getDevicePath(volumeID)
 	if err != nil {
 		return "", fmt.Errorf("error getting device path for volume %s: %w", volumeID, err)
 	}
@@ -92,8 +72,9 @@ func (d *diskUtils) EncryptAndOpenDevice(volumeID string, passphrase string) (st
 	return diskLuksMapperPath + diskLuksMapperPrefix + volumeID, nil
 }
 
-func (d *diskUtils) CloseDevice(volumeID string) error {
-	encryptedDevicePath, err := d.GetMappedDevicePath(volumeID)
+// closeDevice closes the encrypted device with the given ID
+func (d *diskUtils) closeDevice(volumeID string) error {
+	encryptedDevicePath, err := d.getMappedDevicePath(volumeID)
 	if err != nil {
 		return err
 	}
@@ -108,7 +89,8 @@ func (d *diskUtils) CloseDevice(volumeID string) error {
 	return nil
 }
 
-func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
+// getMappedDevicePath returns the path on where the encrypted device with the given ID is mapped
+func (d *diskUtils) getMappedDevicePath(volumeID string) (string, error) {
 	volume := diskLuksMapperPrefix + volumeID
 	mappedPath := filepath.Join("/dev/disk/by-id", volume)
 	_, err := os.Stat(mappedPath)
@@ -127,13 +109,15 @@ func (d *diskUtils) GetMappedDevicePath(volumeID string) (string, error) {
 	return "", nil
 }
 
-func (d *diskUtils) FormatAndMount(targetPath string, devicePath string, fsType string, mountOptions []string) error {
+// formatAndMount tries to mount `devicePath` on `targetPath` as `fsType` with `mountOptions`
+// If it fails it will try to format `devicePath` as `fsType` first and retry
+func (d *diskUtils) formatAndMount(targetPath string, devicePath string, fsType string, mountOptions []string) error {
 	if fsType == "" {
 		fsType = defaultFSType
 	}
 
 	d.log.Infof("Attempting to mount %s on %s with type %s", devicePath, targetPath, fsType)
-	err := d.MountToTarget(devicePath, targetPath, fsType, mountOptions)
+	err := d.mountToTarget(devicePath, targetPath, fsType, mountOptions)
 	if err != nil {
 		d.log.Infof("Mount attempt failed, trying to format device %s with type %s", devicePath, fsType)
 		realFsType, fsErr := d.getDeviceType(devicePath)
@@ -146,14 +130,15 @@ func (d *diskUtils) FormatAndMount(targetPath string, devicePath string, fsType 
 			if fsErr != nil {
 				return fsErr
 			}
-			return d.MountToTarget(devicePath, targetPath, fsType, mountOptions)
+			return d.mountToTarget(devicePath, targetPath, fsType, mountOptions)
 		}
 		return err
 	}
 	return nil
 }
 
-func (d *diskUtils) MountToTarget(sourcePath, targetPath, fsType string, mountOptions []string) error {
+// mountToTarget tries to mount `sourcePath` on `targetPath` as `fsType` with `mountOptions`
+func (d *diskUtils) mountToTarget(sourcePath, targetPath, fsType string, mountOptions []string) error {
 	if fsType == "" {
 		fsType = defaultFSType
 	}
@@ -225,7 +210,8 @@ func (d *diskUtils) getDeviceType(devicePath string) (string, error) {
 	return "", nil
 }
 
-func (d *diskUtils) GetDevicePath(volumeID string) (string, error) {
+// getDevicePath returns the path for the specified volumeID
+func (d *diskUtils) getDevicePath(volumeID string) (string, error) {
 	volume := diskLuksMapperPrefix + volumeID
 	devicePath := path.Join(diskByIDPath, volume)
 	realDevicePath, err := filepath.EvalSymlinks(devicePath)
