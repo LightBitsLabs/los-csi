@@ -218,16 +218,15 @@ func IsVolumeReadOnly(capability *csi.VolumeCapability) bool {
 func (d *Driver) NodeStageVolume(
 	ctx context.Context, req *csi.NodeStageVolumeRequest,
 ) (*csi.NodeStageVolumeResponse, error) {
+	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
+	if err != nil {
+		return nil, err
+	}
 	if req.StagingTargetPath == "" {
 		return nil, mkEinvalMissing("staging_target_path")
 	}
 	if err := d.validateVolumeCapability(req.VolumeCapability); err != nil {
 		return nil, err
-	}
-
-	vid, err := parseCSIResourceID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
 	}
 
 	log := d.log.WithFields(logrus.Fields{
@@ -378,15 +377,14 @@ func (d *Driver) NodeStageVolume(
 func (d *Driver) NodeUnstageVolume(
 	ctx context.Context, req *csi.NodeUnstageVolumeRequest,
 ) (*csi.NodeUnstageVolumeResponse, error) {
+	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
+	if err != nil {
+		return nil, err
+	}
 	if req.StagingTargetPath == "" {
 		return nil, mkEinvalMissing("staging_target_path")
 	}
 	tgtPath := req.StagingTargetPath
-
-	vid, err := parseCSIResourceID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
-	}
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
@@ -505,9 +503,9 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 func (d *Driver) NodePublishVolume(
 	ctx context.Context, req *csi.NodePublishVolumeRequest,
 ) (*csi.NodePublishVolumeResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
+		return nil, err
 	}
 
 	logFields := logrus.Fields{
@@ -595,13 +593,12 @@ func (d *Driver) NodePublishVolume(
 func (d *Driver) NodeUnpublishVolume(
 	ctx context.Context, req *csi.NodeUnpublishVolumeRequest,
 ) (*csi.NodeUnpublishVolumeResponse, error) {
+	_, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
+	if err != nil {
+		return nil, err
+	}
 	if req.TargetPath == "" {
 		return nil, mkEinvalMissing("target_path")
-	}
-
-	_, err := parseCSIResourceID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
 	}
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
@@ -794,9 +791,9 @@ func blockNodeGetVolumeStats(
 func (d *Driver) NodeExpandVolume(
 	ctx context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceIDEnoent(volIDField, req.VolumeId)
 	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
+		return nil, err
 	}
 
 	log := d.log.WithFields(logrus.Fields{

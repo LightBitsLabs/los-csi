@@ -291,6 +291,17 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	return vid, nil
 }
 
+func parseCSIResourceIDEinval(field, id string) (lbResourceID, error) {
+	if id == "" {
+		return lbResourceID{}, mkEinvalMissing(field)
+	}
+	rid, err := parseCSIResourceID(id)
+	if err != nil {
+		return lbResourceID{}, mkEinval(field, err.Error())
+	}
+	return rid, nil
+}
+
 func parseCSIResourceIDEnoent(field, id string) (lbResourceID, error) {
 	if id == "" {
 		return lbResourceID{}, mkEinvalMissing(field)
