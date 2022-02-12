@@ -288,6 +288,10 @@ func ParseCSIResourceID(id string) (lbResourceID, error) {
 
 // CSI volume capabilities helpers: ------------------------------------------
 
+var supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
+	csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+}
+
 // see validateVolumeCapability() docs for info.
 func (d *Driver) validateVolumeCapabilities(caps []*csi.VolumeCapability) error {
 	if len(caps) == 0 {

@@ -50,10 +50,6 @@ var (
 	versionGitCommit = ""
 	versionBuildHash = ""
 	versionBuildID   = ""
-
-	supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
-		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
-	}
 )
 
 func GetVersion() string {
