@@ -330,7 +330,7 @@ func (d *Driver) NodeStageVolume(
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
-		devPath, err = d.diskUtils.encryptAndOpenDevice(vid.uuid.String(), passphrase)
+		devPath, err = d.encryptAndOpenDevice(vid.uuid.String(), passphrase)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %v", vid.uuid, err)
 		}
@@ -431,7 +431,7 @@ func (d *Driver) NodeUnstageVolume(
 		}
 	}
 
-	err = d.diskUtils.closeDevice(vid.uuid.String())
+	err = d.closeDevice(vid.uuid.String())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "error closing device with ID %s: %s", vid.uuid, err.Error())
 	}
@@ -457,7 +457,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 
 	// if block device is encrypted, we should use the mapped path as the source path
 	if encrypted {
-		source, err = d.diskUtils.getMappedDevicePath(vid.uuid.String())
+		source, err = d.getMappedDevicePath(vid.uuid.String())
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device %s: %s", source, err.Error())
 		}
@@ -534,14 +534,6 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	}
 
 	stagingPath := req.StagingTargetPath
-
-	// if block device is encrypted, we should use the mapped path as the source path
-	// if encrypted {
-	// 	stagingPath, err = d.diskUtils.GetMappedDevicePath(vid.uuid.String())
-	// 	if err != nil {
-	// 		return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device with ID %s: %s", vid.uuid.String(), err.Error())
-	// 	}
-	// }
 
 	tgtPath := req.TargetPath
 	if err := os.MkdirAll(tgtPath, 0750); err != nil {
@@ -891,13 +883,13 @@ func (d *Driver) NodeExpandVolume(
 	}
 
 	volume := diskMapperPrefix + vid.uuid.String()
-	isEncrypted := d.diskUtils.luksStatus(volume)
+	isEncrypted := d.luksStatus(volume)
 	if isEncrypted {
 		passphrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
-		err = d.diskUtils.luksResize(volume, passphrase)
+		err = d.luksResize(volume, passphrase)
 		if err != nil {
 			return nil, err
 		}
