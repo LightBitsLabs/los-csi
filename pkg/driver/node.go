@@ -116,7 +116,8 @@ func (d *Driver) getDeviceUUID(device string) (string, error) {
 func (d *Driver) GetDevPathByUUID(uuid guuid.UUID) (string, error) {
 	// first try to get by-id device symlink, but ignore the error as older
 	// kernels might not have that yet.
-	linkPath := filepath.Join("/dev/disk/by-id", "nvme-uuid."+uuid.String())
+	volume := diskMapperPrefix + uuid.String()
+	linkPath := filepath.Join(diskByIDPath, volume)
 	devicePath, err := filepath.EvalSymlinks(linkPath)
 	if err == nil {
 		return filepath.Abs(devicePath)
