@@ -47,6 +47,16 @@ func mungeLBErr(
 	return mkExternal(format+": "+err.Error(), args...)
 }
 
+// prefixErr() returns an error with the same gRPC error code as `err`, but
+// with a message prefixed with an arbitrary blurb.
+func prefixErr(err error, format string, args ...interface{}) error {
+	st, ok := status.FromError(err)
+	if !ok {
+		return mkExternal(format+": "+err.Error(), args...)
+	}
+	return status.Errorf(st.Code(), format+": "+st.Message(), args...)
+}
+
 // failure to attach the error details to gRPC response is highly unlikely to
 // be spurious runtime error, so tank instead of hiding the real error we were
 // trying to report:

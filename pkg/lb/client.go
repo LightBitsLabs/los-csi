@@ -126,6 +126,7 @@ const (
 	SkipNone = 0
 	SkipUUID = (1 << iota)
 	SkipSnapUUID
+	SkipCapacity
 )
 
 // ExplainDiffsFrom returns a list of human-readable sentences describing the
@@ -155,7 +156,7 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipFiel
 		diffs.and("%sreplica count of %d differs from the %s replica count of %d",
 			lDescr, v.ReplicaCount, rDescr, other.ReplicaCount)
 	}
-	if v.Capacity != other.Capacity {
+	if not(SkipCapacity) && v.Capacity != other.Capacity {
 		diffs.and("rounded up %scapacity %dB differs from the %s volume capacity %dB",
 			lDescr, v.Capacity, rDescr, other.Capacity)
 	}

@@ -133,7 +133,9 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 	return uint64(volCap), nil
 }
 
-func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string) *csi.CreateVolumeResponse {
+func mkVolumeResponse(
+	mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string, volSrc *csi.VolumeContentSource,
+) *csi.CreateVolumeResponse {
 	volID := lbResourceID{
 		mgmtEPs:  mgmtEPs,
 		uuid:     vol.UUID,
@@ -144,78 +146,207 @@ func mkVolumeResponse(mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string)
 		Volume: &csi.Volume{
 			CapacityBytes: int64(vol.Capacity),
 			VolumeId:      volID.String(),
+			ContentSource: volSrc,
 		},
 	}
 }
 
-func (d *Driver) validateSnapshot(ctx context.Context, clnt lb.Client, req lb.Volume) (bool, error) {
-	if req.SnapshotUUID == guuid.Nil {
-		return true, nil
+func chkContentSourceCompat(
+	srcReplicaCount uint32, srcCompression bool, srcCapacity uint64,
+	req lb.Volume, reqCapacity csi.CapacityRange, field string,
+) error {
+	if req.ReplicaCount != srcReplicaCount {
+		return mkEinvalf(field, "requested volume replica count of %d differs from content "+
+			"source count of %d", req.ReplicaCount, srcReplicaCount)
+	}
+	if req.Compression != srcCompression {
+		b2s := map[bool]string{false: "disabled", true: "enabled"}
+		return mkEinvalf(field, "requested volume with %s compression from content source "+
+			"with %s compression", b2s[req.Compression], b2s[srcCompression])
 	}
 
-	lbSnap, err := clnt.GetSnapshot(ctx, req.SnapshotUUID, req.ProjectName)
-	if err != nil {
-		return false, mkInternal("unable to get snapshot %s", req.SnapshotUUID.String())
+	// LightOS supports creating volumes that are bigger or equal in size than
+	// the base snapshot. however, exposing the ability to create volume clones
+	// bigger than the original snapshot/volume through the CSI plugin is a
+	// little tricky: FS/mount volumes would first have to have their FS
+	// resized. that would need to be done specifically when they're attached
+	// to a node for the first time. tracking all this stuff reliably is a bit
+	// of a pain in a stateless system.
+	//
+	// TODO: consider adding support for the above, special-casing FS vs block.
+	minCap := uint64(reqCapacity.RequiredBytes)
+	maxCap := uint64(reqCapacity.LimitBytes)
+	if minCap > srcCapacity || maxCap != 0 && maxCap < srcCapacity {
+		rLim := "2^64)" // excl.
+		if maxCap != 0 {
+			rLim = fmt.Sprintf("%d]", maxCap) // incl.
+		}
+		return mkErange("volume content source size of %dB is outside the requested "+
+			"capacity range: [%d..%s", srcCapacity, minCap, rLim)
 	}
-
-	switch lbSnap.State {
-	case lb.SnapshotAvailable:
-		// this is the only one that should permit volume creation.
-	case lb.SnapshotDeleting,
-		lb.SnapshotFailed:
-		return false, mkInternal("snapshot '%s' (%s) is in state '%s' (%d)",
-			lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
-	case lb.SnapshotCreating:
-		return false, mkEagain("snapshot %s is still being created", lbSnap.UUID)
-	default:
-		return false, mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
-			lbSnap.Name, lbSnap.UUID.String(), lbSnap.State, lbSnap.State)
-	}
-
-	if req.ReplicaCount != lbSnap.SrcVolReplicaCount {
-		return false, mkEinvalf("volume %s requested replicaCount %d != snapshot replicaCount %d",
-			req.Name, req.ReplicaCount, lbSnap.SrcVolReplicaCount)
-	}
-	if req.Compression != lbSnap.SrcVolCompression {
-		return false, mkEinvalf("volume %s requested compression %d != snapshot compression %d",
-			req.Name, req.Compression, lbSnap.SrcVolCompression)
-	}
-	if req.Capacity < lbSnap.Capacity {
-		return false, mkEinvalf("volume %s requested size %d < snapshot %s size %d",
-			req.Name, req.Capacity, lbSnap.Capacity)
-	}
-
-	return true, nil
+	return nil
 }
 
-func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volume) (bool, error) {
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "validateVolume",
-		"vol-name": vol.Name,
-		"vol-uuid": vol.UUID,
-	})
-	switch vol.State {
-	case lb.VolumeAvailable, lb.VolumeUpdating:
-		// this one might be reusable as is...
-	case lb.VolumeCreating:
-		return false, mkEagain("volume '%s' is still being created", vol.Name)
+// chkSourceSnapCompat() checks whether the source snapshot specified by UUID
+// in the `req` volume description:
+// * exists on the LightOS cluster,
+// * is in a usable state for creating a volume from it,
+// * has parameters compatible with those of the volume to be created from it,
+//   except for the capacity, which is taken directly from the CSI request
+//   `reqCapacity` param piped through to here.
+// if so - it UPDATES the `req` volume capacity in-situ to match that of the
+// source snapshot and returns nil, otherwise returns a gRPC Status error
+// suitable for direct return to the callers of CreateVolume().
+func chkSourceSnapCompat(
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, req *lb.Volume,
+	reqCapacity csi.CapacityRange, srcSid lbResourceID,
+) error {
+	snap, err := clnt.GetSnapshot(ctx, srcSid.uuid, srcSid.projName)
+	if err != nil {
+		if isStatusNotFound(err) {
+			return mkEnoent("content source snapshot %s doesn't exist", srcSid.uuid)
+		}
+		return mungeLBErr(log, err, "failed to get content source snapshot %s from LB",
+			srcSid.uuid)
+	}
+
+	switch snap.State {
+	case lb.SnapshotAvailable:
+		// the only state in which a snapshot can serve as a content source.
+	case lb.SnapshotDeleting:
+		return mkEinvalf(volContSrcSnapField, "content source snapshot %s "+
+			"is in the process of being deleted", snap.UUID)
+	case lb.SnapshotCreating:
+		return mkEagain("content source snapshot %s is still being created", snap.UUID)
 	default:
-		return false, mkInternal("volume '%s' exists but is in unexpected "+
+		return mkInternal("found content source snapshot %s in unexpected state '%s' (%d)",
+			snap.UUID, snap.State, snap.State)
+	}
+
+	err = chkContentSourceCompat(snap.SrcVolReplicaCount, snap.SrcVolCompression,
+		snap.Capacity, *req, reqCapacity, volContSrcSnapField)
+	if err != nil {
+		return err
+	}
+	req.Capacity = snap.Capacity
+	return nil
+}
+
+// chkSourceVolCompat() checks whether the source volume specified by `srcVid`
+// exists is usable and compatible with the volume to be created from it,
+// specified by `req` - except for the explicit `reqCapacity`. for more details
+// see chkSourceSnapCompat().
+//
+// if the two are compatible, it UPDATES the `req` volume capacity in-situ to
+// match that of the source volume and returns nil, otherwise returns a gRPC
+// Status error suitable for direct return to the callers of CreateVolume().
+func chkSourceVolCompat(
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, req *lb.Volume,
+	reqCapacity csi.CapacityRange, srcVid lbResourceID,
+) error {
+	vol, err := clnt.GetVolume(ctx, srcVid.uuid, srcVid.projName)
+	if err != nil {
+		if isStatusNotFound(err) {
+			return mkEnoent("source volume %s doesn't exist", srcVid.uuid)
+		}
+		return mungeLBErr(log, err, "failed to get info of source volume %s from LB: %s",
+			srcVid.uuid)
+	}
+
+	switch vol.State {
+	case lb.VolumeAvailable:
+		// the only state in which a volume can serve as a content source.
+	case lb.VolumeDeleting:
+		return mkEinvalf(volContSrcVolField, "content source volume %s "+
+			"is in the process of being deleted", vol.UUID)
+	case lb.VolumeUpdating:
+		return mkEagain("content source volume %s is being updated", vol.UUID)
+	default:
+		return mkInternal("found snapshot '%s' (%s) in unexpected state '%s' (%d)",
+			vol.Name, vol.UUID, vol.State, vol.State)
+	}
+
+	err = chkContentSourceCompat(vol.ReplicaCount, vol.Compression,
+		vol.Capacity, *req, reqCapacity, volContSrcVolField)
+	if err != nil {
+		return err
+	}
+	req.Capacity = vol.Capacity
+	return nil
+}
+
+// findExistingVolume() tries to look up [by name] in a LightOS cluster an existing
+// volume that would be "CSI compatible" with `req` details (this would typically
+// be a result of a retry from a CO). if `srcVid` or (as in "xor") `srcSid` is
+// specified, checks that the volume is actually sourced from the specified volume
+// or snapshot, and that is capacity is within `reqCapacity`, rather than matching
+// req.Capacity precisely.
+//
+// if a matching volume is found - returns its volume descriptor, nil otherwise,
+// which is NOT considered an error. all errors returned are gRPC-compatible and
+// should probably be returned verbatim by the caller CreateVolume().
+func findExistingVolume(
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, req lb.Volume,
+	reqCapacity csi.CapacityRange, srcVid, srcSid *lbResourceID,
+) (*lb.Volume, error) {
+	vol, err := clnt.GetVolumeByName(ctx, req.Name, req.ProjectName)
+	if err != nil {
+		if isStatusNotFound(err) {
+			return nil, nil
+		}
+		return nil, mungeLBErr(log, err,
+			"failed to check if volume '%s' already exists on LB", req.Name)
+	}
+	log = log.WithField("vol-uuid", vol.UUID)
+
+	switch vol.State {
+	case lb.VolumeAvailable, lb.VolumeUpdating, lb.VolumeCreating:
+		// might be usable, now or later - if it otherwise matches.
+		// see a second check down below.
+	case lb.VolumeDeleting:
+		// volume deletion in LB is a background operation that might take
+		// some time. this shouldn't prevent a new volume from being created,
+		// but it's handy to know this happened. just in case... ;)
+		log.Infof("spotted appropriately named volume in the process of being deleted, " +
+			"ignoring it")
+		return nil, nil
+	default:
+		return nil, mkInternal("volume '%s' exists but is in unexpected "+
 			"state '%s' (%d)", vol.Name, vol.State, vol.State)
 	}
 
-	// TODO: check protection state and stall with EAGAIN, making
-	// the CO retry, if it's read-only on unavailable?
-	// this way the user workload will be DELAYED, possibly for a
-	// long time - until the relevant LightOS cluster nodes are up
-	// and caught up - but at least will not see EIO right off the
-	// bat (that might still happen on massive LightOS cluster node
-	// outages after the volume is created and returned, of course)...
+	// provenance check:
+	prefix := fmt.Sprintf("volume '%s' exists but is incompatible", vol.Name)
+	if srcSid != nil {
+		if vol.SnapshotUUID != srcSid.uuid {
+			if vol.SnapshotUUID == guuid.Nil {
+				return nil, mkEExist("%s: it is not based on snapshot %s as requested",
+					prefix, srcSid.uuid)
+			}
+			return nil, mkEExist("%s: it is based on snapshot %s instead of the "+
+				"requested one: %s", prefix, vol.SnapshotUUID, srcSid.uuid)
+		}
+	} else if srcVid != nil {
+		if vol.SnapshotUUID == guuid.Nil {
+			return nil, mkEExist("%s: it was required to be based on volume %s, but has "+
+				"no requisite intermedite snapshot listed as base", prefix, srcVid.uuid)
+		}
+		snap, err := clnt.GetSnapshot(ctx, vol.SnapshotUUID, vol.ProjectName)
+		if err != nil {
+			return nil, mungeLBErr(log, err, "failed to get snapshot %s from LB while "+
+				"checking existing volume '%s' provenance",
+				vol.SnapshotUUID, vol.Name)
+		}
+		if snap.SrcVolUUID != srcVid.uuid {
+			return nil, mkEExist("%s: it is based on volume %s instead of the "+
+				"requested one: %s", prefix, snap.SrcVolUUID, srcVid.uuid)
+		}
+	}
 
-	diffs := req.ExplainDiffsFrom(vol, "requested", "actual", lb.SkipUUID)
+	diffs := req.ExplainDiffsFrom(vol, "requested", "actual",
+		lb.SkipUUID|lb.SkipSnapUUID|lb.SkipCapacity)
 	if len(diffs) > 0 {
-		return false, mkEExist("volume '%s' exists but is incompatible: %s",
-			vol.Name, strings.Join(diffs, ", "))
+		return nil, mkEExist("%s: %s", prefix, strings.Join(diffs, ", "))
 	}
 	if !strlist.AreEqual(vol.ACL, req.ACL) {
 		// this is likely a race with some other instance, but
@@ -226,6 +357,32 @@ func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volu
 			"unexpected ACL %#q instead of %#q", vol.ACL, req.ACL)
 	}
 
+	if srcSid != nil || srcVid != nil {
+		if vol.Capacity < uint64(reqCapacity.RequiredBytes) {
+			return nil, mkEExist("%s: its capacity of %dB is smaller than the required %dB",
+				prefix, vol.Capacity, reqCapacity.RequiredBytes)
+		}
+		if reqCapacity.LimitBytes != 0 && vol.Capacity > uint64(reqCapacity.LimitBytes) {
+			return nil, mkEExist("%s: its capacity of %dB is bigger than the %dB limit",
+				prefix, vol.Capacity, reqCapacity.LimitBytes)
+		}
+	} else if vol.Capacity != req.Capacity {
+		return nil, mkEExist("%s: its capacity of %dB differs from the requred %dB rounded up"+
+			prefix, vol.Capacity, req.Capacity)
+	}
+
+	if vol.State == lb.VolumeCreating {
+		return nil, mkEagain("volume '%s' is still being created", vol.Name)
+	}
+
+	// TODO: check protection state and stall with EAGAIN, making
+	// the CO retry, if it's read-only on unavailable?
+	// this way the user workload will be DELAYED, possibly for a
+	// long time - until the relevant LightOS cluster nodes are up
+	// and caught up - but at least will not see EIO right off the
+	// bat (that might still happen on massive LightOS cluster node
+	// outages after the volume is created and returned, of course)...
+
 	// if reached here - a matching volume already exists...
 	if !vol.IsWritable() {
 		log.Warnf("volume already exists, but is not currently usable: "+
@@ -233,154 +390,240 @@ func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volu
 	} else {
 		log.Info("volume already exists")
 	}
-
-	return true, nil
+	return vol, nil
 }
 
+// doCreateVolume() actually creates a new volume based on the CO requirements,
+// possibly basing it on an existing snapshot or volume (indirectly).
+//
+// if `srcSid` is specified, doCreateVolume() will base the volume on that
+// snapshot, if it's compatible with the requested parameters of the new volume,
+// including having capacity that satisfies `reqCapacity. in this case the new
+// volume capacity will derived from the source snapshot capacity, and might
+// differ from `req.Capacity`.
+//
+// alternatively, if `srcVid` is specified doCreateVolume() will try to take a
+// temporary snapshot of the source volume, and base the new volume on that.
+// that's because currently LB volumes can only be based on explicit snapshots.
+// the temporary snapshot will be immediately auto-deleted, though it will
+// currently linger in the 'Deleted' state until the volume based on it disappears.
+// similar to the `srcSid` case, the resultant volume capacity will be based on
+// that of the source.
 func (d *Driver) doCreateVolume(
-	ctx context.Context, mgmtScheme string, mgmtEPs endpoint.Slice, req lb.Volume,
-) (*csi.CreateVolumeResponse, error) {
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "CreateVolume",
-		"mgmt-ep":  mgmtEPs,
-		"vol-name": req.Name,
-		"project":  req.ProjectName,
-	})
-
-	clnt, err := d.GetLBClient(ctx, mgmtEPs, mgmtScheme)
-	if err != nil {
-		return nil, err
-	}
-	defer d.PutLBClient(clnt)
-
-	// check if a matching volume already exists (likely a result of retry from CO):
-	vol, err := clnt.GetVolumeByName(ctx, req.Name, req.ProjectName)
-	if err != nil {
-		if !isStatusNotFound(err) {
-			// TODO: convert to status!
-			return nil, err
-		}
-		// nope, no such luck. just create one:
-		if ok, err := d.validateSnapshot(ctx, clnt, req); !ok {
-			return nil, err
-		}
-
-		vol, err = clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
-			req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, true) // TODO: blocking opt
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, req lb.Volume,
+	reqCapacity csi.CapacityRange, srcVid, srcSid *lbResourceID,
+) (*lb.Volume, error) {
+	// see if it's a "clone" request (creating a volume from another volume or
+	// a snapshot), and if so - figure out the UUID of a snapshot to base the
+	// new volume on, if necessary - creating a temporary snapshot in the process.
+	//
+	// TODO: BEFORE doing anything else (like trying to create intermediate
+	// snapshot or a new volume), the flow should probably call GetClusterInfo()
+	// first using `clnt` (that was created for mgmtEPs derived from the original
+	// `req.Parameters`), then, unless the mgmtEPs are IDENTICAL, create a
+	// separate LB client for mgmtEPs derived from the `VolumeContentSource`
+	// lbResourceID and call GetClusterInfo() on that, to verify that both the
+	// content source and the volume being requested belong to the same LB
+	// cluster (have identical SubsysNQNs), as cross-cluster volume creation is
+	// nonsensical. unfortunately, string comparisons on mgmtEPs won't be of much
+	// help due to cluster resizing, VIPs, DNS, plugin evolution in the face of
+	// long-lived volumes, etc.
+	if srcVid != nil {
+		err := chkSourceVolCompat(ctx, log, clnt, &req, reqCapacity, *srcVid)
 		if err != nil {
-			// TODO: convert to status!
 			return nil, err
 		}
 
+		// TODO: this "intermediate snapshot" naming logic is problematic: it
+		// ties the origin snapshot content to the name of the target volume,
+		// instead of to the point in time at which the snapshot was requested,
+		// in some cases this will result in the new volume being created from
+		// contents possibly hours, days or months out of date. due to the lazy
+		// snapshot deletion strategy this will also prevent creation of
+		// identically named clone volumes in the future due to snapshot name
+		// collisions (see note below on cleanup).
+		snapName := "snapshot-" + req.Name
+		log.Infof("auto-creating intermediate snapshot '%s' to clone from a volume", snapName)
+		snap, err := doCreateSnapshot(ctx, log, clnt, snapName, *srcVid,
+			"auto-snap for clone, by: LB CSI")
+		if err != nil {
+			return nil, prefixErr(err,
+				"failed to create intermediate snapshot to be used as content source")
+		}
+
+		tmpSid := lbResourceID{
+			mgmtEPs:  srcVid.mgmtEPs,
+			uuid:     snap.UUID,
+			projName: snap.ProjectName,
+			scheme:   srcVid.scheme,
+		}
+
+		// TODO: LB doesn't support deletion of snapshots with live volumes
+		// based on them. LB will accept this request and the snapshot will
+		// enter 'Deleting' state, but the snapshot will remain until the
+		// last "derived" volume disappears. moreover, snapshot deletion might
+		// take some time from the point in time where the snapshot becomes
+		// eligible for final removal from the system.
+		//
+		// as a result, some flows might experience unexpected results. e.g.
+		// "cloning" a volume through such an intermediate snapshot, using
+		// the clone for a while, deleting the clone, then immediately
+		// trying to create an identically named clone of the original
+		// volume again (but, presumably, based on the up-to-date contents
+		// of the original volume) will likely fail: using the current
+		// intermediate snapshot naming scheme, the second clone operation
+		// will just find the OLD snapshot in the 'Deleting' state...
+		defer func() {
+			log.Infof("requesting auto-deletion of intermediate snapshot '%s'", snapName)
+
+			// yes, this is definitely not atomic with respect to creation above...
+			err = doDeleteSnapshot(ctx, log, clnt, tmpSid)
+			if err != nil {
+				// TODO: theoretically, if LightOS returned one of the
+				// "temporary" errors, this method could spawn a
+				// Goroutine that would keep retrying to delete the
+				// intermediate snapshot in the background. however,
+				// there are no guarantees that this process will
+				// remain alive long enough, that a multitude of such
+				// background tasks won't pile up on K8s retries, etc.
+
+				// doesn't justify failing CreateVolume(), caller got vol.
+				log.Errorf("auto-deletion of intermediate snapshot '%s' failed: %s",
+					snapName, err)
+			}
+		}()
+
+		req.SnapshotUUID = snap.UUID
+	} else if srcSid != nil {
+		err := chkSourceSnapCompat(ctx, log, clnt, &req, reqCapacity, *srcSid)
+		if err != nil {
+			return nil, err
+		}
+		req.SnapshotUUID = srcSid.uuid
 	}
 
-	// verify what we asked for is what we got...
-	if ok, err := d.validateVolume(ctx, req, vol); !ok {
-		return nil, err
+	vol, err := clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
+		req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, true)
+	if err != nil {
+		return nil, mungeLBErr(log, err, "failed to create volume '%s'", req.Name)
 	}
 
 	log.WithField("vol-uuid", vol.UUID).Info("volume created successfully")
-	return mkVolumeResponse(mgmtEPs, vol, mgmtScheme), nil
+	return vol, nil
 }
 
 // CreateVolume uses info extracted from request `parameters` field to connect
 // to LB and attempt to create the volume specified by `name` field (or return
 // info on an existing volume if one matches, for idempotency). see
 // `lbCreateVolumeParams` for more details on the format.
+//
+// TODO: on volume "clone" ops, the CSI spec seems to require that the plugin
+// detect "incompatibility between `parameters` from the source and the ones
+// requested for the new volume". unfortunately, the CSI spec does NOT supply
+// the `parameters` of the source as part of the params to this call. it is
+// unspecified how the plugin is supposed to pull this off.
+//
+// TODO: it's also unclear what's the expected behaviour if a "clone" op is
+// requested for a FS volume with a block mode vol or snap specified as a
+// source. since the capabilities of the source volume are not passed in to
+// this call either, how are plugins expected to detect such cases?
 func (d *Driver) CreateVolume(
 	ctx context.Context, req *csi.CreateVolumeRequest,
 ) (*csi.CreateVolumeResponse, error) {
 	if req.Name == "" {
 		return nil, mkEinvalMissing("name")
 	}
-
 	if req.AccessibilityRequirements != nil {
 		return nil, mkEinval("accessibility_requirements",
 			"accessibility constraints are not supported")
 	}
-
+	// `capacity` will be used for creating new free-standing volumes:
 	capacity, err := getReqCapacity(req.CapacityRange)
 	if err != nil {
 		return nil, err
 	}
-
+	// reqCapacity is the acceptable capacity range, consulted in "clone" cases:
+	reqCapacity := csi.CapacityRange{}
+	if req.CapacityRange != nil {
+		reqCapacity = *req.CapacityRange
+	}
 	if err = d.validateVolumeCapabilities(req.VolumeCapabilities); err != nil {
 		return nil, err
 	}
-
 	params, err := parseCSICreateVolumeParams(req.Parameters)
 	if err != nil {
 		return nil, err
 	}
 
 	log := d.log.WithFields(logrus.Fields{
-		"op":      "CreateVolume",
-		"mgmt-ep": params.mgmtEPs,
-		"project": params.projectName,
+		"op":       "CreateVolume",
+		"mgmt-ep":  params.mgmtEPs,
+		"vol-name": req.Name,
+		"project":  params.projectName,
 	})
 
-	var snapshotID string
-	snapshotUUID := guuid.UUID{}
-	contentSource := req.GetVolumeContentSource()
-	if contentSource != nil {
-		if contentSource.GetVolume() != nil {
-			log.Debugf("clone volume from volume - create intermediate snapshot")
-			snapReq := csi.CreateSnapshotRequest{
-				SourceVolumeId: contentSource.GetVolume().GetVolumeId(),
-				Name:           "snapshot-" + req.GetName(),
-				Parameters:     req.GetParameters(),
-				Secrets:        req.Secrets,
-			}
-			snap, err := d.CreateSnapshot(ctx, &snapReq)
-			if err != nil {
-				log.Errorf("clone volume from volume - create intermediate snapshot failed")
-				return nil, err
-			}
-			snapshotID = snap.GetSnapshot().GetSnapshotId()
-		} else {
-			log.Debugf("clone volume from snapshot")
-			snapshotID = contentSource.GetSnapshot().SnapshotId
-		}
-		sid, err := parseCSIResourceID(snapshotID)
+	volSrc := req.VolumeContentSource
+	var srcVid, srcSid *lbResourceID
+	if vol := volSrc.GetVolume(); vol != nil {
+		vid, err := parseCSIResourceIDEnoent(volContSrcVolField, vol.VolumeId)
 		if err != nil {
-			return nil, mkEinval("SnapshotID", err.Error())
+			return nil, err
 		}
-		snapshotUUID = sid.uuid
+		if vid.projName != params.projectName {
+			return nil, mkEinvalf(volContSrcVolField, "can't create volume in project "+
+				"'%s' from volume in project '%s'", params.projectName, vid.projName)
+		}
+		srcVid = &vid
+		log = log.WithField("src-vol-uuid", vid.uuid)
+	} else if snap := volSrc.GetSnapshot(); snap != nil {
+		sid, err := parseCSIResourceIDEnoent(volContSrcSnapField, snap.SnapshotId)
+		if err != nil {
+			return nil, err
+		}
+		if sid.projName != params.projectName {
+			return nil, mkEinvalf(volContSrcSnapField, "can't create volume in project "+
+				"'%s' from snapshot in project '%s'", params.projectName, sid.projName)
+		}
+		srcSid = &sid
+		log = log.WithField("src-snap-uuid", sid.uuid)
+	} else if volSrc != nil {
+		if volSrc.Type != nil {
+			return nil, mkEinvalf(volContSrcField, "unsupported content source type '%T'",
+				volSrc.Type)
+		}
+		volSrc = nil
+	}
+	// from here on: if volSrc != nil - it's definitely a clone request.
+
+	wantVol := lb.Volume{
+		Name:         req.Name,
+		Capacity:     capacity, // NOTE: might be updated to that of the content source!
+		ReplicaCount: params.replicaCount,
+		Compression:  params.compression,
+		ACL:          []string{lb.ACLAllowNone},
+		ProjectName:  params.projectName,
 	}
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
-	vol, err := d.doCreateVolume(ctx, params.mgmtScheme, params.mgmtEPs,
-		lb.Volume{
-			Name:         req.Name,
-			Capacity:     capacity,
-			ReplicaCount: params.replicaCount,
-			Compression:  params.compression,
-			ACL:          []string{lb.ACLAllowNone},
-			SnapshotUUID: snapshotUUID,
-			ProjectName:  params.projectName,
-		})
+	clnt, err := d.GetLBClient(ctx, params.mgmtEPs, params.mgmtScheme)
 	if err != nil {
 		return nil, err
 	}
-	if contentSource != nil {
-		if contentSource.GetVolume() != nil {
-			log.Debugf("clone volume from volume - delete intermediate snapshot")
-			req := csi.DeleteSnapshotRequest{
-				SnapshotId: snapshotID,
-			}
-			_, err := d.DeleteSnapshot(ctx, &req)
-			if err != nil {
-				log.Errorf("clone volume from volume - delete intermediate snapshot failed")
-				// TODO - currently LightOS doesn't support deleting a snapshot
-				// while there are cloned volumes from it. Uncomment once it does:
-				// return nil, err
-			}
+	defer d.PutLBClient(clnt)
 
+	// check if a matching volume already exists (likely a result of retry from CO):
+	vol, err := findExistingVolume(ctx, log, clnt, wantVol, reqCapacity, srcVid, srcSid)
+	if err != nil {
+		return nil, err
+	}
+	if vol == nil {
+		// ...nope, need to actually create a new volume:
+		vol, err = d.doCreateVolume(ctx, log, clnt, wantVol, reqCapacity, srcVid, srcSid)
+		if err != nil {
+			return nil, err
 		}
 	}
-	vol.Volume.ContentSource = contentSource
-
-	return vol, nil
+	return mkVolumeResponse(params.mgmtEPs, vol, params.mgmtScheme, volSrc), nil
 }
 
 func (d *Driver) ControllerGetVolume(
@@ -916,10 +1159,11 @@ func (d *Driver) CreateSnapshot(
 	}
 
 	log := d.log.WithFields(logrus.Fields{
-		"op":        "CreateSnapshot",
-		"mgmt-ep":   srcVid.mgmtEPs,
-		"snap-name": req.Name,
-		"project":   srcVid.projName,
+		"op":           "CreateSnapshot",
+		"mgmt-ep":      srcVid.mgmtEPs,
+		"snap-name":    req.Name,
+		"src-vol-uuid": srcVid.uuid,
+		"project":      srcVid.projName,
 	})
 
 	// TODO: initially the LB CSI plugin supports no custom `req.parameters`
