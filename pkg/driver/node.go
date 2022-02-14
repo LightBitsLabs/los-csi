@@ -329,13 +329,16 @@ func (d *Driver) NodeStageVolume(
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
 		if len(passphrase) > volEncryptionPassphraseKeyMaxLen {
-			return nil, status.Errorf(codes.InvalidArgument, "passphrase %s for encryption must no longer than %d char but is:%d", volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase))
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"passphrase %s for encryption must no longer than %d char but is:%d",
+				volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase),
+			)
 		}
 		devPath, err = d.encryptAndOpenDevice(vid.uuid.String(), passphrase)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %v", vid.uuid, err)
 		}
-		log.Infof("volume should be encrypted, passphrase:%q devPath:%q", passphrase, devPath)
 	}
 
 	mntCap := req.VolumeCapability.GetMount()
@@ -460,7 +463,11 @@ func (d *Driver) nodePublishVolumeForBlock(
 	if encrypted {
 		source, err = d.getMappedDevicePath(vid.uuid.String())
 		if err != nil {
-			return nil, status.Errorf(codes.Internal, "error getting mapped device for encrypted device %s: %s", source, err.Error())
+			return nil, status.Errorf(
+				codes.Internal,
+				"error getting mapped device for encrypted device %s: %s",
+				source, err.Error(),
+			)
 		}
 	}
 
@@ -890,7 +897,11 @@ func (d *Driver) NodeExpandVolume(
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
 		if len(passphrase) > volEncryptionPassphraseKeyMaxLen {
-			return nil, status.Errorf(codes.InvalidArgument, "passphrase %s for encryption must no longer than %d char but is:%d", volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase))
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"passphrase %s for encryption must no longer than %d char but is:%d",
+				volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase),
+			)
 		}
 		err = d.luksResize(volume, passphrase)
 		if err != nil {

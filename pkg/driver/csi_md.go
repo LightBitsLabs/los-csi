@@ -167,7 +167,10 @@ func isVolumeEncryptionSet(params map[string]string) (bool, error) {
 		case "", "disabled", "false":
 			return false, nil
 		default:
-			return false, status.Errorf(codes.InvalidArgument, "invalid value %q for parameter %q, only enabled|disabled|true|false allowed", encryptedStringValue, volEncryptedKey)
+			return false, status.Errorf(
+				codes.InvalidArgument,
+				"invalid value %q for parameter %q, only enabled|disabled|true|false allowed",
+				encryptedStringValue, volEncryptedKey)
 		}
 	}
 	return false, nil

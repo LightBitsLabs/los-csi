@@ -26,7 +26,7 @@ const (
 // encryptAndOpenDevice encrypts the volume with the given ID with the given passphrase and open it
 // If the device is already encrypted (LUKS header present), it will only open the device
 func (d *Driver) encryptAndOpenDevice(volumeID string, passphrase string) (string, error) {
-	d.log.Infof("encryptAndOpenDevice volumeID:%q", volumeID)
+	d.log.Debugf("encryptAndOpenDevice volumeID:%q", volumeID)
 	encryptedDevicePath, err := d.getMappedDevicePath(volumeID)
 	if err != nil {
 		d.log.Errorf("encryptAndOpenDevice volumeID:%q error getting mapped device %v", volumeID, err)
@@ -35,7 +35,7 @@ func (d *Driver) encryptAndOpenDevice(volumeID string, passphrase string) (strin
 
 	if encryptedDevicePath != "" {
 		// device is already encrypted and open
-		d.log.Infof("encryptAndOpenDevice volumeID:%q is already encrypted", volumeID)
+		d.log.Debugf("encryptAndOpenDevice volumeID:%q is already encrypted", volumeID)
 		return encryptedDevicePath, nil
 	}
 
@@ -136,7 +136,7 @@ func (d *Driver) luksFormat(devicePath string, passphrase string) error {
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
-	d.log.Info("luksFormat", "args", args)
+	d.log.Debugf("luksFormat with args:%v", args)
 	luksFormatCmd := exec.Command(cryptsetupCmd, args...)
 	luksFormatCmd.Stdin = strings.NewReader(passphrase)
 
@@ -151,7 +151,7 @@ func (d *Driver) luksOpen(devicePath string, mapperFile string, passphrase strin
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
-	d.log.Info("luksOpen", "args", args)
+	d.log.Debugf("luksOpen with args:%v", args)
 	luksOpenCmd := exec.Command(cryptsetupCmd, args...)
 	luksOpenCmd.Stdin = strings.NewReader(passphrase)
 
@@ -165,7 +165,7 @@ func (d *Driver) luksResize(mapperFile string, passphrase string) error {
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
-	d.log.Info("resize", "args", args)
+	d.log.Debugf("resize with args:%v", args)
 	luksOpenCmd := exec.Command(cryptsetupCmd, args...)
 	luksOpenCmd.Stdin = strings.NewReader(passphrase)
 
@@ -178,7 +178,7 @@ func (d *Driver) luksClose(mapperFile string) error {
 		mapperFile,  // mapper file to close
 	}
 
-	d.log.Info("luksClose", "args", args)
+	d.log.Debugf("luksClose with args:%v", args)
 	luksCloseCmd := exec.Command(cryptsetupCmd, args...)
 
 	return luksCloseCmd.Run()
@@ -190,11 +190,11 @@ func (d *Driver) luksStatus(mapperFile string) bool {
 		"status",   // status
 		mapperFile, // mapper file to get status
 	}
-	d.log.Info("luksStatus", "args", args)
+	d.log.Debugf("luksStatus with args:%v", args)
 	luksStatusCmd := exec.Command(cryptsetupCmd, args...)
 
 	stdout, _ := luksStatusCmd.CombinedOutput()
-	d.log.Infof("luksStatus output:%q ", string(stdout))
+	d.log.Debugf("luksStatus output:%q ", string(stdout))
 
 	statusLines := strings.Split(string(stdout), "\n")
 
@@ -217,7 +217,7 @@ func (d *Driver) luksIsLuks(devicePath string) (bool, error) {
 		devicePath, // device path to check
 	}
 
-	d.log.Info("luksIsLuks", "args", args)
+	d.log.Debugf("luksIsLuks with args:%v", args)
 	luksIsLuksCmd := exec.Command(cryptsetupCmd, args...)
 
 	err := luksIsLuksCmd.Run()
