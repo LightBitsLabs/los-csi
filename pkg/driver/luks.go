@@ -154,8 +154,14 @@ func (d *Driver) luksOpen(devicePath string, mapperFile string, passphrase strin
 	d.log.Debugf("luksOpen with args:%v", args)
 	luksOpenCmd := exec.Command(cryptsetupCmd, args...)
 	luksOpenCmd.Stdin = strings.NewReader(passphrase)
+	stdout, err := luksOpenCmd.CombinedOutput()
+	d.log.Debugf("luksOpen output:%q", string(stdout))
+	if err != nil {
+		d.log.Errorf("luksOpen error:%v", err)
+		return err
+	}
 
-	return luksOpenCmd.Run()
+	return nil
 }
 
 func (d *Driver) luksResize(mapperFile string, passphrase string) error {
@@ -204,7 +210,7 @@ func (d *Driver) luksStatus(mapperFile string) bool {
 	}
 	// first line should look like
 	// /dev/mapper/<name> is active.
-	if strings.HasSuffix(statusLines[0], "is active") {
+	if strings.Contains(statusLines[0], "is active") {
 		return true
 	}
 

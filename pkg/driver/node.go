@@ -324,7 +324,7 @@ func (d *Driver) NodeStageVolume(
 	}
 
 	if encrypted {
-		passphrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
+		passphrase, ok := req.Secrets[volEncryptionPassphraseKey]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
@@ -892,7 +892,7 @@ func (d *Driver) NodeExpandVolume(
 	volume := diskMapperPrefix + vid.uuid.String()
 	isEncrypted := d.luksStatus(volume)
 	if isEncrypted {
-		passphrase, ok := req.GetSecrets()[volEncryptionPassphraseKey]
+		passphrase, ok := req.Secrets[volEncryptionPassphraseKey]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
 		}
