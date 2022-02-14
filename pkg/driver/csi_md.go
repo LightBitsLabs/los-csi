@@ -22,8 +22,6 @@ import (
 var (
 	ErrNotSpecifiedOrEmpty = errors.New("unspecified or empty")
 	ErrMalformed           = errors.New("malformed")
-
-	errDevicePathIsNotDevice = errors.New("device path does not point on a block device")
 )
 
 // this file holds the definitions of - and helper functions for handling of -

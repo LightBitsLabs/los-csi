@@ -117,7 +117,7 @@ func (d *Driver) getDevicePathForVolume(volumeID string) (string, error) {
 
 	deviceMode := deviceInfo.Mode()
 	if os.ModeDevice != deviceMode&os.ModeDevice || os.ModeCharDevice == deviceMode&os.ModeCharDevice {
-		return "", errDevicePathIsNotDevice
+		return "", errors.New("device path does not point on a block device")
 	}
 
 	return devicePath, nil

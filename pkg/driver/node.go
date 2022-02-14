@@ -175,8 +175,8 @@ func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	return devPath, nil
 }
 
-// constructMountOptions returns only unique mount options in slice.
-func constructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
+// ConstructMountOptions returns only unique mount options in slice.
+func ConstructMountOptions(mountOptions []string, volCap *csi.VolumeCapability) []string {
 	if m := volCap.GetMount(); m != nil {
 		hasOption := func(options []string, opt string) bool {
 			for _, o := range options {
@@ -363,7 +363,7 @@ func (d *Driver) NodeStageVolume(
 	// TODO: actually, derive them from `mntCap.MountFlags` and `wantRO`
 	// above, if any.
 	mntOpts := []string{}
-	mntOpts = constructMountOptions(mntOpts, req.GetVolumeCapability())
+	mntOpts = ConstructMountOptions(mntOpts, req.GetVolumeCapability())
 	ro := IsVolumeReadOnly(req.GetVolumeCapability())
 
 	if ro {
