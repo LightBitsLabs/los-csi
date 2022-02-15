@@ -187,7 +187,7 @@ func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volu
 	// bat (that might still happen on massive LightOS cluster node
 	// outages after the volume is created and returned, of course)...
 
-	diffs := req.ExplainDiffsFrom(vol, "requested", "actual", true)
+	diffs := req.ExplainDiffsFrom(vol, "requested", "actual", lb.SkipUUID)
 	if len(diffs) > 0 {
 		return false, mkEExist("volume '%s' exists but is incompatible: %s",
 			vol.Name, strings.Join(diffs, ", "))

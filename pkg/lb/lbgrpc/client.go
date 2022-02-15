@@ -788,7 +788,7 @@ func (c *Client) CreateVolume(
 			return false, err
 		}
 
-		diffs := orgLbVol.ExplainDiffsFrom(lbVol, "created", "obtained", false)
+		diffs := orgLbVol.ExplainDiffsFrom(lbVol, "created", "obtained", lb.SkipNone)
 		if len(diffs) > 0 {
 			// this might have been a race with some other instance,
 			// or, more likely at this stage, an API issue...

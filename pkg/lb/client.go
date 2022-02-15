@@ -122,11 +122,19 @@ func (e *excuses) and(format string, args ...interface{}) {
 	*e = append(*e, fmt.Sprintf(format, args...))
 }
 
+const (
+	SkipNone = 0
+	SkipUUID = (1 << iota)
+	SkipSnapUUID
+)
+
 // ExplainDiffsFrom returns a list of human-readable sentences describing the
 // differences between a pair of volumes. the volumes are referred to in the
 // output as lDescr and rDescr, a pair of adjectives will work well for those.
 // only "core" volume properties are examined.
-func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID bool) []string {
+func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipFields uint32) []string {
+	not := func(field uint32) bool { return skipFields&field == 0 }
+
 	if !strings.HasSuffix(lDescr, " ") {
 		lDescr += " "
 	}
@@ -139,7 +147,7 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 		diffs.and("%svolume name '%s' differs from the %s volume name '%s'",
 			lDescr, v.Name, rDescr, other.Name)
 	}
-	if !skipUUID && v.UUID != other.UUID {
+	if not(SkipUUID) && v.UUID != other.UUID {
 		diffs.and("%svolume UUID %s differs from the %s volume UUID %s",
 			lDescr, v.UUID, rDescr, other.UUID)
 	}
@@ -160,12 +168,10 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 		diffs.and("%sVolume %s project name %q differs from the %s volume project name %q",
 			lDescr, v.Name, v.ProjectName, rDescr, other.ProjectName)
 	}
-	// TODO - uncoment once LBM1-15016 is fixed
-	// LBM1-15016 - create volume from snapshot does not return sourceSnapshotID on v2
-	// if v.SnapshotUUID != other.SnapshotUUID {
-	// 	diffs.and("%sVolume %s source snapshot %s differs from the %s volume source snapshot %s",
-	// 		lDescr, v.Name, v.SnapshotUUID, rDescr, other.SnapshotUUID)
-	// }
+	if not(SkipSnapUUID) && v.SnapshotUUID != other.SnapshotUUID {
+		diffs.and("%sVolume %s source snapshot %s differs from the %s volume source snapshot %s",
+			lDescr, v.Name, v.SnapshotUUID, rDescr, other.SnapshotUUID)
+	}
 
 	return diffs
 }
