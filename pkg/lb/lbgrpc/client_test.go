@@ -24,6 +24,7 @@ import (
 	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	"github.com/lightbitslabs/los-csi/pkg/lb"
@@ -37,6 +38,10 @@ const (
 	defaultTimeout = 10 * time.Second
 	GiB            = 1024 * 1024 * 1024
 
+	// currently, LightOS is supposed to always round up the capacity to
+	// the nearest 4KiB:
+	lbCapGran = 4 * 1024
+
 	doBlock   = true
 	dontBlock = false
 
@@ -47,6 +52,8 @@ const (
 	doDel = false
 
 	failCap = math.MaxInt64
+
+	defProj = "default"
 )
 
 var (
@@ -59,10 +66,12 @@ var (
 	addrs           string // flag only, use `targets` in the code instead!
 	clusterInfoPath string // path to JSON including cluster info
 	doLog           bool
+	jwtPath         string // path to JWT token to use for authN to LightOS API.
 
 	log     = logrus.New()
 	cluster *clusterInfo   // if nil - no cluster info JSON specified
 	targets endpoint.Slice // filled in from `addrs` or `cluster`
+	jwt     string         // contents of file at `jwtPath`
 )
 
 func initFlags() {
@@ -73,6 +82,8 @@ func initFlags() {
 		"path to JSON file with cluster info and topology")
 	flag.BoolVar(&doLog, "log", false,
 		"enable logger output")
+	flag.StringVar(&jwtPath, "jwt-path", "",
+		"path to file with LightOS API auth JWT")
 
 	flag.Parse()
 }
@@ -111,6 +122,12 @@ func TestMain(m *testing.M) {
 		flagDie("either valid LB mgmt endpoint must be specified using " +
 			"-lb-addrs flag, or a full cluster topology in JSON " +
 			"format must be passed in using -cluster-info-path flag")
+	}
+	if jwtPath != "" {
+		jwt = loadJwt(jwtPath)
+	} else {
+		flagDie("path to valid 'system:cluster-admin' role JWT for authentication " +
+			"to the cluster mgmt endpoint must be specified")
 	}
 	if doLog {
 		log.SetFormatter(&logrus.TextFormatter{
@@ -184,7 +201,7 @@ func chkZeroFields(s interface{}) {
 func parseClusterInfo(path string) *clusterInfo {
 	cij, err := ioutil.ReadFile(path)
 	if err != nil {
-		flagDie("infalid cluster info file '%s' specified: %s", path, err)
+		flagDie("invalid cluster info file path '%s' specified: %s", path, err)
 	}
 	var ci clusterInfo
 	if err = json.Unmarshal(cij, &ci); err != nil {
@@ -205,13 +222,25 @@ func parseClusterInfo(path string) *clusterInfo {
 	return &ci
 }
 
+func loadJwt(path string) string {
+	buf, err := ioutil.ReadFile(path)
+	if err != nil {
+		flagDie("invalid JWT file path '%s' specified: %s", path, err)
+	}
+	return strings.TrimSpace(string(buf))
+}
+
+func getCtxWithJwt(timeout time.Duration) context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), timeout)
+	return metadata.AppendToOutgoingContext(ctx, "Authorization", "Bearer "+jwt)
+}
+
 func getCtx() context.Context {
-	ctx, _ := context.WithTimeout(context.Background(), defaultTimeout)
-	return ctx
+	return getCtxWithJwt(defaultTimeout)
 }
 
 func mkClient(t *testing.T) *lbgrpc.Client {
-	clnt, err := lbgrpc.Dial(getCtx(), log.WithField("test", t.Name()), targets)
+	clnt, err := lbgrpc.Dial(getCtx(), log.WithField("test", t.Name()), targets, "grpcs")
 	if err != nil {
 		t.Fatalf("BUG: Dial(%s) failed: '%s'", targets, err)
 	}
@@ -245,8 +274,8 @@ func TestBadDial(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.String(), func(t *testing.T) {
-			ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-			clnt, err := lbgrpc.Dial(ctx, log.WithField("test", t.Name()), tc)
+			ctx := getCtxWithJwt(3 * time.Second)
+			clnt, err := lbgrpc.Dial(ctx, log.WithField("test", t.Name()), tc, "grpcs")
 			if err == nil || clnt != nil {
 				t.Fatalf("BUG: Dial(%s) succeeded on bogus target", tc)
 			} else {
@@ -434,11 +463,11 @@ func getVolEqualsOrFatal(
 			t.Fatalf("FAIL: test error, both vol name '%s' and UUID '%s' passed to "+
 				"getVolEquals()", *name, *uuid)
 		}
-		vol, err = clnt.GetVolumeByName(getCtx(), *name)
+		vol, err = clnt.GetVolumeByName(getCtx(), *name, defProj)
 		method = "GetVolumeByName"
 		req, rep = *name, vol.UUID.String()
 	} else {
-		vol, err = clnt.GetVolume(getCtx(), *uuid)
+		vol, err = clnt.GetVolume(getCtx(), *uuid, defProj)
 		method = "GetVolume"
 		req, rep = uuid.String(), vol.Name
 	}
@@ -462,9 +491,9 @@ func delVolIfExistOrFatal(
 ) {
 	// in some envs (e.g. InstaCluster), kicking off an async delete of an
 	// empty volume can sometimes take a while:
-	delCtx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	delCtx := getCtxWithJwt(10 * time.Second)
 
-	err := clnt.DeleteVolume(delCtx, uuid, blocking)
+	err := clnt.DeleteVolume(delCtx, uuid, defProj, blocking)
 	if existing {
 		if err != nil {
 			t.Fatalf("BUG: DeleteVolume(%s) failed with: '%s'", uuid, err)
@@ -556,7 +585,7 @@ func modVolACL(
 		uuid = &vol.UUID
 	}
 
-	newVol, err := clnt.UpdateVolume(getCtx(), *uuid, hook)
+	newVol, err := clnt.UpdateVolume(getCtx(), *uuid, defProj, hook)
 	if err != nil {
 		return nil, err
 	}
@@ -605,7 +634,8 @@ func TestVolume(t *testing.T) {
 	volName := mkVolName()
 	bogusName := fmt.Sprintf("lb-csi-ut-bogus-%08x", prng.Uint32())
 
-	vol, err := clnt.CreateVolume(getCtx(), volName, volCap, numReplicas, false, nil, doBlock)
+	vol, err := clnt.CreateVolume(getCtx(), volName, volCap, numReplicas, false, nil,
+		defProj, guuid.Nil, doBlock)
 	if err != nil {
 		t.Fatalf("BUG: CreateVolume(%s) failed with: '%s'", volName, err)
 	} else {
@@ -617,7 +647,9 @@ func TestVolume(t *testing.T) {
 	} else {
 		t.Logf("OK: CreateVolume(%s) set default ACL workaround correctly", volName)
 	}
-	if (volCap+GiB-1)/GiB*GiB != vol.Capacity {
+
+	// LightOS rounds up capacity to lbCapGran (curr: 4KiB):
+	if (volCap+lbCapGran-1)/lbCapGran*lbCapGran != vol.Capacity {
 		t.Errorf("BUG: CreateVolume(%s) unexpected capacity: %d for %d request",
 			volName, vol.Capacity, volCap)
 	} else {
@@ -626,7 +658,7 @@ func TestVolume(t *testing.T) {
 
 	volUUID := vol.UUID
 
-	bogusVol, err := clnt.GetVolumeByName(getCtx(), bogusName)
+	bogusVol, err := clnt.GetVolumeByName(getCtx(), bogusName, defProj)
 	if err == nil {
 		t.Errorf("BUG: GetVolumeByName(%s) succeeded despite bogus volume name:\n%+v",
 			bogusName, bogusVol)
@@ -646,7 +678,7 @@ func TestVolume(t *testing.T) {
 		t.Logf("OK: volume comparison code is not obviously broken")
 	}
 
-	bogusVol, err = clnt.GetVolume(getCtx(), bogusUUID)
+	bogusVol, err = clnt.GetVolume(getCtx(), bogusUUID, defProj)
 	if err == nil {
 		t.Errorf("BUG: GetVolume(%s) succeeded despite bogus volume UUID:\n%+v",
 			bogusUUID, bogusVol)
@@ -695,7 +727,7 @@ func TestVolume(t *testing.T) {
 
 	delVolIfExistOrFatal(t, clnt, volUUID, doBlock, exists)
 
-	bogusVol, err = clnt.GetVolumeByName(getCtx(), volName)
+	bogusVol, err = clnt.GetVolumeByName(getCtx(), volName, defProj)
 	if err == nil {
 		t.Errorf("BUG: GetVolumeByName(%s) succeeded on deleted volume:\n%+v",
 			volName, bogusVol)
@@ -708,7 +740,7 @@ func TestVolume(t *testing.T) {
 	// empty volumes shouldn't take any time to disappear after deletion:
 	opts := wait.Backoff{Delay: 200 * time.Millisecond, Retries: 15}
 	err = wait.WithExponentialBackoff(opts, func() (bool, error) {
-		bogusVol, err = clnt.GetVolume(getCtx(), volUUID)
+		bogusVol, err = clnt.GetVolume(getCtx(), volUUID, defProj)
 		if err == nil {
 			switch bogusVol.State {
 			case lb.VolumeDeleting:
@@ -738,7 +770,8 @@ func TestVolumeAvailableAfterDelete(t *testing.T) {
 	var numReplicas uint32 = 3
 	volName := mkVolName()
 
-	vol, err := clnt.CreateVolume(getCtx(), volName, volCap, numReplicas, false, nil, doBlock)
+	vol, err := clnt.CreateVolume(getCtx(), volName, volCap, numReplicas, false, nil,
+		defProj, guuid.Nil, dontBlock)
 	if err != nil {
 		t.Fatalf("BUG: CreateVolume(%s) failed with: '%s'", volName, err)
 	} else {
@@ -790,7 +823,7 @@ func TestVolumeAvailableAfterDelete(t *testing.T) {
 	}
 
 	for time.Now().Sub(start) < tmo {
-		vol, err = clnt.GetVolume(getCtx(), uuid)
+		vol, err = clnt.GetVolume(getCtx(), uuid, defProj)
 		if err == nil {
 			pushState(vol.State.String())
 		} else if isStatusNotFound(err) {
@@ -832,14 +865,11 @@ func TestLBVolumeCreateSizeHandling(t *testing.T) {
 		want uint64
 	}
 
-	// currently, LightOS is supposed to always round up the capacity to
-	// the nearest 1GiB:
-	const capGran = 1 * 1024 * 1024 * 1024
 	roundUp := func(c uint64) capacities {
 		if c == 0 || c == math.MaxInt64 {
 			return capacities{c, failCap}
 		}
-		return capacities{c, (c + capGran - 1) / capGran * capGran}
+		return capacities{c, (c + lbCapGran - 1) / lbCapGran * lbCapGran}
 	}
 	fiver := func(c uint64) []capacities {
 		return []capacities{
@@ -905,7 +935,8 @@ func testLBVolumeCreateSizeHandling(
 
 	// some versions of LB returned different capacities on CreateVolume() and
 	// GetVolume(), so grab the results manually and separately:
-	vol, err := clnt.CreateVolume(getCtx(), volName, askCap, numReplicas, false, nil, dontBlock)
+	vol, err := clnt.CreateVolume(getCtx(), volName, askCap, numReplicas, false, nil,
+		defProj, guuid.Nil, dontBlock)
 	if err != nil {
 		if wantCap == failCap {
 			t.Logf("OK: CreateVolume(%s) failed on bogus capacity %d", volName, askCap)
@@ -937,7 +968,7 @@ func testLBVolumeCreateSizeHandling(
 	time.Sleep(200 * time.Millisecond)
 	opts := wait.Backoff{Delay: 100 * time.Millisecond, Retries: 15}
 	err = wait.WithExponentialBackoff(opts, func() (bool, error) {
-		getVol, err := clnt.GetVolume(getCtx(), vol.UUID)
+		getVol, err := clnt.GetVolume(getCtx(), vol.UUID, defProj)
 		if err != nil {
 			return false, err
 		}
