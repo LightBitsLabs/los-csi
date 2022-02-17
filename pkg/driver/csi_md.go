@@ -36,9 +36,11 @@ var (
 // to the plugin in a fashion defined by the CSI spec.
 
 const (
-	volPathField = "volume_path"
-	volIDField   = "volume_id"
-	snapIDField  = "snapshot_id"
+	volPathField     = "volume_path"
+	volIDField       = "volume_id"
+	snapIDField      = "snapshot_id"
+	capRangeField    = "capacity_range"
+	capRangeLimField = capRangeField + ".limit_bytes"
 )
 
 // lbCreateVolumeParams: -----------------------------------------------------

@@ -113,3 +113,7 @@ func mkEnoent(format string, args ...interface{}) error {
 func mkPrecond(format string, args ...interface{}) error {
 	return status.Errorf(codes.FailedPrecondition, format, args...)
 }
+
+func mkErange(format string, args ...interface{}) error {
+	return status.Errorf(codes.OutOfRange, format, args...)
+}

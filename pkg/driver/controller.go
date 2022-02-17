@@ -77,31 +77,29 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 		return uint64(volCap), nil
 	}
 
-	// TODO: AFAICT, should return "11 OUT_OF_RANGE" error instead of EINVAL
-
 	minCap := capRange.RequiredBytes
 	maxCap := capRange.LimitBytes
 	if minCap < 0 || maxCap < 0 {
-		return 0, mkEinvalf("capacity_range",
+		return 0, mkEinvalf(capRangeField,
 			"invalid range specified: [%d..%d]", minCap, maxCap)
 	}
 	if minCap == 0 && maxCap == 0 {
-		return 0, mkEinvalf("capacity_range",
+		return 0, mkEinvalf(capRangeField,
 			"both 'required_bytes' and 'limit_bytes' are missing")
 	}
 	if maxCap != 0 && maxCap < minVolCap {
-		return 0, mkEinvalf("capacity_range.limit_bytes",
-			"minimum supported volume size: %d", minVolCap)
+		return 0, mkErange("bad value of '%s': %dB is below minimum volume size of %dB",
+			capRangeLimField, maxCap, minVolCap)
 	}
 	if minCap != 0 && maxCap != 0 && maxCap < minCap {
-		return 0, mkEinvalf("capacity_range",
+		return 0, mkEinvalf(capRangeField,
 			"invalid range specified: [%d..%d]", minCap, maxCap)
 	}
 	volCap = (minCap + capGran - 1) / capGran * capGran
 	if maxCap != 0 && volCap > maxCap {
-		return 0, mkEinvalf("capacity_range",
-			"capacity granularity is %d bytes, can't create volume of "+
-				"capacity range: [%d..%d]", capGran, minCap, maxCap)
+		return 0, mkErange("bad value of '%s': capacity granularity is %d bytes, "+
+			"can't create volume of capacity range: [%d..%d]",
+			capRangeField, capGran, minCap, maxCap)
 	}
 
 	return uint64(volCap), nil
