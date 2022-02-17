@@ -419,12 +419,10 @@ type smokeTest struct {
 	clientOpts fakeClientOptions
 }
 
-var (
-	quickDecayCPO = &lb.ClientPoolOptions{
-		LingerTime: 1 * time.Millisecond,
-		ReapCycle:  500 * time.Microsecond,
-	}
-)
+var quickDecayCPO = &lb.ClientPoolOptions{
+	LingerTime: 1 * time.Millisecond,
+	ReapCycle:  500 * time.Microsecond,
+}
 
 var smokeTests = []smokeTest{
 	{name: "CreateDeletePool", f: testCreateDeletePool},

@@ -152,7 +152,7 @@ func (v *Volume) ExplainDiffsFrom(other *Volume, lDescr, rDescr string, skipUUID
 			lDescr, v.Capacity, rDescr, other.Capacity)
 	}
 	if v.Compression != other.Compression {
-		var b2s = map[bool]string{false: "disabled", true: "enabled"}
+		b2s := map[bool]string{false: "disabled", true: "enabled"}
 		diffs.and("%scompression is %s while the %s volume has compression %s",
 			lDescr, b2s[v.Compression], rDescr, b2s[other.Compression])
 	}

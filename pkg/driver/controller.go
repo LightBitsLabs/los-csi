@@ -170,8 +170,7 @@ func (d *Driver) validateVolume(ctx context.Context, req lb.Volume, vol *lb.Volu
 		"vol-uuid": vol.UUID,
 	})
 	switch vol.State {
-	case lb.VolumeAvailable,
-		lb.VolumeUpdating:
+	case lb.VolumeAvailable, lb.VolumeUpdating:
 		// this one might be reusable as is...
 	case lb.VolumeCreating:
 		return false, mkEagain("volume '%s' is still being created", vol.Name)
@@ -688,7 +687,6 @@ func (d *Driver) ValidateVolumeCapabilities(
 func (d *Driver) ListVolumes(
 	ctx context.Context, req *csi.ListVolumesRequest,
 ) (*csi.ListVolumesResponse, error) {
-
 	// TODO: er... impl?
 
 	return nil, status.Error(codes.Unimplemented, "")

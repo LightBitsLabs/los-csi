@@ -454,7 +454,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 }
 
 func MakeFile(path string) error {
-	f, err := os.OpenFile(path, os.O_CREATE, os.FileMode(0644))
+	f, err := os.OpenFile(path, os.O_CREATE, os.FileMode(0o644))
 	if err != nil {
 		if !os.IsExist(err) {
 			return err
@@ -487,7 +487,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 ) (*csi.NodePublishVolumeResponse, error) {
 	stagingPath := req.StagingTargetPath
 	tgtPath := req.TargetPath
-	if err := os.MkdirAll(tgtPath, 0750); err != nil {
+	if err := os.MkdirAll(tgtPath, 0o750); err != nil {
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
 

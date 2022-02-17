@@ -146,8 +146,10 @@ func ParseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 
 // resIDRegex is used for initial syntactic validation of LB resource IDS (volumes, snapshots, etc.)
 // as serialised into a string.
-var resIDRegex *regexp.Regexp
-var projNameRegex *regexp.Regexp
+var (
+	resIDRegex    *regexp.Regexp
+	projNameRegex *regexp.Regexp
+)
 
 func init() {
 	projNameRegex = regexp.MustCompile(`^[a-z0-9-\.]{1,63}$`)
