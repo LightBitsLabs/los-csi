@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -892,21 +893,12 @@ func (d *Driver) NodeExpandVolume(
 	volume := diskMapperPrefix + vid.uuid.String()
 	isEncrypted := d.luksStatus(volume)
 	if isEncrypted {
-		passphrase, ok := req.Secrets[volEncryptionPassphraseKey]
-		if !ok {
-			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volEncryptionPassphraseKey)
-		}
-		if len(passphrase) > volEncryptionPassphraseKeyMaxLen {
-			return nil, status.Errorf(
-				codes.InvalidArgument,
-				"passphrase %s for encryption must no longer than %d char but is:%d",
-				volEncryptionPassphraseKey, volEncryptionPassphraseKeyMaxLen, len(passphrase),
-			)
-		}
-		err = d.luksResize(volume, passphrase)
+		err = d.luksResize(volume)
 		if err != nil {
 			return nil, err
 		}
+		// if encrypted, on the luks device the filesystem must be resized
+		devicePath = path.Join(diskMapperPath, volume)
 	}
 
 	resizer := mountutils.NewResizeFs(d.mounter.Exec)
