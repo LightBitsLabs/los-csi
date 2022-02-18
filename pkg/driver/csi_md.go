@@ -35,6 +35,7 @@ const (
 	capRangeField    = "capacity_range"
 	capRangeLimField = capRangeField + ".limit_bytes"
 	nodeIDField      = "node_id"
+	srcVolField      = "source_volume_id"
 )
 
 // lbCreateVolumeParams: -----------------------------------------------------

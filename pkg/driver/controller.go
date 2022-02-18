@@ -832,80 +832,126 @@ func (d *Driver) ControllerExpandVolume(
 	}, nil
 }
 
-// --------------------------------------------------------------------------
+func doCreateSnapshot(
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, name string, srcVid lbResourceID,
+	descr string,
+) (*lb.Snapshot, error) {
+	// check if a matching snapshot already exists (likely a result of retry from CO):
+	snap, err := clnt.GetSnapshotByName(ctx, name, srcVid.projName)
+	if err != nil && !isStatusNotFound(err) {
+		return nil, mungeLBErr(log, err,
+			"failed to check if snapshot '%s' already exists on LB", name)
+	}
 
-func mkSnapshotResponse(
-	mgmtEPs endpoint.Slice, vid string, snap *lb.Snapshot,
-	ready2use bool, mgmtScheme string,
-) *csi.CreateSnapshotResponse {
-	snapID := lbResourceID{
-		mgmtEPs:  mgmtEPs,
-		uuid:     snap.UUID,
-		projName: snap.ProjectName,
-		scheme:   mgmtScheme,
+	if snap != nil {
+		log = log.WithField("snap-uuid", snap.UUID)
+
+		if snap.SrcVolUUID != srcVid.uuid {
+			return nil, mkEExist("snapshot '%s' already exists but is incompatible: "+
+				"it is based on volume %s instead of the requested one: %s",
+				name, snap.SrcVolUUID, srcVid.uuid)
+		}
+
+		switch snap.State {
+		case lb.SnapshotAvailable:
+			// appears to be usable as is...
+		case lb.SnapshotCreating:
+			// NOTE: we can't return this snap even with `ready_to_use` set
+			// to `false`. the CSI spec allows to do this only if the snap
+			// was successfully cut, with only the immediate snapshot
+			// usability being at stake - but not its existence!. in LB case
+			// it is not guaranteed that a snapshot will transition from
+			// 'Creating' to 'Available'. so, just trigger a retry explicitly
+			// letting the CO decide what it wants to do with the workload.
+			return nil, mkEagain("snapshot '%s' is still being created", name)
+		case lb.SnapshotDeleting:
+			// TODO: currently this is a lose-lose situation: it will be
+			// impossible to create a new snapshot with name `name` until
+			// the previous one is gone, and it will be impossible to use
+			// the previous one since it's in the 'Deleting' state. worse,
+			// currently CreateSnapshot() calls colliding with such zombie
+			// snapshots will SUCCEED instead of returning some error (e.g.
+			// 'FailedPrecondition', or 'AlreadyExists'), but the resultant
+			// snapshot will be created in the 'Failed' state, unusable...
+			//
+			// worse still, the current naming of "intermediate snapshots"
+			// used on volume clone flows ties the snapshot name to the
+			// target clone volume name, so it'll be impossible to us the
+			// LB CSI plugin for create->delete->create clone flows with a
+			// given name except if pausing for a very long time before
+			// the 2nd create, as snapshot deletion is a long-running
+			// background operation. see more on this in CreateVolume()...
+
+			// per CSI spec, this SHOULD cause the CO to retry with exp.
+			// backoff. this might - or might not - help, depending on the
+			// reason the volume ended up being 'Deleting', and lets the
+			// clone flow of CreateVolume() know what's going on:
+			return nil, mkAbort("snapshot '%s' is in the process of being deleted, "+
+				"try again later", name)
+		default:
+			return nil, mkInternal("snapshot '%s' already exists but is in unexpected "+
+				"state '%s' (%d)", name, snap.State, snap.State)
+		}
+
+		log.Info("snapshot already exists")
+		return snap, nil
 	}
-	return &csi.CreateSnapshotResponse{
-		Snapshot: &csi.Snapshot{
-			SnapshotId:     snapID.String(),
-			SourceVolumeId: vid,
-			SizeBytes:      int64(snap.Capacity),
-			CreationTime:   snap.CreationTime,
-			ReadyToUse:     ready2use,
-		},
+
+	// ...nope, need to actually create a new snapshot:
+	snap, err = clnt.CreateSnapshot(ctx, name, srcVid.projName, srcVid.uuid, descr, true)
+	if err != nil {
+		return nil, mungeLBErr(log, err, "failed to create snapshot '%s'", name)
 	}
+
+	log.WithField("snap-uuid", snap.UUID).Info("snapshot created successfully")
+	return snap, nil
 }
 
 func (d *Driver) CreateSnapshot(
 	ctx context.Context, req *csi.CreateSnapshotRequest,
 ) (*csi.CreateSnapshotResponse, error) {
-	vid, err := parseCSIResourceID(req.SourceVolumeId)
+	srcVid, err := parseCSIResourceIDEinval(srcVolField, req.SourceVolumeId)
 	if err != nil {
-		return nil, mkEinval("SrcVolumeId", err.Error())
+		return nil, err
 	}
 
 	log := d.log.WithFields(logrus.Fields{
-		"op":            "CreateSnapshot",
-		"mgmt-ep":       vid.mgmtEPs,
-		"snapshot-name": req.Name,
-		"project":       vid.projName,
+		"op":        "CreateSnapshot",
+		"mgmt-ep":   srcVid.mgmtEPs,
+		"snap-name": req.Name,
+		"project":   srcVid.projName,
 	})
 
+	// TODO: initially the LB CSI plugin supports no custom `req.parameters`
+	// entries. if it becomes necessary, their parsing should be added HERE.
+
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
-	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
+	clnt, err := d.GetLBClient(ctx, srcVid.mgmtEPs, srcVid.scheme)
 	if err != nil {
 		return nil, err
 	}
 	defer d.PutLBClient(clnt)
 
-	ready2use := false
-	// check if a matching snapshot already exists (likely a result of retry from CO):
-	snap, err := clnt.GetSnapshotByName(ctx, req.Name, vid.projName)
-	if err != nil && !isStatusNotFound(err) {
-		// something else went wrong...
+	snap, err := doCreateSnapshot(ctx, log, clnt, req.Name, srcVid, "by: LB CSI")
+	if err != nil {
 		return nil, err
 	}
-	if err == nil {
-		switch snap.State {
-		case lb.SnapshotAvailable:
-			ready2use = true
-		case lb.SnapshotCreating:
-			ready2use = false
-		default:
-			return nil, mkInternal("snapshot '%s' already exists but is in unexpected "+
-				"state '%s' (%d)", snap.Name, snap.State, snap.State)
-		}
-		log = log.WithField("snap-uuid", snap.UUID)
-	} else {
-		snap, err = clnt.CreateSnapshot(ctx, req.Name, vid.projName, vid.uuid, "", true)
-		if err != nil {
-			return nil, err // FIXME: assign ready2use = false ?
-		}
-		ready2use = true
-		log = log.WithField("snap-uuid", snap.UUID)
-	}
-	log.Info("snapshot created")
 
-	return mkSnapshotResponse(vid.mgmtEPs, req.SourceVolumeId, snap, ready2use, vid.scheme), nil
+	snapID := lbResourceID{
+		mgmtEPs:  srcVid.mgmtEPs,
+		uuid:     snap.UUID,
+		projName: snap.ProjectName,
+		scheme:   srcVid.scheme,
+	}
+	return &csi.CreateSnapshotResponse{
+		Snapshot: &csi.Snapshot{
+			SnapshotId:     snapID.String(),
+			SourceVolumeId: srcVid.String(),
+			SizeBytes:      int64(snap.Capacity),
+			CreationTime:   snap.CreationTime,
+			ReadyToUse:     true, // see note in doCreateSnapshot()
+		},
+	}, nil
 }
 
 func doDeleteSnapshot(

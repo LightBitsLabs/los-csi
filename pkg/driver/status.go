@@ -117,3 +117,7 @@ func mkPrecond(format string, args ...interface{}) error {
 func mkErange(format string, args ...interface{}) error {
 	return status.Errorf(codes.OutOfRange, format, args...)
 }
+
+func mkAbort(format string, args ...interface{}) error {
+	return status.Errorf(codes.Aborted, format, args...)
+}
