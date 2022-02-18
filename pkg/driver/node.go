@@ -43,7 +43,7 @@ func (d *Driver) lbVolEligible(
 		if isStatusNotFound(err) {
 			return mkEnoent("volume '%s' doesn't exist", vid)
 		}
-		return d.mungeLBErr(log, err, "failed to get volume '%s' from LB", vid)
+		return mungeLBErr(log, err, "failed to get volume '%s' from LB", vid)
 	}
 
 	if !vol.IsUsable() {
@@ -75,7 +75,7 @@ func (d *Driver) queryLBforTargetEnv(
 ) (*backend.TargetEnv, error) {
 	ci, err := clnt.GetClusterInfo(ctx)
 	if err != nil {
-		return nil, d.mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
+		return nil, mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
 			vid.mgmtEPs[0])
 	}
 
@@ -84,13 +84,13 @@ func (d *Driver) queryLBforTargetEnv(
 	}
 	res.DiscoveryEPs, err = endpoint.ParseSliceIPv4(ci.DiscoveryEndpoints)
 	if err != nil {
-		return nil, d.mungeLBErr(log, err,
+		return nil, mungeLBErr(log, err,
 			"got invalid discovery service endpoint from LB cluster at '%s'",
 			vid.mgmtEPs[0])
 	}
 	res.NvmeEPs, err = endpoint.ParseSliceIPv4(ci.NvmeEndpoints)
 	if err != nil {
-		return nil, d.mungeLBErr(log, err,
+		return nil, mungeLBErr(log, err,
 			"got invalid NVMe endpoint from LB cluster at '%s'", vid.mgmtEPs[0])
 	}
 

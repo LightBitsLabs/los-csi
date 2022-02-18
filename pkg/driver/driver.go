@@ -413,21 +413,6 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtPath string) error {
 	return nil
 }
 
-// general helpers: ----------------------------------------------------------
-
-func (d *Driver) mungeLBErr(
-	log *logrus.Entry, err error, format string, args ...interface{},
-) error {
-	log.Warn(fmt.Sprintf(format+": %s", append(args, err)...))
-	if shouldRetryOn(err) {
-		return mkEagain("temporarily "+format, args...)
-	}
-	// something odd is clearly going on in the LightOS cluster, but
-	// given K8s' monomaniacal habit of retrying - not sure this
-	// will deter it...
-	return mkExternal(format+": %s", append(args, err)...)
-}
-
 // LB client pool helpers: ---------------------------------------------------
 
 // GetLBClient conjures up a functional LB mgmt API client by whatever means

@@ -654,7 +654,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 		if isStatusNotFound(err) {
 			return nil, mkEnoent("volume '%s' doesn't exist", vid)
 		}
-		return nil, d.mungeLBErr(log, err, "failed to get volume '%s' from LB", vid)
+		return nil, mungeLBErr(log, err, "failed to get volume '%s' from LB", vid)
 	}
 
 	if err = d.validateVolumeCapabilities(req.VolumeCapabilities); err != nil {

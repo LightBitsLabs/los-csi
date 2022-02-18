@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/sirupsen/logrus"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -34,6 +35,16 @@ func shouldRetryOn(err error) bool {
 		return true
 	}
 	return false
+}
+
+func mungeLBErr(
+	log *logrus.Entry, err error, format string, args ...interface{},
+) error {
+	if shouldRetryOn(err) {
+		log.Warnf(format+": "+err.Error(), args...)
+		return mkEagain("temporarily "+format, args...)
+	}
+	return mkExternal(format+": "+err.Error(), args...)
 }
 
 // failure to attach the error details to gRPC response is highly unlikely to
