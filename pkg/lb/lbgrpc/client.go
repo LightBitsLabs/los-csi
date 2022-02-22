@@ -1189,12 +1189,28 @@ func (c *Client) GetSnapshotByName(
 	return c.getSnapshot(ctx, &name, nil, projectName)
 }
 
+func statusFromErr(
+	log *logrus.Entry, err error, format string, args ...interface{},
+) error {
+	st, ok := status.FromError(err)
+	if ok {
+		return status.Errorf(st.Code(), format+": "+st.Message(), args...)
+	}
+	log.WithFields(logrus.Fields{
+		"err-type": fmt.Sprintf("%T", err),
+		"err-msg":  err.Error(),
+		"err-ctx":  fmt.Sprintf(format, args...),
+	}).Errorf("LB API call failed with unexpected error type")
+	return status.Errorf(codes.Unknown, format+": "+err.Error(), args...)
+}
+
 func (c *Client) CreateSnapshot(
 	ctx context.Context, name string, projectName string,
 	srcVolUUID guuid.UUID, blocking bool,
 ) (*lb.Snapshot, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
+	log := c.log
 
 	snap, err := c.clnt.CreateSnapshot(
 		ctx,
@@ -1208,7 +1224,8 @@ func (c *Client) CreateSnapshot(
 	if err != nil {
 		st, ok := status.FromError(err)
 		if !ok {
-			return nil, err
+			return nil, statusFromErr(log, err,
+				"failed to create snapshot '%s' on LB", name)
 		}
 		code := st.Code()
 		switch code { //nolint:exhaustive
@@ -1235,7 +1252,7 @@ func (c *Client) CreateSnapshot(
 	}
 	uuid := lbSnap.UUID
 
-	log := c.log.WithFields(logrus.Fields{
+	log = c.log.WithFields(logrus.Fields{
 		"snap-name": lbSnap.Name,
 		"snap-uuid": lbSnap.UUID,
 	})
@@ -1434,7 +1451,18 @@ func (c *Client) lbSnapshotFromGRPC(
 			snap.Name, snap.State, snap.State)
 	}
 
+	// this is likely to happen in initial responses from clnt.CreateSnapshot(),
+	// while the snapshot is still in the 'Creating' state.
 	if snap.CreationTime == nil {
+		switch snap.State {
+		case mgmt.Snapshot_Creating,
+			mgmt.Snapshot_Unknown,
+			mgmt.Snapshot_Failed:
+		default:
+			c.log.Warnf("got odd snapshot from LB: '%s' was successfully created, "+
+				"but lacks creation timestamp", snap.Name)
+		}
+
 		snap.CreationTime = ptypes.TimestampNow()
 	}
 
