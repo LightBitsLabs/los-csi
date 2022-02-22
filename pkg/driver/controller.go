@@ -847,7 +847,7 @@ func (d *Driver) CreateSnapshot(
 		}
 		log = log.WithField("snap-uuid", snap.UUID)
 	} else {
-		snap, err = clnt.CreateSnapshot(ctx, req.Name, vid.projName, vid.uuid, true)
+		snap, err = clnt.CreateSnapshot(ctx, req.Name, vid.projName, vid.uuid, "", true)
 		if err != nil {
 			return nil, err // FIXME: assign ready2use = false ?
 		}

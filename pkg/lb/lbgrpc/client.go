@@ -1205,8 +1205,8 @@ func statusFromErr(
 }
 
 func (c *Client) CreateSnapshot(
-	ctx context.Context, name string, projectName string,
-	srcVolUUID guuid.UUID, blocking bool,
+	ctx context.Context, name string, projectName string, srcVolUUID guuid.UUID,
+	descr string, blocking bool,
 ) (*lb.Snapshot, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -1217,7 +1217,7 @@ func (c *Client) CreateSnapshot(
 		&mgmt.CreateSnapshotRequest{
 			Name:             name,
 			SourceVolumeUUID: srcVolUUID.String(),
-			Description:      "K8S Snapshot: Volume UUID: " + srcVolUUID.String(),
+			Description:      descr,
 			ProjectName:      projectName,
 		},
 	)

@@ -342,9 +342,9 @@ type Client interface {
 	) (*Volume, error)
 
 	CreateSnapshot(ctx context.Context, name string, projectName string, srcVolUUID guuid.UUID,
-		blocking bool,
+		descr string, blocking bool,
 	) (*Snapshot, error)
 	DeleteSnapshot(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*Snapshot, error)
-	GetSnapshotByName(ctx context.Context, name string, projectName string) (*Snapshot, error) // TODO: allow name repetition for different source volumes
+	GetSnapshotByName(ctx context.Context, name string, projectName string) (*Snapshot, error)
 }

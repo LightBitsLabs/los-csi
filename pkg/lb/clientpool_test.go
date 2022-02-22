@@ -259,8 +259,8 @@ func (c *fakeClient) UpdateVolume(
 }
 
 func (c *fakeClient) CreateSnapshot(
-	ctx context.Context, name string, projectName string,
-	srcVolUUID guuid.UUID, blocking bool,
+	ctx context.Context, name string, projectName string, srcVolUUID guuid.UUID,
+	descr string, blocking bool,
 ) (*lb.Snapshot, error) {
 	return nil, nil
 }
