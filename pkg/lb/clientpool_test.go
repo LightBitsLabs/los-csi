@@ -1,6 +1,7 @@
 // Copyright (C) 2016--2020 Lightbits Labs Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
+//nolint:gosec
 package lb_test
 
 import (
@@ -33,18 +34,18 @@ type lockedSource struct {
 	src rand.Source64
 }
 
-func (r *lockedSource) Int63() (n int64) {
+func (r *lockedSource) Int63() int64 {
 	r.mu.Lock()
-	n = r.src.Int63()
+	n := r.src.Int63()
 	r.mu.Unlock()
-	return
+	return n
 }
 
-func (r *lockedSource) Uint64() (n uint64) {
+func (r *lockedSource) Uint64() uint64 {
 	r.mu.Lock()
-	n = r.src.Uint64()
+	n := r.src.Uint64()
 	r.mu.Unlock()
-	return
+	return n
 }
 
 func (r *lockedSource) Seed(seed int64) {
@@ -93,7 +94,7 @@ func newZipfRange(min, max uint64) *zipfRange {
 	}
 }
 
-func (z *zipfRange) rand() uint64 {
+func (z *zipfRange) rand() uint64 { //revive:disable-line:import-shadowing // huh?
 	return z.min + z.zipf.Uint64()
 }
 
@@ -120,6 +121,8 @@ const (
 	failPromptlyPort = 2000
 )
 
+//revive:disable:unused-parameter,unused-receiver
+
 // fakeClientDial() will fake dialling, as per `opts` - except as specified
 // below. `targets[0]` must be well-formed (though not necessarily real) for
 // dialling to "succeed". dialling to the following ports will always fail,
@@ -127,7 +130,8 @@ const (
 //     1000 - will block forever or past `ctx` deadline
 //     2000 - will fail immediately
 func fakeClientDial(
-	ctx context.Context, env *testEnv, targets endpoint.Slice, mgmtScheme string, opts fakeClientOptions,
+	ctx context.Context, env *testEnv, targets endpoint.Slice, mgmtScheme string, //nolint:unparam
+	opts fakeClientOptions,
 ) (*fakeClient, error) {
 	if opts.maxDialDelayUsec < opts.minDialDelayUsec {
 		panic(fmt.Sprintf("FakeClientDial: maxDialDelayUsec (%d) < minDialDelayUsec (%d)",
@@ -236,11 +240,15 @@ func (c *fakeClient) DeleteVolume(
 	return nil
 }
 
-func (c *fakeClient) GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Volume, error) {
+func (c *fakeClient) GetVolume(
+	ctx context.Context, uuid guuid.UUID, projectName string,
+) (*lb.Volume, error) {
 	return nil, nil
 }
 
-func (c *fakeClient) GetVolumeByName(ctx context.Context, name string, projectName string) (*lb.Volume, error) {
+func (c *fakeClient) GetVolumeByName(
+	ctx context.Context, name string, projectName string,
+) (*lb.Volume, error) {
 	return nil, nil
 }
 
@@ -257,17 +265,25 @@ func (c *fakeClient) CreateSnapshot(
 	return nil, nil
 }
 
-func (c *fakeClient) DeleteSnapshot(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error {
+func (c *fakeClient) DeleteSnapshot(
+	ctx context.Context, uuid guuid.UUID, projectName string, blocking bool,
+) error {
 	return nil
 }
 
-func (c *fakeClient) GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Snapshot, error) {
+func (c *fakeClient) GetSnapshot(
+	ctx context.Context, uuid guuid.UUID, projectName string,
+) (*lb.Snapshot, error) {
 	return nil, nil
 }
 
-func (c *fakeClient) GetSnapshotByName(ctx context.Context, name string, projectName string) (*lb.Snapshot, error) {
+func (c *fakeClient) GetSnapshotByName(
+	ctx context.Context, name string, projectName string,
+) (*lb.Snapshot, error) {
 	return nil, nil
 }
+
+//revive:enable:unused-parameter,unused-receiver
 
 // Test env: -----------------------------------------------------------------
 
@@ -316,7 +332,8 @@ func (env *testEnv) assertGetClient(
 }
 
 func (env *testEnv) assertGetNoClient(
-	ctx context.Context, targets endpoint.Slice, format string, args ...interface{},
+	ctx context.Context, targets endpoint.Slice, format string,
+	args ...interface{}, //nolint:unparam
 ) {
 	clnt, err := env.pool.GetClient(ctx, targets, "grpc")
 	if err == nil {
@@ -453,7 +470,9 @@ func mkCtx(timeout time.Duration) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), timeout)
 }
 
-func testCreateDeletePool(env *testEnv) {
+func testCreateDeletePool(_ *testEnv) {
+	// merely to invoke this test case, runSmoke() will have to create a
+	// pool and then tear it down once this TC is done, so it's not a NOP.
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -468,6 +487,11 @@ var (
 	hostBlock = mkTargets(fmt.Sprintf("1.0.0.1:%d", blockForeverPort))
 	hostFail  = mkTargets(fmt.Sprintf("1.0.0.1:%d", failPromptlyPort))
 )
+
+func concat(l, r endpoint.Slice) endpoint.Slice {
+	x := append(l[:0:0], l...) //nolint:gocritic // gocritic bug: that's how you clone a slice!
+	return append(x, r...)
+}
 
 func testGetUsePut(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
@@ -573,7 +597,7 @@ func testGetGetSameCluster(env *testEnv) {
 
 func testGetGetSameClusterABAB(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
-	tgtAB := append(hostA, hostB...)
+	tgtAB := concat(hostA, hostB)
 	clnt1 := env.assertGetClient(ctx, tgtAB, "#1")
 	clnt2 := env.assertGetClient(ctx, tgtAB, "#2")
 	if clnt1 != clnt2 {
@@ -591,8 +615,8 @@ func testGetGetSameClusterABAB(env *testEnv) {
 
 func testGetGetDiffClustersABBA(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
-	tgtAB := append(hostA, hostB...)
-	tgtBA := append(hostB, hostA...)
+	tgtAB := concat(hostA, hostB)
+	tgtBA := concat(hostB, hostA)
 	clnt1 := env.assertGetClient(ctx, tgtAB, "AB")
 	clnt2 := env.assertGetClient(ctx, tgtBA, "BA")
 	if clnt1 == clnt2 {
@@ -610,8 +634,8 @@ func testGetGetDiffClustersABBA(env *testEnv) {
 
 func testGetGetDiffClustersABAC(env *testEnv) {
 	ctx, _ := mkCtx(10 * time.Second)
-	tgtAB := append(hostA, hostB...)
-	tgtAC := append(hostA, hostC...)
+	tgtAB := concat(hostA, hostB)
+	tgtAC := concat(hostA, hostC)
 	clnt1 := env.assertGetClient(ctx, tgtAB, "AB")
 	clnt2 := env.assertGetClient(ctx, tgtAC, "AC")
 	if clnt1 == clnt2 {
