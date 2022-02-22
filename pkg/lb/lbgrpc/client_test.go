@@ -51,6 +51,9 @@ const (
 	doAdd = true
 	doDel = false
 
+	doCompress   = true
+	dontCompress = false
+
 	failCap = math.MaxInt64
 
 	defProj = "default"
@@ -263,6 +266,71 @@ func mkVolName() string {
 	return fmt.Sprintf("lb-csi-ut-%08x", prng.Uint32())
 }
 
+// resource wrappers & ID: ---------------------------------------------------
+
+type resID struct {
+	name *string
+	uuid *guuid.UUID
+}
+
+func byName(name string) resID     { return resID{name: &name} }
+func byUUID(uuid guuid.UUID) resID { return resID{uuid: &uuid} }
+
+func (r resID) byName() bool {
+	if r.name != nil && r.uuid != nil {
+		panic(fmt.Sprintf("FAIL: test error, resID has both name '%s' and UUID '%s', "+
+			"but they're mutually exclusive", *r.name, *r.uuid))
+	} else if r.name == nil && r.uuid == nil {
+		panic("FAIL: test error, resID has neither name nor UUID, exactly one is required")
+	}
+	return r.name != nil
+}
+
+func (r resID) String() string {
+	if r.byName() {
+		return *r.name
+	}
+	return r.uuid.String()
+}
+
+type lbResource interface {
+	kind() string
+	getFn(rid resID) string
+	secID(rid resID) string
+}
+
+type Volume struct {
+	*lb.Volume
+}
+
+func (v Volume) String() string {
+	return fmt.Sprintf("%+v", v.Volume)
+}
+
+func (v Volume) GoString() string {
+	return fmt.Sprintf("%#v", v.Volume)
+}
+
+func (v Volume) kind() string {
+	return "volume"
+}
+
+func (v Volume) getFn(rid resID) string {
+	if rid.byName() {
+		return fmt.Sprintf("GetVolumeByName(%s)", rid)
+	}
+	return fmt.Sprintf("GetVolume(%s)", rid)
+}
+
+func (v Volume) secID(rid resID) string {
+	if rid.byName() {
+		return v.UUID.String()
+	}
+	return v.Name
+}
+
+// tests: --------------------------------------------------------------------
+
 func TestDial(t *testing.T) {
 	clnt := mkClient(t)
 	clntTgts := clnt.Targets()
@@ -460,41 +528,97 @@ func isStatusNotFound(err error) bool {
 	return false
 }
 
-func getVolEqualsOrFatal(
-	t *testing.T, clnt *lbgrpc.Client, name *string, uuid *guuid.UUID, expVol lb.Volume, expVolSrc string,
-) *lb.Volume {
-	var (
-		vol    *lb.Volume
-		err    error
-		method string
-		req    string
-		rep    string
-	)
-	if name != nil {
-		if uuid != nil {
-			t.Fatalf("FAIL: test error, both vol name '%s' and UUID '%s' passed to "+
-				"getVolEquals()", *name, *uuid)
+func chkGetResult(
+	t *testing.T, existing bool, rid resID, res lbResource, what string, err error,
+) {
+	method := res.getFn(rid)
+	if existing {
+		if err != nil {
+			t.Fatalf("BUG: %s failed with: '%s'", method, err)
+		} else {
+			t.Logf("OK: %s got %s: %s", method, res.kind(), res.secID(rid))
 		}
-		vol, err = clnt.GetVolumeByName(getCtx(), *name, defProj)
-		method = "GetVolumeByName"
-		req, rep = *name, vol.UUID.String()
 	} else {
-		vol, err = clnt.GetVolume(getCtx(), *uuid, defProj)
-		method = "GetVolume"
-		req, rep = uuid.String(), vol.Name
+		if err == nil {
+			t.Fatalf("BUG: %s succeeded despite %s:\n%+v",
+				method, what, res)
+		} else if isStatusNotFound(err) {
+			t.Logf("OK: %s failed on %s with 'NotFound'", method, what)
+		} else {
+			t.Fatalf("BUG: %s failed on %s with: '%s'", method, what, err)
+		}
 	}
-	if err != nil {
-		t.Fatalf("BUG: %s(%s) failed with: '%s'", method, req, err)
+}
+
+func getLbVol(clnt *lbgrpc.Client, rid resID) (Volume, error) {
+	var lbVol *lb.Volume
+	var err error
+	if rid.byName() {
+		lbVol, err = clnt.GetVolumeByName(getCtx(), *rid.name, defProj)
 	} else {
-		t.Logf("OK: %s(%s) got volume: %s", method, req, rep)
+		lbVol, err = clnt.GetVolume(getCtx(), *rid.uuid, defProj)
+	}
+	return Volume{lbVol}, err
+}
+
+func getVolIfExistOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, existing bool, what string,
+) Volume {
+	vol, err := getLbVol(clnt, rid)
+	chkGetResult(t, existing, rid, vol, what, err)
+	return vol
+}
+
+func getNoVolOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, what string,
+) {
+	_ = getVolIfExistOrFatal(t, clnt, rid, doesntExist, what)
+}
+
+const (
+	skipNone = 0
+	skipName = (1 << iota)
+	skipUUID
+	skipCapacity
+	skipSnapUUID
+	skipETag
+)
+
+func chkVolEquals(t *testing.T, l, r Volume, lDescr, rDescr string, skipFields uint32) {
+	do := func(field uint32) bool { return skipFields&field == field }
+
+	mockLBVol := *l.Volume
+	mockL := Volume{&mockLBVol}
+	if do(skipName) {
+		mockL.Name = r.Name
+	}
+	if do(skipUUID) {
+		mockL.UUID = r.UUID
+	}
+	if do(skipCapacity) {
+		mockL.Capacity = r.Capacity
+	}
+	if do(skipSnapUUID) {
+		mockL.SnapshotUUID = r.SnapshotUUID
+	}
+	if do(skipETag) {
+		mockL.ETag = r.ETag
 	}
 
-	if !reflect.DeepEqual(expVol, *vol) {
-		t.Errorf("BUG: %s and %s(%s) results differ:\n%+v\n%+v",
-			expVolSrc, method, req, expVol, *vol)
+	if !reflect.DeepEqual(mockL, r) {
+		t.Errorf("BUG: %s and %s differ:\n%+v\n%+v",
+			lDescr, rDescr, l, r)
 	} else {
-		t.Logf("OK: %s and %s(%s) results match", expVolSrc, method, req)
+		t.Logf("OK: %s and %s match", lDescr, rDescr)
 	}
+}
+
+func getVolEqualsOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, expVol Volume, skipFields uint32,
+	expVolOrigin string,
+) Volume {
+	vol := getVolIfExistOrFatal(t, clnt, rid, exists, expVolOrigin)
+	chkVolEquals(t, expVol, vol, expVolOrigin, fmt.Sprintf("%s results", vol.getFn(rid)), skipFields)
 	return vol
 }
 
@@ -536,9 +660,9 @@ func aclOpToStr(add bool) string {
 }
 
 func modVolACL(
-	t *testing.T, clnt *lbgrpc.Client, uuid *guuid.UUID, vol *lb.Volume, add bool, ace string,
+	t *testing.T, clnt *lbgrpc.Client, uuid *guuid.UUID, vol *Volume, add bool, ace string,
 	expACL []string,
-) (*lb.Volume, error) {
+) (*Volume, error) {
 	updateMade := false // updated by the hooks
 
 	addVolACEHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
@@ -597,21 +721,23 @@ func modVolACL(
 		uuid = &vol.UUID
 	}
 
-	newVol, err := clnt.UpdateVolume(getCtx(), *uuid, defProj, hook)
+	lbVol, err := clnt.UpdateVolume(getCtx(), *uuid, defProj, hook)
 	if err != nil {
 		return nil, err
 	}
-	if vol != nil && updateMade {
-		if reflect.DeepEqual(vol, newVol) {
+	if updateMade {
+		if reflect.DeepEqual(vol, lbVol) {
 			t.Errorf("BUG: UpdateVolume(%s) failed to change the volume", *uuid)
 		}
-		if vol.ETag == newVol.ETag {
+		if vol.ETag == lbVol.ETag {
 			t.Errorf("BUG: UpdateVolume(%s) failed to change the volume ETag", *uuid)
 		}
 	}
 
+	newVol := Volume{lbVol}
+
 	if expACL == nil {
-		return newVol, nil
+		return &newVol, nil
 	}
 
 	opStr := aclOpToStr(add)
@@ -623,18 +749,90 @@ func modVolACL(
 			*uuid, opStr, ace, newVol.ACL)
 	}
 
-	return newVol, nil
+	return &newVol, nil
 }
 
 func modVolACLOrFatal(
-	t *testing.T, clnt *lbgrpc.Client, vol *lb.Volume, add bool, ace string, expACL []string,
-) *lb.Volume {
-	newVol, err := modVolACL(t, clnt, nil, vol, add, ace, expACL)
+	t *testing.T, clnt *lbgrpc.Client, vol Volume, add bool, ace string, expACL []string,
+) Volume {
+	newVol, err := modVolACL(t, clnt, nil, &vol, add, ace, expACL)
 	if err != nil {
 		t.Fatalf("BUG: UpdateVolume(%s) to %s ACE '%s' from ACL %#q failed with: '%s'",
 			vol.UUID, aclOpToStr(add), ace, vol.ACL, err)
 	}
-	return newVol
+	return *newVol
+}
+
+func createVolOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, name string, size uint64, repCount uint32,
+	compress bool, acl []string, proj string, snapUUID *guuid.UUID, blocking bool,
+) Volume {
+	base := ""
+	baseUUID := guuid.Nil
+	if snapUUID != nil {
+		base = fmt.Sprintf("from snapshot %s ", *snapUUID)
+		baseUUID = *snapUUID
+	}
+	vol, err := clnt.CreateVolume(getCtx(), name, size, repCount, compress, acl,
+		proj, baseUUID, blocking)
+	if err != nil {
+		t.Fatalf("BUG: CreateVolume(%s) %sfailed with: '%s'", name, base, err)
+	} else {
+		t.Logf("OK: CreateVolume(%s) %screated volume UUID: %s", name, base, vol.UUID)
+	}
+	return Volume{vol}
+}
+
+// waitForDelVolToDisappearOrFatal() makes sure that the volume specified by `rid` (`name`
+// XOR `uuid`) is either totally gone, or, if it still exists, that it's in the 'Deleting'
+// state, and if so - waits up to ~42 sec for it to totally disappear.
+//
+// apparently the behaviour of the LB API changed again at some point, and by-name
+// GetVolume() requests started returning volumes in the 'Deleting' state again...
+func waitForDelVolToDisappearOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, what string,
+) {
+	method := Volume{}.getFn(rid)
+	t.Logf("OK: polling %s till volume totally disappears...", method)
+
+	start := time.Now()
+
+	// sometimes even empty volumes take some time to totally disappear,
+	// especially in some envs (e.g. InstaCluster, overloaded VMs):
+	opts := wait.Backoff{
+		Delay:      100 * time.Millisecond,
+		Factor:     2.0,
+		DelayLimit: 2 * time.Second,
+		Retries:    20,
+	}
+	err := wait.WithExponentialBackoff(opts, func() (bool, error) {
+		vol, err := getLbVol(clnt, rid)
+		infix := fmt.Sprintf("in %.1f sec", time.Now().Sub(start).Seconds())
+		if err == nil {
+			switch vol.State {
+			case lb.VolumeDeleting:
+				return false, nil
+			default:
+				return true, fmt.Errorf("BUG: %s succeeded %s %s, "+
+					"but got vol in unexpected state '%s':\n%+v",
+					method, what, infix, vol.State, vol)
+			}
+		} else if isStatusNotFound(err) {
+			t.Logf("OK: %s failed %s with 'NotFound'", method, infix)
+			return true, nil
+		} else {
+			return true, fmt.Errorf("BUG: %s failed %s with: '%s'",
+				method, infix, err)
+		}
+	})
+	if err != nil {
+		t.Fatalf("BUG: failed polling %s: %s", method, err.Error())
+	}
+}
+
+func delVolAndWaitForItOrFatal(t *testing.T, clnt *lbgrpc.Client, uuid guuid.UUID, what string) {
+	delVolIfExistOrFatal(t, clnt, uuid, doBlock, exists)
+	waitForDelVolToDisappearOrFatal(t, clnt, byUUID(uuid), what)
 }
 
 func TestVolume(t *testing.T) {
@@ -646,13 +844,9 @@ func TestVolume(t *testing.T) {
 	volName := mkVolName()
 	bogusName := fmt.Sprintf("lb-csi-ut-bogus-%08x", prng.Uint32())
 
-	vol, err := clnt.CreateVolume(getCtx(), volName, volCap, numReplicas, false, nil,
-		defProj, guuid.Nil, doBlock)
-	if err != nil {
-		t.Fatalf("BUG: CreateVolume(%s) failed with: '%s'", volName, err)
-	} else {
-		t.Logf("OK: CreateVolume(%s) created volume UUID: %s", volName, vol.UUID)
-	}
+	vol := createVolOrFatal(t, clnt, volName, volCap, numReplicas, dontCompress, nil,
+		defProj, nil, doBlock)
+	volUUID := vol.UUID
 	if !strlist.AreEqual(defACL, vol.ACL) {
 		t.Errorf("BUG: CreateVolume(%s) messed up ACL:\nEXP: %#q\nGOT: %#q",
 			volName, defACL, vol.ACL)
@@ -668,19 +862,10 @@ func TestVolume(t *testing.T) {
 		t.Logf("OK: CreateVolume(%s) set capacity within expected bounds", volName)
 	}
 
-	volUUID := vol.UUID
+	getNoVolOrFatal(t, clnt, byName(bogusName), "bogus volume name")
+	getNoVolOrFatal(t, clnt, byUUID(bogusUUID), "bogus volume UUID")
 
-	bogusVol, err := clnt.GetVolumeByName(getCtx(), bogusName, defProj)
-	if err == nil {
-		t.Errorf("BUG: GetVolumeByName(%s) succeeded despite bogus volume name:\n%+v",
-			bogusName, bogusVol)
-	} else if isStatusNotFound(err) {
-		t.Logf("OK: GetVolumeByName(%s) failed with 'NotFound'", bogusName)
-	} else {
-		t.Errorf("BUG: GetVolumeByName(%s) failed with: '%s'", bogusName, err)
-	}
-
-	vol2 := getVolEqualsOrFatal(t, clnt, &volName, nil, *vol,
+	vol2 := getVolEqualsOrFatal(t, clnt, byName(volName), vol, skipNone,
 		fmt.Sprintf("CreateVolume(%s)", volName))
 	// sanity check:
 	vol2.Capacity = 123456
@@ -690,22 +875,12 @@ func TestVolume(t *testing.T) {
 		t.Logf("OK: volume comparison code is not obviously broken")
 	}
 
-	bogusVol, err = clnt.GetVolume(getCtx(), bogusUUID, defProj)
-	if err == nil {
-		t.Errorf("BUG: GetVolume(%s) succeeded despite bogus volume UUID:\n%+v",
-			bogusUUID, bogusVol)
-	} else if isStatusNotFound(err) {
-		t.Logf("OK: GetVolume(%s) failed with 'NotFound'", bogusUUID)
-	} else {
-		t.Errorf("BUG: GetVolume(%s) failed with: '%s'", bogusUUID, err)
-	}
-
-	vol2 = getVolEqualsOrFatal(t, clnt, nil, &volUUID, *vol,
+	vol2 = getVolEqualsOrFatal(t, clnt, byUUID(volUUID), vol, skipNone,
 		fmt.Sprintf("CreateVolume(%s)", volName))
 
 	a1 := "ace-1"
 	a2 := "ace-2"
-	bogusVol, err = modVolACL(t, clnt, &bogusUUID, nil, doAdd, a1, defACL)
+	bogusVol, err := modVolACL(t, clnt, &bogusUUID, nil, doAdd, a1, defACL)
 	if err == nil {
 		t.Errorf("BUG: UpdateVolume(%s) succeeded despite bogus volume UUID:\n%+v",
 			bogusUUID, bogusVol)
@@ -727,51 +902,13 @@ func TestVolume(t *testing.T) {
 	vol2 = modVolACLOrFatal(t, clnt, vol2, doDel, lb.ACLAllowAny, defACL)
 
 	// other than ETags the volume should have remained the same:
-	vol.ETag = ""
-	vol2.ETag = ""
-	if !reflect.DeepEqual(vol, vol2) {
-		t.Errorf("BUG: UpdateVolume(%s) changed more than ACL", volName)
-	} else {
-		t.Logf("OK: UpdateVolume(%s) changed only ACL", volName)
-	}
+	chkVolEquals(t, vol, vol2, "volume as created", "after a series of self-cancelling ACL changes",
+		skipETag)
 
 	delVolIfExistOrFatal(t, clnt, bogusUUID, doBlock, doesntExist)
 
-	delVolIfExistOrFatal(t, clnt, volUUID, doBlock, exists)
-
-	bogusVol, err = clnt.GetVolumeByName(getCtx(), volName, defProj)
-	if err == nil {
-		t.Errorf("BUG: GetVolumeByName(%s) succeeded on deleted volume:\n%+v",
-			volName, bogusVol)
-	} else if isStatusNotFound(err) {
-		t.Logf("OK: GetVolumeByName(%s) failed with 'NotFound'", volName)
-	} else {
-		t.Errorf("BUG: GetVolumeByName(%s) failed with: '%s'", volName, err)
-	}
-
-	// empty volumes shouldn't take any time to disappear after deletion:
-	opts := wait.Backoff{Delay: 200 * time.Millisecond, Retries: 15}
-	err = wait.WithExponentialBackoff(opts, func() (bool, error) {
-		bogusVol, err = clnt.GetVolume(getCtx(), volUUID, defProj)
-		if err == nil {
-			switch bogusVol.State {
-			case lb.VolumeDeleting:
-				return false, nil
-			default:
-				return true, fmt.Errorf("BUG: GetVolume(%s) succeeded on "+
-					"deleted volume:\n%+v", volUUID, bogusVol)
-			}
-		} else if isStatusNotFound(err) {
-			t.Logf("OK: GetVolume(%s) failed with: '%s'", volUUID, err)
-			return true, nil
-		} else {
-			return true, fmt.Errorf("BUG: GetVolume(%s) failed with: '%s'",
-				volUUID, err)
-		}
-	})
-	if err != nil {
-		t.Error(err.Error())
-	}
+	delVolAndWaitForItOrFatal(t, clnt, volUUID, "on deleted volume")
+	getNoVolOrFatal(t, clnt, byName(volName), "volume previously successfully deleted")
 }
 
 func TestVolumeAvailableAfterDelete(t *testing.T) {
@@ -782,16 +919,11 @@ func TestVolumeAvailableAfterDelete(t *testing.T) {
 	var numReplicas uint32 = 3
 	volName := mkVolName()
 
-	vol, err := clnt.CreateVolume(getCtx(), volName, volCap, numReplicas, false, nil,
-		defProj, guuid.Nil, dontBlock)
-	if err != nil {
-		t.Fatalf("BUG: CreateVolume(%s) failed with: '%s'", volName, err)
-	} else {
-		t.Logf("OK: CreateVolume(%s) created volume UUID: %s", volName, vol.UUID)
-	}
-
+	vol := createVolOrFatal(t, clnt, volName, volCap, numReplicas, dontCompress, nil,
+		defProj, nil, dontBlock)
 	uuid := vol.UUID
-	getVolEqualsOrFatal(t, clnt, nil, &uuid, *vol, fmt.Sprintf("CreateVolume(%s)", volName))
+	getVolEqualsOrFatal(t, clnt, byUUID(uuid), vol, skipNone,
+		fmt.Sprintf("CreateVolume(%s)", volName))
 	delVolIfExistOrFatal(t, clnt, uuid, dontBlock, exists)
 
 	tmo := 120 * time.Second // <sigh> sometimes the cluster is busy...
@@ -835,7 +967,7 @@ func TestVolumeAvailableAfterDelete(t *testing.T) {
 	}
 
 	for time.Now().Sub(start) < tmo {
-		vol, err = clnt.GetVolume(getCtx(), uuid, defProj)
+		vol, err := clnt.GetVolume(getCtx(), uuid, defProj)
 		if err == nil {
 			pushState(vol.State.String())
 		} else if isStatusNotFound(err) {
@@ -947,7 +1079,7 @@ func testLBVolumeCreateSizeHandling(
 
 	// some versions of LB returned different capacities on CreateVolume() and
 	// GetVolume(), so grab the results manually and separately:
-	vol, err := clnt.CreateVolume(getCtx(), volName, askCap, numReplicas, false, nil,
+	vol, err := clnt.CreateVolume(getCtx(), volName, askCap, numReplicas, dontCompress, nil,
 		defProj, guuid.Nil, dontBlock)
 	if err != nil {
 		if wantCap == failCap {
