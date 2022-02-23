@@ -35,6 +35,11 @@ var (
 // the relevant CO-specific entities, e.g. SC or PV in K8s), and pass them back
 // to the plugin in a fashion defined by the CSI spec.
 
+const (
+	volPathField = "volume_path"
+	volIDField   = "volume_id"
+)
+
 // lbCreateVolumeParams: -----------------------------------------------------
 
 const (
@@ -284,6 +289,17 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	}
 
 	return vid, nil
+}
+
+func parseCSIResourceIDEnoent(field, id string) (lbResourceID, error) {
+	if id == "" {
+		return lbResourceID{}, mkEinvalMissing(field)
+	}
+	rid, err := parseCSIResourceID(id)
+	if err != nil {
+		return lbResourceID{}, mkEnoent("bad value of '%s': %s", field, err)
+	}
+	return rid, nil
 }
 
 // CSI volume capabilities helpers: ------------------------------------------

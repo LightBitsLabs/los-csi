@@ -6,6 +6,7 @@ package driver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -668,39 +669,35 @@ func (d *Driver) NodeGetInfo(
 func (d *Driver) NodeGetVolumeStats(
 	ctx context.Context, req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
+	if req.VolumePath == "" {
+		return nil, mkEinvalMissing(volPathField)
+	}
+	// preserve the order of checks to humour csi-sanity...
+	_, err := parseCSIResourceIDEnoent(volIDField, req.VolumeId)
 	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
+		return nil, err
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "NodeGetVolumeStats",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"vol-path": req.VolumePath,
-		"project":  vid.projName,
-	})
+	// TODO: before doing any actual FS/block-specific checks, the code must
+	// ascertain that the block device (or FS mounted from such block device)
+	// indeed corresponds to volume specified by `req.VolumeId` by comparing
+	// `vid.uuid` parsed above (now: `_`) with the NGUID of the NVMe block dev.
 
-	targetPath := req.GetVolumePath()
-	log.Infof("called for volume %q in project %q, targetPath: %q", vid.uuid, vid.projName, targetPath)
-	if targetPath == "" {
-		err = fmt.Errorf("targetpath %v is empty", targetPath)
-
-		return nil, mkEinval("targetPath", err.Error())
-	}
-
-	stat, err := os.Stat(targetPath)
-	if err != nil {
-		return nil, mkEinval("targetPath", fmt.Sprintf("failed to get stat for targetpath %q: %v", targetPath, err))
+	volPath := req.VolumePath
+	stat, err := os.Stat(volPath)
+	if os.IsNotExist(err) {
+		return nil, mkEnoent("path '%s' doesn't exist", volPath)
+	} else if err != nil {
+		return nil, mkExternal("bad %s: %s", volPathField, err)
 	}
 
 	if stat.Mode().IsDir() {
-		return filesystemNodeGetVolumeStats(ctx, log, targetPath)
+		return filesystemNodeGetVolumeStats(volPath)
 	} else if (stat.Mode() & os.ModeDevice) == os.ModeDevice {
-		return blockNodeGetVolumeStats(ctx, log, targetPath)
+		return blockNodeGetVolumeStats(ctx, volPath)
 	}
-
-	return nil, mkEinval("targetPath", fmt.Sprintf("targetpath %q is not a block device", targetPath))
+	return nil, mkExternal("bad %s: '%s' is neither mount nor block device, mode='%s'",
+		volPathField, volPath, stat.Mode())
 }
 
 // IsMountPoint checks if the given path is mountpoint or not.
@@ -716,26 +713,20 @@ func IsMountPoint(p string) (bool, error) {
 
 // filesystemNodeGetVolumeStats can be used for getting the metrics as
 // requested by the NodeGetVolumeStats CSI procedure.
-func filesystemNodeGetVolumeStats(
-	ctx context.Context, log *logrus.Entry, targetPath string,
-) (*csi.NodeGetVolumeStatsResponse, error) {
-	isMnt, err := IsMountPoint(targetPath)
+func filesystemNodeGetVolumeStats(volPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+	isMnt, err := IsMountPoint(volPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, status.Errorf(codes.InvalidArgument, "targetpath %s does not exist", targetPath)
-		}
-
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, mkExternal("can't tell if %s '%s' is a mount: %s", volPathField,
+			volPath, err)
 	}
 	if !isMnt {
-		return nil, status.Errorf(codes.InvalidArgument, "targetpath %s is not mounted", targetPath)
+		return nil, mkEnoent("no volume is mounted on %s '%s'", volPathField, volPath)
 	}
 
 	statfs := &unix.Statfs_t{}
-	err = unix.Statfs(targetPath, statfs)
+	err = unix.Statfs(volPath, statfs)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal,
-			"failed to collect FS info for mount '%s': %s", targetPath, err)
+		return nil, mkExternal("failed to collect FS info for mount '%s': %s", volPath, err)
 	}
 
 	//nolint:unconvert // unix.Statfs_t fields have diff sizes on diff architectures.
@@ -764,22 +755,30 @@ func filesystemNodeGetVolumeStats(
 // connect to the Lightbits cluster.
 //
 // TODO: https://github.com/container-storage-interface/spec/issues/371#issuecomment-756834471
-func blockNodeGetVolumeStats(ctx context.Context, log *logrus.Entry, targetPath string) (*csi.NodeGetVolumeStatsResponse, error) {
+func blockNodeGetVolumeStats(
+	ctx context.Context, targetPath string,
+) (*csi.NodeGetVolumeStatsResponse, error) {
 	args := []string{"--noheadings", "--bytes", "--output=SIZE", targetPath}
 	lsblkSize, err := exec.CommandContext(ctx, "/bin/lsblk", args...).Output()
 	if err != nil {
-		err = fmt.Errorf("lsblk %v returned an error: %w", args, err)
-		log.WithError(err).Error("blockNodeGetVolumeStats failed")
-
-		return nil, status.Error(codes.Internal, err.Error())
+		var eErr *exec.ExitError
+		if errors.As(err, &eErr) {
+			msg := ""
+			if len(eErr.Stderr) != 0 {
+				msg = fmt.Sprintf(": %s", strings.TrimSpace(string(eErr.Stderr)))
+			}
+			if tmoErr := ctx.Err(); tmoErr != nil {
+				msg += fmt.Sprintf(" (%s)", tmoErr)
+			}
+			msg = fmt.Sprintf("lsblk failed, %s%s\n", eErr, msg)
+			return nil, mkExternal("lsblk failed, %s%s\n", eErr, msg)
+		}
+		return nil, mkExternal("failed to run lsblk: %s\n", err)
 	}
 
 	size, err := strconv.ParseInt(strings.TrimSpace(string(lsblkSize)), 10, 64)
 	if err != nil {
-		err = fmt.Errorf("failed to convert %q to bytes: %w", lsblkSize, err)
-		log.WithError(err).Error("blockNodeGetVolumeStats failed")
-
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, mkExternal("unexpected lsblk output format: %s", err)
 	}
 
 	return &csi.NodeGetVolumeStatsResponse{
