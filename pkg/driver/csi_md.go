@@ -41,6 +41,7 @@ const (
 	snapIDField      = "snapshot_id"
 	capRangeField    = "capacity_range"
 	capRangeLimField = capRangeField + ".limit_bytes"
+	nodeIDField      = "node_id"
 )
 
 // lbCreateVolumeParams: -----------------------------------------------------

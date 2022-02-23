@@ -452,10 +452,16 @@ func (d *Driver) DeleteVolume(
 func (d *Driver) ControllerPublishVolume(
 	ctx context.Context, req *csi.ControllerPublishVolumeRequest,
 ) (*csi.ControllerPublishVolumeResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
-	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
+	// NOTE: preserve the order of params checks (see below)!
+	if req.VolumeId == "" {
+		return nil, mkEinvalMissing(volIDField)
 	}
+	// vidErr is checked down below, because we want the extra fields in the
+	// log whenever we can get them, while csi-sanity makes IMPLICIT
+	// REQUIREMENTS on the CSI plugins about the order in which the plugins
+	// must be checking their params when it supplies multiple bogus
+	// arguments at once.
+	vid, vidErr := parseCSIResourceID(req.VolumeId)
 
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "ControllerPublishVolume",
@@ -469,7 +475,7 @@ func (d *Driver) ControllerPublishVolume(
 		// instance of the driver upon start-up and returned from
 		// NodeGetInfo(), so this is odd...
 		d.log.Errorf("unexpected node_id: '%s'", req.NodeId)
-		return nil, mkEinval("node_id", err.Error())
+		return nil, mkEinval(nodeIDField, err.Error())
 	}
 	// TODO: this one is tricky, because the CSI plugin is supposed to be
 	// able to figure out if the volume has previously been published to
@@ -477,8 +483,11 @@ func (d *Driver) ControllerPublishVolume(
 	// as block volume instead of FS mount, presumably?). except how would
 	// THIS instance know about what went on a long time ago on a node
 	// far, far away?
-	if err = d.validateVolumeCapability(req.VolumeCapability); err != nil {
+	if err := d.validateVolumeCapability(req.VolumeCapability); err != nil {
 		return nil, err
+	}
+	if vidErr != nil {
+		return nil, mkEnoent("bad value of '%s': %s", volIDField, vidErr)
 	}
 	if req.Readonly {
 		return nil, mkEinval("readonly", "read-only volumes are not supported")
