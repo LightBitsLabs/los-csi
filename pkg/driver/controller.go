@@ -5,7 +5,6 @@ package driver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -367,21 +366,19 @@ func (d *Driver) ControllerGetVolume(
 func (d *Driver) DeleteVolume(
 	ctx context.Context, req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
+	log := d.log.WithField("op", "DeleteVolume")
+	vid, err := parseCSIResourceIDEnoent(volIDField, req.VolumeId)
 	if err != nil {
-		if errors.Is(err, ErrMalformed) {
-			d.log.WithFields(logrus.Fields{
-				"op":      "DeleteVolume",
-				"vol-id":  req.VolumeId,
-				"project": vid.projName,
-			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
+		if isStatusNotFound(err) {
+			log.Errorf("bad value of '%s': %s", volIDField, err)
+			// returning success instead of error to pacify some of the more
+			// simple-minded external tests:
 			return &csi.DeleteVolumeResponse{}, nil
 		}
-		return nil, mkEinval("volume_id", err.Error())
+		return nil, err
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "DeleteVolume",
+	log = d.log.WithFields(logrus.Fields{
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
 		"project":  vid.projName,
@@ -551,9 +548,9 @@ func (d *Driver) ControllerPublishVolume(
 func (d *Driver) ControllerUnpublishVolume(
 	ctx context.Context, req *csi.ControllerUnpublishVolumeRequest,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
+		return nil, err
 	}
 
 	log := d.log.WithFields(logrus.Fields{
@@ -631,24 +628,12 @@ func (d *Driver) ControllerUnpublishVolume(
 func (d *Driver) ValidateVolumeCapabilities(
 	ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest,
 ) (*csi.ValidateVolumeCapabilitiesResponse, error) {
-	if req.VolumeId == "" {
-		return nil, mkEinvalMissing("volume_id")
+	vid, err := parseCSIResourceIDEnoent(volIDField, req.VolumeId)
+	if err != nil {
+		return nil, err
 	}
 	if req.VolumeCapabilities == nil {
 		return nil, mkEinvalMissing("volume_capabilities")
-	}
-
-	vid, err := parseCSIResourceID(req.VolumeId)
-	if err != nil {
-		if errors.Is(err, ErrMalformed) {
-			d.log.WithFields(logrus.Fields{
-				"op":      "ValidateVolumeCapabilities",
-				"vol-id":  req.VolumeId,
-				"project": vid.projName,
-			}).WithError(err).Errorf("req.volumeId not valid. returning success according to spec")
-			return nil, mkEnoent("volume_id %s", err.Error())
-		}
-		return nil, mkEnoent("volume_id %s", err.Error())
 	}
 
 	log := d.log.WithFields(logrus.Fields{
@@ -725,9 +710,9 @@ func (d *Driver) GetCapacity(
 func (d *Driver) ControllerExpandVolume(
 	ctx context.Context, req *csi.ControllerExpandVolumeRequest,
 ) (*csi.ControllerExpandVolumeResponse, error) {
-	vid, err := parseCSIResourceID(req.VolumeId)
+	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
-		return nil, mkEinval("volume_id", err.Error())
+		return nil, err
 	}
 
 	log := d.log.WithFields(logrus.Fields{
