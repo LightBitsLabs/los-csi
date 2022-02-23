@@ -42,6 +42,8 @@ const (
 	defaultTimeout = 10 * time.Second // ditto
 
 	ifMatchHeader = "if-match" // for ETag
+
+	none = "<NONE>"
 )
 
 var (
@@ -70,7 +72,7 @@ var (
 		Retries:    15,
 	}
 
-	prng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	prng = rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec // not crypto
 )
 
 // LightOS cluster resolver: -------------------------------------------------
@@ -146,7 +148,7 @@ func (r *lbResolver) updateCCState() {
 // pseudo-scheme is mentioned while dialling. in case of lbResolver, each
 // resolver is unique to a LightOS cluster. lbResolver "builds" itself.
 func (r *lbResolver) Build(
-	target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions,
+	_ resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions,
 ) (resolver.Resolver, error) {
 	r.cc = cc
 	r.log.WithFields(logrus.Fields{
@@ -164,7 +166,7 @@ func (r *lbResolver) Build(
 //
 // in the future it could, potentially, be made to trigger querying of the
 // LightOS cluster it represents for the latest list of cluster members...
-func (r *lbResolver) ResolveNow(o resolver.ResolveNowOptions) {
+func (r *lbResolver) ResolveNow(_ resolver.ResolveNowOptions) {
 	r.mu.Lock()
 	// not particularly efficient mem-wise, but this should be rare enough
 	// event for it not to matter...
@@ -213,7 +215,9 @@ type Client struct {
 // longer than the actual operation context timeout (as opposed to the `ctx`
 // passed here) - `DeadlineExceeded` will be returned as usual, and the caller
 // can retry the operation.
-func Dial(ctx context.Context, log *logrus.Entry, targets endpoint.Slice, mgmtScheme string) (*Client, error) {
+func Dial(
+	ctx context.Context, log *logrus.Entry, targets endpoint.Slice, mgmtScheme string,
+) (*Client, error) {
 	if !targets.IsValid() {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"invalid target endpoints specified: [%s]", targets)
@@ -289,7 +293,11 @@ func Dial(ctx context.Context, log *logrus.Entry, targets endpoint.Slice, mgmtSc
 		opts = append(opts, grpc.WithInsecure())
 	} else if mgmtScheme == "grpcs" {
 		logger.Infof("connecting securely")
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
+		opts = append(opts, grpc.WithTransportCredentials(
+			// TODO: one of those days, we'll add the ability to specify
+			// certs to trust on a given deployment. until then:
+			//nolint:gosec
+			credentials.NewTLS(&tls.Config{InsecureSkipVerify: true})))
 	}
 
 	var err error
@@ -333,11 +341,11 @@ func (c *Client) peerReviewUnaryInterceptor( // sic!
 		lastPeer := c.lastPeer
 		c.lastPeer = currPeer
 		c.peerMu.Unlock()
-		curr := "<NONE>"
+		curr := none
 		if currPeer.Addr != nil {
 			curr = currPeer.Addr.String()
 		}
-		last := "<NONE>"
+		last := none
 		if lastPeer.Addr != nil {
 			last = lastPeer.Addr.String()
 		}
@@ -355,7 +363,7 @@ func (c *Client) peerReviewUnaryInterceptor( // sic!
 }
 
 func (c *Client) Close() {
-	c.conn.Close()
+	c.conn.Close() //revive:disable-line:unhandled-error // nothing to do about it.
 	c.log.WithField("targets", c.Targets()).Info("disconnected!")
 }
 
@@ -688,7 +696,7 @@ func cloneCtxWithETag(ctx context.Context, eTag string) context.Context {
 
 func (c *Client) CreateVolume(
 	ctx context.Context, name string, capacity uint64, replicaCount uint32,
-	compress bool, acl []string, projectName string, snapshotID guuid.UUID, blocking bool, // TODO: refactor options
+	compress bool, acl []string, projectName string, snapshotID guuid.UUID, blocking bool,
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -827,7 +835,7 @@ func (c *Client) CreateVolume(
 			// is only supposed to be accepted for volumes in
 			// `Available` state, we can deduce that this volume is
 			// effectively `Available` as well.
-			fallthrough
+			fallthrough //nolint:gocritic
 		case lb.VolumeAvailable:
 			return true, nil
 		default:
@@ -948,11 +956,15 @@ func (c *Client) getVolume(
 	return c.lbVolumeFromGRPC(vol, name, uuid)
 }
 
-func (c *Client) GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Volume, error) {
+func (c *Client) GetVolume(
+	ctx context.Context, uuid guuid.UUID, projectName string,
+) (*lb.Volume, error) {
 	return c.getVolume(ctx, nil, &uuid, &projectName)
 }
 
-func (c *Client) GetVolumeByName(ctx context.Context, name string, projectName string) (*lb.Volume, error) {
+func (c *Client) GetVolumeByName(
+	ctx context.Context, name string, projectName string,
+) (*lb.Volume, error) {
 	return c.getVolume(ctx, &name, nil, &projectName)
 }
 
@@ -1165,11 +1177,15 @@ func (c *Client) getSnapshot(
 	return c.lbSnapshotFromGRPC(snap, name, uuid)
 }
 
-func (c *Client) GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*lb.Snapshot, error) {
+func (c *Client) GetSnapshot(
+	ctx context.Context, uuid guuid.UUID, projectName string,
+) (*lb.Snapshot, error) {
 	return c.getSnapshot(ctx, nil, &uuid, projectName)
 }
 
-func (c *Client) GetSnapshotByName(ctx context.Context, name string, projectName string) (*lb.Snapshot, error) {
+func (c *Client) GetSnapshotByName(
+	ctx context.Context, name string, projectName string,
+) (*lb.Snapshot, error) {
 	return c.getSnapshot(ctx, &name, nil, projectName)
 }
 
@@ -1257,9 +1273,9 @@ func (c *Client) CreateSnapshot(
 		}
 
 		if srcVolUUID != lbSnap.SrcVolUUID {
-			return false, status.Errorf(codes.Internal,
-				"LB snapshot source volume UUID mismatch (srcVolUUID=%s, snapshot.srcVolUUID=%s",
-				srcVolUUID, lbSnap.SrcVolUUID)
+			return false, status.Errorf(codes.Internal, "source volume of snapshot '%s' "+
+				"created by LB is %s instead of the requested %s",
+				name, lbSnap.SrcVolUUID, srcVolUUID)
 		}
 
 		switch lbSnap.State {
@@ -1400,10 +1416,10 @@ func (c *Client) lbSnapshotFromGRPC(
 			"got wrong snapshot '%s' from LB: UUID %s instead of %s",
 			snap.Name, snap.UUID, *uuid)
 	}
-	SrcVolUUID, err := guuid.Parse(snap.SourceVolumeUUID)
-	if err != nil || SrcVolUUID == guuid.Nil {
+	srcVolUUID, err := guuid.Parse(snap.SourceVolumeUUID)
+	if err != nil || srcVolUUID == guuid.Nil {
 		return nil, status.Errorf(codes.Internal,
-			"got bad snapshot from LB: '%s' has invalid SrcVolUUID '%s'",
+			"got bad snapshot from LB: '%s' has invalid srcVolUUID '%s'",
 			snap.Name, snap.SourceVolumeUUID)
 	}
 
@@ -1426,7 +1442,7 @@ func (c *Client) lbSnapshotFromGRPC(
 		Name:               snap.Name,
 		UUID:               snapUUID,
 		Capacity:           snap.Size,
-		SrcVolUUID:         SrcVolUUID,
+		SrcVolUUID:         srcVolUUID,
 		SrcVolName:         snap.SourceVolumeName,
 		SrcVolReplicaCount: snap.ReplicaCount,
 		SrcVolCompression:  snap.Compression,
