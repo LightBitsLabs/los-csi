@@ -666,6 +666,16 @@ func (c *Client) lbVolumeFromGRPC(
 			vol.Name, vol.Compression)
 	}
 
+	snapUUID := guuid.Nil
+	if vol.SourceSnapshotUUID != "" {
+		snapUUID, err = guuid.Parse(vol.SourceSnapshotUUID)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal,
+				"got bad volume from LB: '%s' has invalid source snapshot UUID '%s'",
+				vol.Name, vol.SourceSnapshotUUID)
+		}
+	}
+
 	return &lb.Volume{
 		Name:               vol.Name,
 		UUID:               volUUID,
@@ -676,6 +686,7 @@ func (c *Client) lbVolumeFromGRPC(
 		Capacity:           vol.Size,
 		LogicalUsedStorage: vol.Statistics.LogicalUsedStorage,
 		Compression:        compress,
+		SnapshotUUID:       snapUUID,
 		ETag:               vol.ETag,
 		ProjectName:        vol.ProjectName,
 	}, nil
