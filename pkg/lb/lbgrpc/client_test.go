@@ -329,6 +329,36 @@ func (v Volume) secID(rid resID) string {
 	return v.Name
 }
 
+type Snapshot struct {
+	*lb.Snapshot
+}
+
+func (s Snapshot) String() string {
+	return fmt.Sprintf("%+v", s.Snapshot)
+}
+
+func (s Snapshot) GoString() string {
+	return fmt.Sprintf("%#v", s.Snapshot)
+}
+
+func (s Snapshot) kind() string {
+	return "volume"
+}
+
+func (s Snapshot) getFn(rid resID) string {
+	if rid.byName() {
+		return fmt.Sprintf("GetSnapshotByName(%s)", rid)
+	}
+	return fmt.Sprintf("GetSnapshot(%s)", rid)
+}
+
+func (s Snapshot) secID(rid resID) string {
+	if rid.byName() {
+		return s.UUID.String()
+	}
+	return s.Name
+}
+
 // tests: --------------------------------------------------------------------
 
 func TestDial(t *testing.T) {
@@ -1137,3 +1167,195 @@ func testLBVolumeCreateSizeHandling(
 	}
 	return vol.UUID
 }
+
+func createSnapOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, name string, projectName string, srcVolUUID guuid.UUID,
+	descr string, blocking bool,
+) Snapshot {
+	snap, err := clnt.CreateSnapshot(getCtx(), name, defProj, srcVolUUID, descr, doBlock)
+	if err != nil {
+		t.Fatalf("BUG: CreateSnapshot(%s) failed with: '%s'", name, err)
+	} else {
+		t.Logf("OK: CreateSnapshot(%s) created snapshot UUID: %s", name, snap.UUID)
+	}
+	return Snapshot{snap}
+}
+
+func getLbSnap(clnt *lbgrpc.Client, rid resID) (Snapshot, error) {
+	var lbSnap *lb.Snapshot
+	var err error
+	if rid.byName() {
+		lbSnap, err = clnt.GetSnapshotByName(getCtx(), *rid.name, defProj)
+	} else {
+		lbSnap, err = clnt.GetSnapshot(getCtx(), *rid.uuid, defProj)
+	}
+	return Snapshot{lbSnap}, err
+}
+
+func getSnapIfExistOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, existing bool, what string,
+) Snapshot {
+	snap, err := getLbSnap(clnt, rid)
+	chkGetResult(t, existing, rid, snap, what, err)
+	return snap
+}
+
+func getNoSnapOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, what string,
+) {
+	_ = getSnapIfExistOrFatal(t, clnt, rid, doesntExist, what)
+}
+
+func chkSnapEquals(t *testing.T, l, r Snapshot, lDescr, rDescr string) {
+	if !reflect.DeepEqual(l, r) {
+		t.Errorf("BUG: %s and %s results differ:\n%+v\n%+v",
+			lDescr, rDescr, l, r)
+	} else {
+		t.Logf("OK: %s and %s results match", lDescr, rDescr)
+	}
+}
+
+func getSnapEqualsOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, expSnap Snapshot, expSnapOrigin string,
+) Snapshot {
+	snap := getSnapIfExistOrFatal(t, clnt, rid, exists, expSnapOrigin)
+	chkSnapEquals(t, expSnap, snap, expSnapOrigin, snap.getFn(rid))
+	return snap
+}
+
+func delSnapIfExistOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, uuid guuid.UUID, blocking bool, existing bool,
+) {
+	// in some envs (e.g. InstaCluster), kicking off an async delete of an
+	// empty snapshot can sometimes take a while:
+	delCtx := getCtxWithJwt(10 * time.Second)
+
+	err := clnt.DeleteSnapshot(delCtx, uuid, defProj, blocking)
+	if existing {
+		if err != nil {
+			t.Fatalf("BUG: DeleteSnapshot(%s) failed with: '%s'", uuid, err)
+		} else {
+			t.Logf("OK: DeleteSnapshot(%s) reported success", uuid)
+		}
+	} else {
+		if err == nil {
+			t.Errorf("BUG: DeleteSnapshot(%s) succeeded despite bogus snapshot UUID",
+				uuid)
+		} else if isStatusNotFound(err) {
+			t.Logf("OK: DeleteSnapshot(%s) failed with 'NotFound'", uuid)
+		} else {
+			t.Errorf("BUG: DeleteSnapshot(%s) failed with: '%s'", uuid, err)
+		}
+	}
+}
+
+// waitForDelSnapToDisappearOrFatal() makes sure that the snapshot specified by `rid`
+// (`name` XOR `uuid`) is either totally gone, or, if it still exists, that it's in the
+// 'Deleting' state, and if so - waits up to ~2 min for it to totally disappear.
+//
+// Go generics, where art thou?!?
+func waitForDelSnapToDisappearOrFatal(
+	t *testing.T, clnt *lbgrpc.Client, rid resID, what string,
+) {
+	method := Snapshot{}.getFn(rid)
+	t.Logf("OK: polling %s till snapshot totally disappears...", method)
+
+	start := time.Now()
+
+	// sometimes even empty snapshots take some time to totally disappear,
+	// especially in some envs (e.g. InstaCluster, overloaded VMs):
+	opts := wait.Backoff{
+		Delay:      100 * time.Millisecond,
+		Factor:     2.0,
+		DelayLimit: 2 * time.Second,
+		Retries:    60,
+	}
+	err := wait.WithExponentialBackoff(opts, func() (bool, error) {
+		snap, err := getLbSnap(clnt, rid)
+		infix := fmt.Sprintf("in %.1f sec", time.Now().Sub(start).Seconds())
+		if err == nil {
+			switch snap.State {
+			case lb.SnapshotDeleting:
+				return false, nil
+			default:
+				return true, fmt.Errorf("BUG: %s succeeded %s %s, "+
+					"but got vol in unexpected state '%s':\n%+v",
+					method, what, infix, snap.State, snap)
+			}
+		} else if isStatusNotFound(err) {
+			t.Logf("OK: %s failed %s with 'NotFound'", method, infix)
+			return true, nil
+		} else {
+			return true, fmt.Errorf("BUG: %s failed %s with: '%s'",
+				method, infix, err)
+		}
+	})
+	if err != nil {
+		t.Fatalf("BUG: failed polling %s: %s", method, err.Error())
+	}
+}
+
+func delSnapAndWaitForItOrFatal(t *testing.T, clnt *lbgrpc.Client, uuid guuid.UUID, what string) {
+	delSnapIfExistOrFatal(t, clnt, uuid, doBlock, exists)
+	waitForDelSnapToDisappearOrFatal(t, clnt, byUUID(uuid), what)
+}
+
+func TestSnapshot(t *testing.T) {
+	clnt := mkClient(t)
+	defer clnt.Close()
+
+	var volCap uint64 = 4*1024*1024*1024 - 4096
+	var numReplicas uint32 = 2
+	volName := mkVolName()
+	bogusName := fmt.Sprintf("lb-csi-ut-bogus-%08x", prng.Uint32())
+
+	vol := createVolOrFatal(t, clnt, volName, volCap, numReplicas, doCompress, nil,
+		defProj, nil, doBlock)
+
+	snapName := mkVolName()
+	descr := guuid.New().String()
+	expSnap := Snapshot{&lb.Snapshot{
+		Name:               snapName,
+		Capacity:           volCap,
+		State:              lb.SnapshotAvailable,
+		SrcVolUUID:         vol.UUID,
+		SrcVolName:         volName,
+		SrcVolReplicaCount: numReplicas,
+		SrcVolCompression:  doCompress,
+		ProjectName:        defProj,
+	}}
+
+	snap := createSnapOrFatal(t, clnt, snapName, defProj, vol.UUID, descr, doBlock)
+	snapUUID := snap.UUID
+	expSnap.UUID = snapUUID
+	expSnap.CreationTime = snap.CreationTime
+	chkSnapEquals(t, snap, expSnap, fmt.Sprintf("CreateSnapshot(%s)", snapName), "expected")
+
+	getNoSnapOrFatal(t, clnt, byName(snapUUID.String()), "snap UUID passed as name")
+	getNoSnapOrFatal(t, clnt, byName(bogusName), "bogus snap name")
+	getNoSnapOrFatal(t, clnt, byUUID(bogusUUID), "bogus snap UUID")
+
+	snap2 := getSnapEqualsOrFatal(t, clnt, byName(snapName), snap,
+		fmt.Sprintf("after CreateSnapshot(%s)", snapName))
+	// sanity check:
+	snap2.Capacity = 123456
+	if reflect.DeepEqual(snap, snap2) {
+		t.Errorf("BUG: snapshot comparison code is borked, above results are suspect")
+	} else {
+		t.Logf("OK: snapshot comparison code is not obviously broken")
+	}
+	snap2 = getSnapEqualsOrFatal(t, clnt, byUUID(snapUUID), snap,
+		fmt.Sprintf("after CreateSnapshot(%s)", snapName))
+
+	delSnapIfExistOrFatal(t, clnt, bogusUUID, doBlock, doesntExist)
+
+	delSnapAndWaitForItOrFatal(t, clnt, snapUUID, "on deleted snapshot")
+	getNoSnapOrFatal(t, clnt, byName(snapName), "previously successfully deleted")
+
+	delVolIfExistOrFatal(t, clnt, bogusUUID, doBlock, doesntExist)
+
+	delVolAndWaitForItOrFatal(t, clnt, vol.UUID, "on deleted volume")
+	getNoVolOrFatal(t, clnt, byName(volName), "volume previously successfully deleted")
+}
+	waitForDelSnapToDisappearOrFatal(t, clnt, byUUID(snap2.UUID), "on deleted gen 2 snapshot")
+	waitForDelSnapToDisappearOrFatal(t, clnt, byUUID(snap.UUID), "on deleted snapshot")
