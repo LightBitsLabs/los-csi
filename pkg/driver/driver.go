@@ -249,9 +249,10 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	switch cfg.LogFormat {
 	case "json":
 		logFmt = &logrus.JSONFormatter{
-			DisableTimestamp: !cfg.LogTimestamps,
-			PrettyPrint:      cfg.PrettyJSON,
-			TimestampFormat:  logTimestampFmt,
+			DisableTimestamp:  !cfg.LogTimestamps,
+			PrettyPrint:       cfg.PrettyJSON,
+			TimestampFormat:   logTimestampFmt,
+			DisableHTMLEscape: true,
 		}
 	case "text":
 		logFmt = &logrus.TextFormatter{
