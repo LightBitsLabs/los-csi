@@ -65,7 +65,7 @@ var (
 	// flags:
 	addrs           string // flag only, use `targets` in the code instead!
 	clusterInfoPath string // path to JSON including cluster info
-	doLog           bool
+	logPath         string // path to file to store the log, '-' for stderr.
 	jwtPath         string // path to JWT token to use for authN to LightOS API.
 
 	log     = logrus.New()
@@ -80,8 +80,9 @@ func initFlags() {
 			"<addr>:<port>[,<addr>:<port>...]")
 	flag.StringVar(&clusterInfoPath, "cluster-info-path", "",
 		"path to JSON file with cluster info and topology")
-	flag.BoolVar(&doLog, "log", false,
-		"enable logger output")
+	flag.StringVar(&logPath, "log-path", "",
+		"if empty: disables log, if '-': logs to stderr, otherwise: log "+
+			"will be stored in a file at this path")
 	flag.StringVar(&jwtPath, "jwt-path", "",
 		"path to file with LightOS API auth JWT")
 
@@ -129,15 +130,26 @@ func TestMain(m *testing.M) {
 		flagDie("path to valid 'system:cluster-admin' role JWT for authentication " +
 			"to the cluster mgmt endpoint must be specified")
 	}
-	if doLog {
+	if logPath == "" {
+		log.SetOutput(ioutil.Discard)
+		log.SetLevel(logrus.PanicLevel)
+	} else {
 		log.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp:   true,
 			TimestampFormat: "2006-01-02T15:04:05.000000-07:00",
 		})
 		log.SetLevel(logrus.DebugLevel)
-	} else {
-		log.SetOutput(ioutil.Discard)
-		log.SetLevel(logrus.PanicLevel)
+		if logPath != "-" {
+			f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+			if err != nil {
+				flagDie("failed to create log file '%s': %s", logPath, err)
+			}
+			defer func() {
+				f.Sync()
+				f.Close()
+			}()
+			log.SetOutput(f)
+		}
 	}
 
 	os.Exit(m.Run())
