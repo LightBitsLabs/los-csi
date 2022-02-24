@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	guuid "github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
@@ -1462,9 +1461,14 @@ func (c *Client) lbSnapshotFromGRPC(
 			snap.Name, snap.State, snap.State)
 	}
 
-	// this is likely to happen in initial responses from clnt.CreateSnapshot(),
-	// while the snapshot is still in the 'Creating' state.
-	if snap.CreationTime == nil {
+	btime := time.Now()
+	if snap.CreationTime != nil {
+		if snap.CreationTime.IsValid() {
+			btime = snap.CreationTime.AsTime()
+		}
+	} else {
+		// this is likely to happen in initial responses from clnt.CreateSnapshot(),
+		// while the snapshot is still in the 'Creating' state.
 		switch snap.State {
 		case mgmt.Snapshot_Creating,
 			mgmt.Snapshot_Unknown,
@@ -1473,8 +1477,6 @@ func (c *Client) lbSnapshotFromGRPC(
 			c.log.Warnf("got odd snapshot from LB: '%s' was successfully created, "+
 				"but lacks creation timestamp", snap.Name)
 		}
-
-		snap.CreationTime = ptypes.TimestampNow()
 	}
 
 	return &lb.Snapshot{
@@ -1485,7 +1487,7 @@ func (c *Client) lbSnapshotFromGRPC(
 		SrcVolName:         snap.SourceVolumeName,
 		SrcVolReplicaCount: snap.ReplicaCount,
 		SrcVolCompression:  snap.Compression,
-		CreationTime:       snap.CreationTime,
+		CreationTime:       btime,
 		State:              lbSnapshotStateFromGRPC(snap.State),
 		ETag:               snap.ETag,
 		ProjectName:        snap.ProjectName,

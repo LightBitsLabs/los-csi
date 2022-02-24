@@ -7,8 +7,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/golang/protobuf/ptypes/timestamp"
 	guuid "github.com/google/uuid"
 
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
@@ -312,7 +312,7 @@ type Snapshot struct {
 	SrcVolName         string
 	SrcVolReplicaCount uint32
 	SrcVolCompression  bool
-	CreationTime       *timestamp.Timestamp
+	CreationTime       time.Time
 
 	ETag        string
 	ProjectName string

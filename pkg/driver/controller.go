@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/lightbitslabs/los-csi/pkg/lb"
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
@@ -1192,7 +1193,7 @@ func (d *Driver) CreateSnapshot(
 			SnapshotId:     snapID.String(),
 			SourceVolumeId: srcVid.String(),
 			SizeBytes:      int64(snap.Capacity),
-			CreationTime:   snap.CreationTime,
+			CreationTime:   timestamppb.New(snap.CreationTime),
 			ReadyToUse:     true, // see note in doCreateSnapshot()
 		},
 	}, nil
