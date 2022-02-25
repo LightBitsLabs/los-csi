@@ -51,7 +51,21 @@ const (
 var projNameRegex *regexp.Regexp
 
 func init() {
-	projNameRegex = regexp.MustCompile(`^[a-z0-9-.]{1,63}$`)
+	projNameRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]{0,61}[a-z0-9])?$`)
+}
+
+// checkProjectName() checks syntactic validity of the LB "project" name, as
+// specified in the request params of the outward-facing CSI API entrypoints.
+// it shall be the single point of truth about the project name validity
+// inside the LB CSI plugin as a whole.
+func checkProjectName(field, proj string) error {
+	if proj == "" {
+		return mkEinvalMissing(field)
+	}
+	if !projNameRegex.MatchString(proj) {
+		return mkEinvalf(field, "'%s'", proj)
+	}
+	return nil
 }
 
 // lbCreateVolumeParams represents the contents of the `parameters` field
@@ -126,17 +140,25 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		return res, mkEinval(key, params[volParCompressKey])
 	}
 
+	// optional field, originally defaulting to empty.
+	//
+	// TODO: project names were only optional during the transition period
+	// and have been MANDATORY for a long time now. make it so!
 	key = volParKey(volParProjNameKey)
-	if projectName, ok := params[volParProjNameKey]; !ok {
-		res.projectName = ""
-	} else {
-		proj := projNameRegex.FindString(projectName)
-		if len(proj) == 0 {
-			return res, mkEinval(key, params[volParProjNameKey])
+	if proj, ok := params[volParProjNameKey]; ok {
+		err = checkProjectName(key, proj)
+		if err != nil {
+			return res, err
 		}
-		res.projectName = projectName
+		res.projectName = proj
 	}
 
+	// optional field, defaulting to 'grpcs'.
+	//
+	// TODO: the option of NOT using 'grpcs' was only viable during the transition
+	// period and 'grpcs' became MANDATORY a long time ago, so the code below
+	// should be updated to only accept 'grpcs' as a valid value - if it was
+	// specified at all - for reverse compatibility.
 	key = volParKey(volParMgmtSchemeKey)
 	mgmtScheme := params[volParMgmtSchemeKey]
 	switch mgmtScheme {
@@ -163,7 +185,7 @@ func init() {
 	resIDRegex = regexp.MustCompile(
 		`^mgmt:([^|]+)\|` +
 			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
-			`(\|proj:([a-z0-9-\.]{1,63}))?` +
+			`(\|proj:([^[:cntrl:]| ]+))?` + // proj name syntax checked separately
 			`(\|scheme:(grpc|grpcs))?$`)
 }
 
@@ -257,6 +279,12 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	// TODO: this was only optional during the transition period and has been
 	// MANDATORY for a long time. make it so!
 	vid.projName = match[4]
+	if vid.projName != "" {
+		err = checkProjectName("", vid.projName)
+		if err != nil {
+			return vid, fmt.Errorf("'%s' has invalid project name: '%s'", id, vid.projName)
+		}
+	}
 
 	// optional field, defaulting to 'grpcs'.
 	//
