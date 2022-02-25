@@ -144,6 +144,9 @@ var badIDs = []string{
 	"mgmt:1.2.3.4:80|proj:nguid",
 	"mgmt:1.2.3.4:80|proj:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a ",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a| ",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a:b",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|:proj-a",
 	"mgmt:1.2.3.4:80|proj:a|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66",
@@ -160,6 +163,9 @@ var badIDs = []string{
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs:grpc",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:http",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:https",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs ",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs| ",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:tcp",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|scheme:grpc",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a:scheme:grpcs",
@@ -172,6 +178,36 @@ var badIDs = []string{
 	"mgmt:1.2.3.4:80|scheme:grpcs",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|unknown:field",
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|unknown:field",
+
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66| proj:|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj: |scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj: a|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a |scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj: a |scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:\ta|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a\t|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a$|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:_a|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a=|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a@b|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:(a)|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a[b]a|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:\\a|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a\\|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:\na|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a\n|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a\r|scheme:grpc",
+
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:.a|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a.|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:-a|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a-|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:.|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:-|scheme:grpc",
+	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:-a.|scheme:grpc",
+
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66'); DROP TABLE Students;--",
 }
 
@@ -290,7 +326,17 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 				volParCompressKey: "disabled",
 				volParProjNameKey: "system-8787878787878787878787878787878787878787884957438758435783958435784375893457483",
 			},
-			err: mkEinval(volParKey(volParProjNameKey), "system-8787878787878787878787878787878787878787884957438758435783958435784375893457483"),
+			err: mkEinval(volParKey(volParProjNameKey), "'system-8787878787878787878787878787878787878787884957438758435783958435784375893457483'"),
+		},
+		{
+			name: "invalid project name",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "3",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "proj=name",
+			},
+			err: mkEinval(volParKey(volParProjNameKey), "'proj=name'"),
 		},
 		{
 			name: "replica count not a number",
@@ -340,6 +386,86 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 			} else {
 				require.NoError(t, err, "failed to parse")
 				require.Equal(t, tc.result, resp, "should match")
+			}
+		})
+	}
+}
+
+var goodProjs = []string{
+	"a",
+	"a.b",
+	"a.b.c",
+	"a-b",
+	"a-b-c",
+	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	"a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a-a.a",
+	"a.......a----------------b",
+}
+
+var badProjs = []string{
+	"",
+	" ",
+	"\n",
+	"\t",
+	"-",
+	".",
+	" -",
+	". ",
+	"|",
+	"/",
+	" a",
+	"a ",
+	" a ",
+	"-a",
+	"a-",
+	"-a-",
+	".a",
+	"a.",
+	".a.",
+	" aa",
+	"aa ",
+	"-aa",
+	"aa-",
+	".aa",
+	"aa.",
+	".aa.",
+	"a b",
+	"a:b",
+	":b",
+	"a:",
+	"a|b",
+	"|b",
+	"a|",
+	"a_b",
+	"a!b",
+	"a@b",
+	"a\tb",
+	"a\nb",
+	"\nab\n",
+	"a=b",
+	"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	"----------------------------------------------------------------",
+}
+
+func TestCheckProjectName(t *testing.T) {
+	for _, p := range goodProjs {
+		t.Run("good:"+p, func(t *testing.T) {
+			err := checkProjectName("proj", p)
+			if err != nil {
+				t.Errorf("BUG: failed on '%s':\n%s", p, err)
+			} else {
+				t.Logf("OK: validated '%s'\n", p)
+			}
+		})
+	}
+
+	for _, p := range badProjs {
+		t.Run("bad:"+p, func(t *testing.T) {
+			err := checkProjectName("proj", p)
+			if err == nil {
+				t.Errorf("BUG: passed on '%s'\n", p)
+			} else {
+				t.Logf("OK: refused '%s' with err:\n%s", p, err)
 			}
 		})
 	}
