@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -941,6 +942,20 @@ func TestVolume(t *testing.T) {
 	getNoVolOrFatal(t, clnt, byName(volName), "volume previously successfully deleted")
 }
 
+func waitWGOrFail(t *testing.T, wg *sync.WaitGroup, tmo time.Duration) {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		t.Logf("OK: WG joined all tasks")
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(tmo):
+		t.Fatalf("BUG: some WG tasks still weren't done after %.1f sec", tmo.Seconds())
+	}
+}
+
 func TestLBVolumeCreateSizeHandling(t *testing.T) {
 	clnt := mkClient(t)
 	defer clnt.Close()
@@ -1001,14 +1016,18 @@ func TestLBVolumeCreateSizeHandling(t *testing.T) {
 		})
 	}
 
-	// this is a bit of an odd heuristics hack:
-	for _, uuid := range cemetery[0 : len(cemetery)-2] {
-		delVolIfExistOrFatal(t, clnt, uuid, dontBlock, exists)
+	var wg sync.WaitGroup
+	for _, uuid := range cemetery {
+		wg.Add(1)
+		uuid := uuid
+		go func() {
+			defer wg.Done()
+			delVolAndWaitForItOrFatal(t, clnt, uuid, "on deleted volume")
+		}()
 	}
-	delVolIfExistOrFatal(t, clnt, cemetery[len(cemetery)-1], doBlock, exists)
-	time.Sleep(time.Duration(len(cemetery)*50) * time.Millisecond)
-	for _, uuid := range cemetery[0 : len(cemetery)-2] {
-		delVolIfExistOrFatal(t, clnt, uuid, dontBlock, doesntExist)
+	waitWGOrFail(t, &wg, 30*time.Second)
+	for _, uuid := range cemetery {
+		getNoVolOrFatal(t, clnt, byUUID(uuid), "volume previously successfully deleted")
 	}
 }
 
@@ -1049,6 +1068,9 @@ func testLBVolumeCreateSizeHandling(
 	}
 	chkCap(vol, "CreateVolume")
 
+	method := fmt.Sprintf("GetVolume(%s)", vol.UUID)
+	t.Logf("OK: explicitly polling %s till volume will become 'Available'...", method)
+
 	// now manually wait for it to become available:
 	time.Sleep(200 * time.Millisecond)
 	opts := wait.Backoff{Delay: 100 * time.Millisecond, Retries: 15}
@@ -1073,7 +1095,7 @@ func testLBVolumeCreateSizeHandling(
 		}
 	})
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf("BUG: failed polling %s: %s", method, err.Error())
 		return guuid.Nil
 	}
 	return vol.UUID
