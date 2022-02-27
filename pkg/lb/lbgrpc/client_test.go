@@ -1357,5 +1357,85 @@ func TestSnapshot(t *testing.T) {
 	delVolAndWaitForItOrFatal(t, clnt, vol.UUID, "on deleted volume")
 	getNoVolOrFatal(t, clnt, byName(volName), "volume previously successfully deleted")
 }
-	waitForDelSnapToDisappearOrFatal(t, clnt, byUUID(snap2.UUID), "on deleted gen 2 snapshot")
-	waitForDelSnapToDisappearOrFatal(t, clnt, byUUID(snap.UUID), "on deleted snapshot")
+
+func TestClone(t *testing.T) {
+	clnt := mkClient(t)
+	defer clnt.Close()
+
+	var volCap uint64 = 4*1024*1024*1024 - 4096
+	var numReplicas uint32 = 2
+	volName := mkVolName()
+
+	vol := createVolOrFatal(t, clnt, volName, volCap, numReplicas, doCompress, nil,
+		defProj, nil, doBlock)
+
+	snapName := mkVolName()
+	descr := guuid.New().String()
+	snap := createSnapOrFatal(t, clnt, snapName, defProj, vol.UUID, descr, doBlock)
+
+	cloneName := mkVolName()
+	clone := createVolOrFatal(t, clnt, cloneName, volCap, numReplicas, doCompress, nil,
+		defProj, &snap.UUID, doBlock)
+
+	if clone.Name != cloneName || clone.UUID == vol.UUID {
+		t.Fatalf("BUG: original volume is TOO similar to the clone:\n%+v\n%+v", vol, clone)
+	}
+	if clone.SnapshotUUID != snap.UUID {
+		t.Fatalf("BUG: clone is not based on the original volume:\n%+v", clone)
+	}
+	chkVolEquals(t, vol, clone, "original volume", "its clone", skipName|skipUUID|skipSnapUUID)
+
+	snap2Name := mkVolName()
+	descr2 := guuid.New().String()
+	snap2 := createSnapOrFatal(t, clnt, snap2Name, defProj, clone.UUID, descr2, doBlock)
+
+	if snap2.UUID == snap.UUID {
+		t.Fatalf("BUG: original snapshot id too similar to gen 2 snapshot:\n%+v\n%+v",
+			snap, snap2)
+	}
+	getSnapEqualsOrFatal(t, clnt, byName(snapName), snap,
+		fmt.Sprintf("after creating gen 2 snapshot '%s', original snapshot", snap2Name))
+	getSnapEqualsOrFatal(t, clnt, byUUID(snap.UUID), snap,
+		fmt.Sprintf("after creating gen 2 snapshot '%s', original snapshot", snap2Name))
+
+	clone2Name := mkVolName()
+	clone2 := createVolOrFatal(t, clnt, clone2Name, volCap, numReplicas, doCompress, nil,
+		defProj, &snap2.UUID, doBlock)
+
+	if clone2.Name != clone2Name || clone2.UUID == clone.UUID {
+		t.Fatalf("BUG: clone is TOO similar to gen 2 clone:\n%+v\n%+v", clone, clone2)
+	}
+	if clone2.SnapshotUUID != snap2.UUID {
+		t.Fatalf("BUG: gen 2 clone is not based on clone:\n%+v", clone2)
+	}
+	chkVolEquals(t, vol, clone2, "original volume", "its gen 2 clone",
+		skipName|skipUUID|skipSnapUUID)
+	chkVolEquals(t, clone, clone2, "clone", "its gen 2 clone", skipName|skipUUID|skipSnapUUID)
+
+	getVolEqualsOrFatal(t, clnt, byUUID(vol.UUID), vol, skipETag,
+		fmt.Sprintf("after creating gen 2 clone '%s', original volume", clone2Name))
+	getVolEqualsOrFatal(t, clnt, byUUID(clone.UUID), clone, skipETag,
+		fmt.Sprintf("after creating gen 2 clone '%s', clone", clone2Name))
+	getSnapEqualsOrFatal(t, clnt, byName(snapName), snap,
+		fmt.Sprintf("after creating gen 2 clone '%s', original snapshot", snapName))
+	getSnapEqualsOrFatal(t, clnt, byUUID(snap.UUID), snap,
+		fmt.Sprintf("after creating gen 2 clone '%s', original snapshot", snapName))
+
+	delVolAndWaitForItOrFatal(t, clnt, clone2.UUID, "on deleted gen 2 clone")
+
+	delSnapAndWaitForItOrFatal(t, clnt, snap2.UUID, "on deleted gen 2 snapshot")
+
+	getVolEqualsOrFatal(t, clnt, byUUID(clone.UUID), clone, skipETag,
+		fmt.Sprintf("after deleting gen 2 clone '%s', clone", clone2Name))
+	getSnapEqualsOrFatal(t, clnt, byName(snapName), snap,
+		fmt.Sprintf("after deleting gen 2 clone '%s', original snapshot", snapName))
+
+	delVolAndWaitForItOrFatal(t, clnt, clone.UUID, "on deleted clone")
+
+	delSnapAndWaitForItOrFatal(t, clnt, snap.UUID, "on deleted snapshot")
+
+	getVolEqualsOrFatal(t, clnt, byUUID(vol.UUID), vol, skipETag,
+		fmt.Sprintf("after deleting clone '%s', otiginal volume", clone2Name))
+
+	delVolAndWaitForItOrFatal(t, clnt, vol.UUID, "on deleted volume")
+}
