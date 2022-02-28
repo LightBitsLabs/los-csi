@@ -14,6 +14,10 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
 
+const (
+	unknown = "<UNKNOWN>"
+)
+
 type VolumeState int32
 
 // match present LB API values. here's to API stability!
@@ -33,21 +37,21 @@ const (
 func (s VolumeState) String() string {
 	switch s { //nolint:exhaustive
 	case VolumeCreating:
-		return "creating"
+		return "creating" //nolint:goconst // unrelated to the other one.
 	case VolumeAvailable:
-		return "available"
+		return "available" //nolint:goconst // unrelated to the other one.
 	case VolumeDeleting:
-		return "deleting"
+		return "deleting" //nolint:goconst // unrelated to the other one.
 	case VolumeFailed:
-		return "failed"
+		return "failed" //nolint:goconst // unrelated to the other one.
 	case VolumeUpdating:
 		return "updating"
 
 	// TODO: remove deprecated fields once the API drops them
 	case VolumeDeletedDEPRECATED:
-		return "deleted"
+		return "deleted" //nolint:goconst // unrelated to the other one.
 	}
-	return "<UNKNOWN>"
+	return unknown
 }
 
 type VolumeProtection int32
@@ -72,7 +76,7 @@ func (s VolumeProtection) String() string {
 	case VolumeNotAvailable:
 		return "not-available"
 	}
-	return "<UNKNOWN>"
+	return unknown
 }
 
 type Volume struct {
@@ -228,7 +232,7 @@ func (s NodeState) String() string {
 	case NodeDetaching:
 		return "detaching"
 	}
-	return "<UNKNOWN>"
+	return unknown
 }
 
 type Node struct {
@@ -299,7 +303,7 @@ func (s SnapshotState) String() string {
 	case SnapshotFailed:
 		return "failed"
 	}
-	return "<UNKNOWN>"
+	return unknown
 }
 
 type Snapshot struct {
