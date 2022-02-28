@@ -217,7 +217,7 @@ func TestParseCSIResourceID(t *testing.T) {
 	golden := uuid.MustParse("6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66")
 	checkGood := func(t *testing.T, tc testCase, chk uuid.UUID) {
 		if tc.sc == "" {
-			tc.sc = "grpcs" // default
+			tc.sc = grpcsXport // default - and only, by now...
 		}
 		vol, err := parseCSIResourceID(tc.id)
 		if err != nil {
@@ -285,7 +285,7 @@ func TestParseCSIResourceID(t *testing.T) {
 		scheme := ""
 		switch id % 6 {
 		case 0, 1:
-			tc.sc = "grpcs"
+			tc.sc = grpcsXport
 			scheme = "|scheme:grpcs"
 		case 2, 3:
 			tc.sc = "grpc"

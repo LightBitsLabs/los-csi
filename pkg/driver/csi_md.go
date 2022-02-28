@@ -44,6 +44,9 @@ const (
 // lbCreateVolumeParams: -----------------------------------------------------
 
 const (
+	grpcXport  = "grpc"  // legacy, gRPC over plain HTTP/2.
+	grpcsXport = "grpcs" // gRPC over HTTPS/2, the only currently supported transport.
+
 	volParRoot          = "parameters"
 	volParMgmtEPKey     = "mgmt-endpoint"
 	volParRepCntKey     = "replica-count"
@@ -166,10 +169,10 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 	key = volParKey(volParMgmtSchemeKey)
 	mgmtScheme := params[volParMgmtSchemeKey]
 	switch mgmtScheme {
-	case "", "grpcs":
-		res.mgmtScheme = "grpcs"
-	case "grpc":
-		res.mgmtScheme = "grpc"
+	case "", grpcsXport:
+		res.mgmtScheme = grpcsXport
+	case grpcXport:
+		res.mgmtScheme = grpcXport
 	default:
 		return res, mkEinval(key, mgmtScheme)
 	}
@@ -299,7 +302,7 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	// 2. lbResourceID formatter should probably stop generating this field.
 	vid.scheme = match[6]
 	if vid.scheme == "" {
-		vid.scheme = "grpcs"
+		vid.scheme = grpcsXport
 	}
 
 	return vid, nil
