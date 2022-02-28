@@ -383,7 +383,7 @@ func (d *Driver) validateVolumeCapability( //revive:disable-line:unused-receiver
 		// TODO: currently we only support 'ext4' and 'xfs'. additional FSes may require
 		// mount opts validation, etc., so will likely require a bit of
 		// scaffolding (TBD)... not to mention packaging the utils!
-		if mntCap.FsType != "" && mntCap.FsType != "ext4" && mntCap.FsType != "xfs" {
+		if mntCap.FsType != "" && mntCap.FsType != Ext4FS && mntCap.FsType != XfsFS {
 			return mkEinvalf("volume_capability.mount.fs_type",
 				"unsupported FS: %s", mntCap.FsType)
 		}

@@ -68,6 +68,11 @@ func GetFullVersionStr() string {
 	return ver + ")"
 }
 
+const (
+	Ext4FS = "ext4" // default
+	XfsFS  = "xfs"
+)
+
 type Config struct {
 	DefaultBackend string
 	BackendCfgPath string // if valid - contents override DefaultBackend.
@@ -76,7 +81,7 @@ type Config struct {
 	NodeID   string
 	Endpoint string // must be a Unix Domain Socket URI
 
-	DefaultFS string // one of: ext4
+	DefaultFS string // one of: ext4, xfs
 
 	LogLevel      string // one of: debug/info/warn/error
 	LogRole       string
@@ -231,7 +236,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	// corresponding `mkfs` tools (which typically means they need to be
 	// packaged into the plugin container), but often also adding support
 	// for their cmd-line switch quirks to the code, so go easy...
-	if cfg.DefaultFS != "ext4" {
+	if cfg.DefaultFS != Ext4FS {
 		return nil, fmt.Errorf("unsupported default FS: '%s'", cfg.DefaultFS)
 	}
 

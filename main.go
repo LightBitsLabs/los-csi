@@ -77,7 +77,7 @@ var defaults = driver.Config{
 	NodeID:   "",
 	Endpoint: "unix:///tmp/csi.sock",
 
-	DefaultFS: "ext4",
+	DefaultFS: driver.Ext4FS,
 
 	LogLevel:      "info",
 	LogRole:       "node",

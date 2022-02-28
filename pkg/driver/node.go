@@ -345,7 +345,7 @@ func (d *Driver) NodeStageVolume(
 		mntOpts = append(mntOpts, "ro")
 	}
 
-	if wantFSType == "xfs" {
+	if wantFSType == XfsFS {
 		mntOpts = append(mntOpts, "nouuid")
 	}
 
