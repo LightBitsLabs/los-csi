@@ -236,7 +236,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	// corresponding `mkfs` tools (which typically means they need to be
 	// packaged into the plugin container), but often also adding support
 	// for their cmd-line switch quirks to the code, so go easy...
-	if cfg.DefaultFS != Ext4FS {
+	if cfg.DefaultFS != Ext4FS && cfg.DefaultFS != XfsFS {
 		return nil, fmt.Errorf("unsupported default FS: '%s'", cfg.DefaultFS)
 	}
 

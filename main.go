@@ -33,8 +33,8 @@ Supported environment variables:
   LB_CSI_NODE_ID    - Cluster Node ID mustn't be empty and should be unique
         among all the Node plugin instances in a cluster. CO node name is
         usually a good candidate for a Node ID.
-  LB_CSI_DEFAULT_FS - one of: {ext4}. Unless otherwise specified, volumes with
-        no FS on them will be formatted to this FS before being mounted.
+  LB_CSI_DEFAULT_FS - one of: {ext4, xfs}. Unless otherwise specified, volumes
+        with no FS on them will be formatted to this FS before being mounted.
         (default: {{.DefaultFS}})
   LB_CSI_LOG_LEVEL  - one of: {debug, info, warning, error}. Minimal entry
         severity level to log. (default: {{.LogLevel}})
