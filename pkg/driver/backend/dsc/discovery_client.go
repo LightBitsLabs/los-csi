@@ -106,8 +106,12 @@ func (be *Backend) writeDSCCfgFile(finalPath string, tgtEnv *backend.TargetEnv) 
 
 	var b strings.Builder
 	for _, ep := range tgtEnv.DiscoveryEPs {
-		fmt.Fprintf(&b, "-t %s -a %s -s %d -q %s -n %s\n",
+		_, err := fmt.Fprintf(&b, "-t %s -a %s -s %d -q %s -n %s\n",
 			transport, ep.Host(), ep.Port(), be.hostNQN, tgtEnv.SubsysNQN)
+		// builder's "Write always returns len(p), nil", but 'revive' insists...
+		if err != nil {
+			return fmt.Errorf("failed to format discovery EP string, of all things")
+		}
 	}
 
 	if _, err = f.WriteString(b.String()); err != nil {
