@@ -61,11 +61,13 @@ func init() {
 		})
 }
 
-func (be *Backend) Type() string {
+func (be *Backend) Type() string { //revive:disable-line:unused-receiver
 	return beType
 }
 
-func (be *Backend) LBVolEligible(_ context.Context, _ *lb.Volume) *status.Status {
+func (be *Backend) LBVolEligible( //revive:disable-line:unused-receiver
+	_ context.Context, _ *lb.Volume,
+) *status.Status {
 	return nil
 }
 

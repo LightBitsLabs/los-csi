@@ -17,7 +17,7 @@ import (
 // just stashes them in gRPC context for real middleware logger(s) to pick up
 // and log as part of the reverse chain traversal.
 func RespDetailInterceptor(
-	ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
+	ctx context.Context, req interface{}, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler,
 ) (resp interface{}, err error) {
 	if resp, err = handler(ctx, req); err == nil {
 		return resp, nil

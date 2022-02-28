@@ -272,7 +272,9 @@ func (cp *ClientPool) dial(targets endpoint.Slice, mgmtScheme string, pm *poolMe
 //
 // clients obtained from the pool using GetClient() must be returned to the
 // pool using PutClient() once the caller is done using them.
-func (cp *ClientPool) GetClient(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (Client, error) {
+func (cp *ClientPool) GetClient(
+	ctx context.Context, targets endpoint.Slice, mgmtScheme string,
+) (Client, error) {
 	if !targets.IsValid() {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"invalid target endpoints specified: [%s]", targets)

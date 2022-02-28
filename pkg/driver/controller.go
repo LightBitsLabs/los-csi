@@ -410,7 +410,7 @@ func findExistingVolume(
 // currently linger in the 'Deleted' state until the volume based on it disappears.
 // similar to the `srcSid` case, the resultant volume capacity will be based on
 // that of the source.
-func (d *Driver) doCreateVolume(
+func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, req lb.Volume,
 	reqCapacity csi.CapacityRange, srcVid, srcSid *lbResourceID,
 ) (*lb.Volume, error) {
@@ -627,7 +627,7 @@ func (d *Driver) CreateVolume(
 	return mkVolumeResponse(params.mgmtEPs, vol, params.mgmtScheme, volSrc), nil
 }
 
-func (d *Driver) ControllerGetVolume(
+func (d *Driver) ControllerGetVolume( //revive:disable-line:unused-receiver
 	_ context.Context, _ *csi.ControllerGetVolumeRequest,
 ) (*csi.ControllerGetVolumeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
@@ -948,7 +948,7 @@ func (d *Driver) ValidateVolumeCapabilities(
 	}, nil
 }
 
-func (d *Driver) ListVolumes(
+func (d *Driver) ListVolumes( //revive:disable-line:unused-receiver
 	_ context.Context, _ *csi.ListVolumesRequest,
 ) (*csi.ListVolumesResponse, error) {
 	// TODO: er... impl?
@@ -1269,8 +1269,8 @@ func (d *Driver) DeleteSnapshot(
 	return &csi.DeleteSnapshotResponse{}, nil
 }
 
-func (d *Driver) ListSnapshots(
-	ctx context.Context, req *csi.ListSnapshotsRequest,
+func (d *Driver) ListSnapshots( //revive:disable-line:unused-receiver
+	_ context.Context, _ *csi.ListSnapshotsRequest,
 ) (*csi.ListSnapshotsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "")
 }

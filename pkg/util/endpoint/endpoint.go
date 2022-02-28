@@ -142,9 +142,9 @@ func (eps Slice) Clone() Slice {
 }
 
 // for sort.Interface:
-func (l Slice) Len() int           { return len(l) }
-func (l Slice) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
-func (l Slice) Less(i, j int) bool { return strings.Compare(l[i].String(), l[j].String()) == -1 }
+func (eps Slice) Len() int           { return len(eps) }
+func (eps Slice) Swap(i, j int)      { eps[i], eps[j] = eps[j], eps[i] }
+func (eps Slice) Less(i, j int) bool { return strings.Compare(eps[i].String(), eps[j].String()) == -1 }
 
 func canonicalize(targets []string, parser func(string) (EP, error)) (Slice, error) {
 	if len(targets) == 0 {

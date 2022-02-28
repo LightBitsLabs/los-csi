@@ -10,8 +10,8 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
-func (d *Driver) GetPluginInfo(
-	ctx context.Context, req *csi.GetPluginInfoRequest,
+func (d *Driver) GetPluginInfo( //revive:disable-line:unused-receiver
+	_ context.Context, _ *csi.GetPluginInfoRequest,
 ) (*csi.GetPluginInfoResponse, error) {
 	return &csi.GetPluginInfoResponse{
 		Name:          driverName,
@@ -19,12 +19,12 @@ func (d *Driver) GetPluginInfo(
 	}, nil
 }
 
-func (d *Driver) GetPluginCapabilities(
-	ctx context.Context, req *csi.GetPluginCapabilitiesRequest,
+func (d *Driver) GetPluginCapabilities( //revive:disable-line:unused-receiver
+	_ context.Context, _ *csi.GetPluginCapabilitiesRequest,
 ) (*csi.GetPluginCapabilitiesResponse, error) {
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
-			&csi.PluginCapability{
+			{
 				Type: &csi.PluginCapability_Service_{
 					Service: &csi.PluginCapability_Service{
 						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
@@ -49,7 +49,9 @@ func (d *Driver) GetPluginCapabilities(
 	}, nil
 }
 
-func (d *Driver) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
+func (d *Driver) Probe( //revive:disable-line:unused-receiver
+	_ context.Context, _ *csi.ProbeRequest,
+) (*csi.ProbeResponse, error) {
 	return &csi.ProbeResponse{
 		// to appease Rex, who cares - despite it being optional!
 		Ready: &wrappers.BoolValue{

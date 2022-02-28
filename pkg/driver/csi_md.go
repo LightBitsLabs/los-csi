@@ -350,7 +350,9 @@ func (d *Driver) validateVolumeCapabilities(caps []*csi.VolumeCapability) error 
 // capabilities that are unsupported for sure. specific volumes might have
 // additional constraints once they're created, which need to be validated
 // separately.
-func (d *Driver) validateVolumeCapability(c *csi.VolumeCapability) error {
+func (d *Driver) validateVolumeCapability( //revive:disable-line:unused-receiver
+	c *csi.VolumeCapability,
+) error {
 	if c == nil {
 		return mkEinvalMissing("volume_capability")
 	}
@@ -399,7 +401,9 @@ func (d *Driver) validateVolumeCapability(c *csi.VolumeCapability) error {
 	return nil
 }
 
-func (d *Driver) nodeExpansionRequired(c *csi.VolumeCapability) bool {
+func (d *Driver) nodeExpansionRequired( //revive:disable-line:unused-receiver
+	c *csi.VolumeCapability,
+) bool {
 	accessType := c.GetAccessType()
 	switch accessType.(type) {
 	case *csi.VolumeCapability_Mount:

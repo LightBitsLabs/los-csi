@@ -52,9 +52,10 @@ func Make(beType string, log *logrus.Entry, hostNQN string, rawCfg []byte) (Back
 	return nil, fmt.Errorf("unsupported backend type: '%s'", beType)
 }
 
-func ListBackends() (res []string) {
+func ListBackends() []string {
+	res := []string{}
 	for k := range beRegistry {
 		res = append(res, k)
 	}
-	return
+	return res
 }
