@@ -70,7 +70,7 @@ func (d *Driver) lbVolEligible(
 	return st.Err()
 }
 
-func (d *Driver) queryLBforTargetEnv(
+func queryLBforTargetEnv(
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
 ) (*backend.TargetEnv, error) {
 	ci, err := clnt.GetClusterInfo(ctx)
@@ -162,8 +162,8 @@ func (d *Driver) getDevPathByUUID(uuid guuid.UUID) (string, error) {
 
 func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	devPath := ""
-	var err error = nil
-	err = wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
+	err := wait.WithRetries(30, 100*time.Millisecond, func() (bool, error) {
+		var err error
 		devPath, err = d.getDevPathByUUID(uuid)
 		return devPath != "", err
 	})
@@ -292,7 +292,7 @@ func (d *Driver) NodeStageVolume(
 
 	// get remote NVMe-oF targets info from the LB cluster:  - - - - - - -
 
-	tgtEnv, err := d.queryLBforTargetEnv(ctx, log, clnt, vid)
+	tgtEnv, err := queryLBforTargetEnv(ctx, log, clnt, vid)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,9 @@ func (d *Driver) NodeStageVolume(
 	wantFSType := mntCap.FsType
 	fsType, err := d.mounter.GetDiskFormat(devPath)
 	if err != nil {
-		return nil, mkEExec("error examining format of volume %q. devPath: %q. error: %v", vid.uuid, devPath, err)
+		log.Errorf("blkid on block device '%s' failed: %s", devPath, err)
+		return nil, mkEExec("failed to determine format of volume %s",
+			vid.uuid)
 	}
 	if fsType != "" {
 		if fsType != wantFSType && wantFSType != "" {
@@ -428,25 +430,30 @@ func (d *Driver) nodePublishVolumeForBlock(
 	// TODO add idempotency support
 
 	// Create the mount point as a file since bind mount device node requires it to be a file
-	log.Debugf("Creating target file %s", target)
+	log.Debugf("Creating target file '%s'", target)
 	err = MakeFile(target)
 	if err != nil {
+		// TODO: fix MakeFile() and error handling
 		if removeErr := os.Remove(target); removeErr != nil {
 			return &csi.NodePublishVolumeResponse{},
-				status.Errorf(codes.Internal, "Could not remove mount target %q: %v", target, removeErr)
+				status.Errorf(codes.Internal,
+					"Could not remove mount target '%s': %s", target, removeErr)
 		}
 		return &csi.NodePublishVolumeResponse{},
-			status.Errorf(codes.Internal, "Could not create file %q: %v", target, err)
+			status.Errorf(codes.Internal, "Could not create file '%s': %s", target, err)
 	}
 
-	log.Debugf("bind-mount %s at %s", source, target)
+	log.Debugf("bind-mount '%s' at '%s'", source, target)
 	if err := d.mounter.Mount(source, target, "", mountOptions); err != nil {
 		if removeErr := os.Remove(target); removeErr != nil {
+			// TODO: wrong logic, useless error message: that's not the problem!
 			return &csi.NodePublishVolumeResponse{},
-				status.Errorf(codes.Internal, "Could not remove mount target %q: %v", target, removeErr)
+				status.Errorf(codes.Internal,
+					"Could not remove mount target %s: %s", target, removeErr)
 		}
 		return &csi.NodePublishVolumeResponse{},
-			status.Errorf(codes.Internal, "Could not mount %q at %q: %v", source, target, err)
+			status.Errorf(codes.Internal, "failed to mount '%s' at '%s': %s",
+				source, target, err)
 	}
 
 	return &csi.NodePublishVolumeResponse{}, nil
@@ -561,7 +568,8 @@ func (d *Driver) NodePublishVolume(
 		if !notMnt {
 			dev, err := getDeviceNameFromMount(ctx, req.TargetPath)
 			if err != nil {
-				log.Debugf("failed to find what's mounted at '%s': %s", req.TargetPath, err)
+				log.Debugf("failed to find what's mounted at '%s': %s",
+					req.TargetPath, err)
 			}
 
 			// TODO: WARNING: if for some reason `nvme disconnect` (or its moral
@@ -591,7 +599,7 @@ func (d *Driver) NodePublishVolume(
 }
 
 func (d *Driver) NodeUnpublishVolume(
-	ctx context.Context, req *csi.NodeUnpublishVolumeRequest,
+	_ context.Context, req *csi.NodeUnpublishVolumeRequest,
 ) (*csi.NodeUnpublishVolumeResponse, error) {
 	_, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
@@ -623,8 +631,8 @@ func (d *Driver) NodeUnpublishVolume(
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
-func (d *Driver) NodeGetCapabilities(
-	ctx context.Context, req *csi.NodeGetCapabilitiesRequest,
+func (d *Driver) NodeGetCapabilities( //revive:disable-line:unused-receiver
+	_ context.Context, _ *csi.NodeGetCapabilitiesRequest,
 ) (*csi.NodeGetCapabilitiesResponse, error) {
 	capabilities := []*csi.NodeServiceCapability{
 		{
@@ -656,14 +664,14 @@ func (d *Driver) NodeGetCapabilities(
 }
 
 func (d *Driver) NodeGetInfo(
-	ctx context.Context, req *csi.NodeGetInfoRequest,
+	_ context.Context, _ *csi.NodeGetInfoRequest,
 ) (*csi.NodeGetInfoResponse, error) {
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.nodeID,
 	}, nil
 }
 
-func (d *Driver) NodeGetVolumeStats(
+func (d *Driver) NodeGetVolumeStats( //revive:disable-line:unused-receiver
 	ctx context.Context, req *csi.NodeGetVolumeStatsRequest,
 ) (*csi.NodeGetVolumeStatsResponse, error) {
 	if req.VolumePath == "" {
@@ -789,7 +797,7 @@ func blockNodeGetVolumeStats(
 }
 
 func (d *Driver) NodeExpandVolume(
-	ctx context.Context, req *csi.NodeExpandVolumeRequest,
+	_ context.Context, req *csi.NodeExpandVolumeRequest,
 ) (*csi.NodeExpandVolumeResponse, error) {
 	vid, err := parseCSIResourceIDEnoent(volIDField, req.VolumeId)
 	if err != nil {
@@ -805,7 +813,7 @@ func (d *Driver) NodeExpandVolume(
 	})
 
 	volumePath := req.GetVolumePath()
-	if len(volumePath) == 0 {
+	if volumePath == "" {
 		return nil, mkEinval("volumePath", "volume path must be provided")
 	}
 
