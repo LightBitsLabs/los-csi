@@ -261,14 +261,21 @@ func TestParseCSIResourceID(t *testing.T) {
 		id := rand.Uint64()>>uint(rand.Intn(63)) + 1
 		var tc testCase
 		var nguid uuid.UUID
+		var err error
+		retry := 0
 		if i%2 == 0 {
-			for nguid == uuid.Nil {
-				nguid, _ = uuid.NewRandom()
+			for nguid == uuid.Nil && retry < 5 {
+				nguid, err = uuid.NewRandom()
+				retry++
 			}
 		} else {
-			for nguid == uuid.Nil {
-				nguid, _ = uuid.NewUUID()
+			for nguid == uuid.Nil && retry < 5 {
+				nguid, err = uuid.NewUUID()
+				retry++
 			}
+		}
+		if nguid == uuid.Nil || err != nil {
+			t.Fatalf("BUG: failed to generate a UUID for test")
 		}
 		proj := ""
 		if i%3 < 2 {
