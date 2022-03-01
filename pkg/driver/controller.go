@@ -1023,17 +1023,18 @@ func (d *Driver) ControllerExpandVolume(
 		return nil, err
 	}
 
+	requestedCapacity, err := getReqCapacity(req.CapacityRange)
+	if err != nil {
+		return nil, err
+	}
+
 	log := d.log.WithFields(logrus.Fields{
 		"op":       "ControllerExpandVolume",
 		"mgmt-ep":  vid.mgmtEPs,
 		"vol-uuid": vid.uuid,
 		"project":  vid.projName,
+		"cap-req":  requestedCapacity,
 	})
-
-	requestedCapacity, err := getReqCapacity(req.CapacityRange)
-	if err != nil {
-		return nil, err
-	}
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -1043,15 +1044,17 @@ func (d *Driver) ControllerExpandVolume(
 	defer d.PutLBClient(clnt)
 
 	expandVolumeHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
-		log = log.WithFields(logrus.Fields{
-			"capacity-curr":      fmt.Sprintf("%d", vol.Capacity),
-			"capacity-requested": fmt.Sprintf("%d", requestedCapacity),
-		})
-		// If a volume corresponding to the specified volume ID
-		// is already larger than or equal to the target capacity of the expansion request,
-		// the plugin SHOULD reply 0 OK.
+		// If a volume corresponding to the specified volume ID is already larger
+		// than or equal to the target capacity of the expansion request, the
+		// plugin SHOULD reply 0 OK.
+		//
+		// TODO: actually, at least the cursory reading of the CSI spec failed to
+		// reveal a definite requirement on behaviour of ControllerExpandVolume()
+		// if the volume is already larger than `req.capacity_range.limit_bytes`,
+		// defined as "Volume MUST not be bigger than this". either i'm missing
+		// or misinterpreting some clause or this is a hole in the spec.
 		if requestedCapacity <= vol.Capacity {
-			log.Infof("no further volume expand required")
+			log.WithField("cap-curr", vol.Capacity).Infof("volume is already large enough")
 			return nil, nil
 		}
 		return &lb.VolumeUpdate{Capacity: requestedCapacity}, nil
@@ -1063,13 +1066,28 @@ func (d *Driver) ControllerExpandVolume(
 	}
 	if vol.Capacity < requestedCapacity {
 		log.WithFields(logrus.Fields{
-			"capacity-exp": fmt.Sprintf("%d", requestedCapacity),
-			"capacity-got": fmt.Sprintf("%d", vol.Capacity),
-		}).Errorf("clnt.UpdateVolume() succeeded, but resultant volume Capacity smaller then requested capacity")
-		return nil, mkEagain("failed to expand volume %q", vid.uuid)
+			"cap-exp": requestedCapacity,
+			"cap-got": vol.Capacity,
+		}).Errorf("clnt.UpdateVolume() succeeded, " +
+			"but resultant volume capacity is smaller then requested")
+		return nil, mkEagain("failed to expand volume")
 	}
+
+	// TODO: right now this whole nodeExpansionRequired()/NodeExpandVolume()
+	// design is misaligned with the actual NodeStageVolume() behaviour, the
+	// two appear to be unaware of one another and act bizarrely in combo.
+	//
+	// moreover, this logic on its own as it currently stands will sometimes
+	// result in workload usable capacity NOT being expanded, because it's
+	// applied to the caps as passed in during the ControllerExpandVolume()
+	// call, rather than the actual volume mode (FS) and usage. unfortunately,
+	// it's currently not guaranteed that these caps are related to how the
+	// volume will be used later on due to the interaction with several of the
+	// recently added features (block, clones).
 	nodeExpansionRequired := d.nodeExpansionRequired(req.VolumeCapability)
-	log.Infof("nodeExpansionRequired: %t. req.VolumeCapability: %+v", nodeExpansionRequired, req.VolumeCapability)
+	if nodeExpansionRequired {
+		log.Infof("requesting FS to be resized by Node plugin instance before volume use")
+	}
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes:         int64(vol.Capacity),
 		NodeExpansionRequired: nodeExpansionRequired,
