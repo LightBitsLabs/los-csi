@@ -36,31 +36,63 @@ cleanup() {
     trap 'exit 0' EXIT
 }
 
+export default_skip_list='Disruptive|\[Feature:Windows\]'
+
 function list_all_tests()
 {
-    KUBECONFIG="/root/.kube/config" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.skip='\[Feature:Windows\]' \
+    KUBECONFIG="$KUBECONFIG" ./e2e.test -ginkgo.v -ginkgo.skip=$default_skip_list \
         -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
         -ginkgo.dryRun
 }
 
 function list_all_tests_for_our_driver()
 {
-    KUBECONFIG="/root/.kube/config" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.skip='\[Feature:Windows\]' \
+    KUBECONFIG="$KUBECONFIG" ./e2e.test -ginkgo.v -ginkgo.skip=$default_skip_list \
         -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
         -ginkgo.focus="\[Driver: csi.lightbitslabs.com\]" \
         -ginkgo.dryRun
 }
 
 test() {
+    local skip_flags="$default_skip_list"
     local focus
     local cmd
+
+    local snapshot_preprovision_tests_skip_flags=""
+    snapshot_preprovision_tests_skip_flags+="\[Testpattern: Pre-provisioned Snapshot \(retain policy\)\] snapshottable\[Feature:VolumeSnapshotDataSource\]"
+    snapshot_preprovision_tests_skip_flags+="|\[Testpattern: Pre-provisioned Snapshot \(delete policy\)\] snapshottable\[Feature:VolumeSnapshotDataSource\]"
+    # sadly multi focus/skip flags was added in ginkgo 1.15 (cli: allow multiple -focus and -skip flags (#736) [9a782fb])
+    # and k8s e2e is shipped with 1.11 to 1.14 till v1.23.4 so we are stuck with specifing only one long flag with |
+    k8s_version="${CLUSTER_VERSION}"
+    case $k8s_version in
+      "v1.17.5")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
+      "v1.18.2")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
+      "v1.19.9")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
+      "v1.20.5")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
+      "v1.21.9")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
+      "v1.22.5")
+        ;;
+      *)
+        ;;
+    esac
+
 
     start_time=`date +%s.%N`
     # https://github.com/kubernetes/kubernetes/issues/97993
     info "Create default storage class"
     trap cleanup EXIT
-    KUBECONFIG="/root/.kube/config" kubectl create -f $TESTDIR/storage-class.yaml
-    KUBECONFIG="/root/.kube/config" kubectl create -f $TESTDIR/snapshot-class.yaml
+    KUBECONFIG="$KUBECONFIG" kubectl create -f $TESTDIR/storage-class.yaml
+    KUBECONFIG="$KUBECONFIG" kubectl create -f $TESTDIR/snapshot-class.yaml
 
     info "Start $TEST tests"
     case "$TEST" in
@@ -85,7 +117,7 @@ test() {
     # since we run this under systemd we have the journald log so no need to redirect
     #cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
     cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v \
-        -ginkgo.skip='Disruptive' -ginkgo.skip='\[Feature:Windows\]' \
+        -ginkgo.skip='${skip_flags}' \
         -ginkgo.focus='${focus}' \
         -ginkgo.reportPassed \
         -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
