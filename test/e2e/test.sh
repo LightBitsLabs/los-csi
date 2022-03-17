@@ -117,13 +117,17 @@ test() {
 
     # we comment the redirect to test.log cause it hides the error code of the command
     # since we run this under systemd we have the journald log so no need to redirect
-    #cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v -ginkgo.skip='Disruptive' -ginkgo.reportPassed -ginkgo.focus='${focus}' -storage.testdriver=\"$TESTDIR\"/test-driver.yaml -report-dir=\"$TESTDIR\" | tee $LOGSDIR/test.log"
-    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test -ginkgo.v \
-        -ginkgo.skip='${skip_flags}' \
-        -ginkgo.focus='${focus}' \
-        -ginkgo.reportPassed \
-        -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
-        -report-dir=\"$TESTDIR\" -ginkgo.noColor"
+    cmd="KUBECONFIG=\"$KUBECONFIG\" ./e2e.test \
+          -ginkgo.v \
+          -ginkgo.skip='${skip_flags}' \
+          -ginkgo.focus='${focus}' \
+          -ginkgo.reportPassed \
+          -ginkgo.noColor \
+          -ginkgo.trace \
+          -storage.testdriver=\"$TESTDIR\"/test-driver.yaml \
+          -report-prefix="$TEST" \
+          -e2e-output-dir=\"$TESTDIR\" \
+          -report-dir=\"$TESTDIR\""
 
     pushd $TESTDIR
     info "Start '$TEST' tests from test-dir '$TESTDIR'"
