@@ -124,7 +124,7 @@ test() {
         -report-dir=\"$TESTDIR\" -ginkgo.noColor"
 
     pushd $TESTDIR
-    info "Start '$TEST' tests"
+    info "Start '$TEST' tests from test-dir '$TESTDIR'"
     info "$cmd"
 
     eval $cmd
@@ -144,8 +144,10 @@ test() {
     exit $result
 }
 
-download() {
-    local test_archive_url="https://dl.k8s.io/$CLUSTER_VERSION/kubernetes-test-linux-amd64.tar.gz"
+download_e2e_from_lightbitslabs_github() {
+    # in order to download lightbits patched precompiled binaries use:
+    local lightbits_release_name="$CLUSTER_VERSION-lightbits"
+    local test_archive_url="https://github.com/LightBitsLabs/kubernetes/releases/download/$lightbits_release_name/kubernetes-test-linux-amd64.tar.gz"
     
     mkdir -p $TESTDIR
     [ -e "$TESTDIR"/e2e.test -a -e "$TESTDIR"/ginkgo ] && {
@@ -154,8 +156,10 @@ download() {
     }
 
     info "Downloading kubernetes/test/bin/e2e.test and kubernetes/test/bin/ginkgo from $test_archive_url to $TESTDIR"
-    (cd $TESTDIR && curl -s --location "$test_archive_url" | tar --strip-components=3 -zxf - kubernetes/test/bin/e2e.test kubernetes/test/bin/ginkgo)
-    info "Done"
+    pushd "$TESTDIR"
+    curl -s --location "$test_archive_url" | tar --strip-components=3 -zxf - kubernetes/test/bin/e2e.test kubernetes/test/bin/ginkgo || exit 1
+    popd
+    info "successfully downloaded e2e.test and ginkgo to $TESTDIR"
 }
 
 compare_versions() {
@@ -167,7 +171,7 @@ from pkg_resources import parse_version
 sys.exit(not parse_version(sys.argv[1])'"${op}"'parse_version(sys.argv[2]))' "$aver" "$bver"
 }
 
-generate() {
+generate_configuration() {
 
     cat > $TESTDIR/storage-class.yaml <<EOF
 kind: StorageClass
@@ -278,6 +282,7 @@ EOF
     [ "$VERBOSE" = "true" ] && cat $TESTDIR/snapshot-class.yaml
     dbg "Generated $TESTDIR/test-driver.yaml:"
     [ "$VERBOSE" = "true" ] && cat $TESTDIR/test-driver.yaml
+    info "Done generate configuration"
 }
 
 usage() {
@@ -395,8 +400,8 @@ main() {
     dbg "PROJECT_NAME=$PROJECT_NAME"
     dbg "FS_TYPE=$FS_TYPE"
 
-    download
-    generate
+    download_e2e_from_lightbitslabs_github
+    generate_configuration
     [ "$SKIP_TEST" = "false" ] && test
 }
 
