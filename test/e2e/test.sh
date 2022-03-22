@@ -2,6 +2,8 @@
 # Copyright (C) 2020 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
+set -e
+
 SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 dbg() {
@@ -294,6 +296,8 @@ usage() {
     echo "      -m|--mgmt-endpoint - mgmt-endpoint parameter for the storage class. Default is using LB_CSI_SC_MGMT_ENDPOINT environment variable"
     echo "      -S|--mgmt-scheme - mgmt-scheme parameter for the storage class. options: [grpc, grpcs] (default: grpcs)"
     echo "      -r|--replica-count - replica-count parameter for the storage class. Default is using LB_CSI_SC_REPLICA_COUNT environment variable OR 3 if not defined"
+    echo "      -R|--image-registry - registry to pull the binary from. defaults to ${IMAGE_REGISTRY}"
+    echo "      -U|--upstream-e2e - fetch offitial precompiled e2e binaries from GH. defaults to false"
     echo "      -c|--enable-compression - compression parameter for the storage class. Default is using LB_CSI_SC_COMPRESSION environment variable OR disabled if not defined"
     echo "      -s|--skip-test - only download and generate the test files without running the test"
     echo "      -t|--test - run a specific test. Supported tests - ${SUPPORTED_TESTS[@]} (default all)"
@@ -306,7 +310,7 @@ usage() {
 }
 
 main() {
-    if ! OPTS=$(getopt -o 'hvk:m:S:r:cst:d:l:n:N:p:f:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,compression,skip-test,test:,test-dir:,logs-dir:,secret-name:,secret-namespace:,project-name:,fs-type: -n 'parse-options' -- "$@"); then
+    if ! OPTS=$(getopt -o 'hvk:m:S:r:R:U:cst:d:l:n:N:p:f:' --long help,verbose,kubeconfig:,mgmt-endpoint:,mgmt-scheme:,replica-count:,image-registry:,upstream-e2e:,compression,skip-test,test:,test-dir:,logs-dir:,secret-name:,secret-namespace:,project-name:,fs-type: -n 'parse-options' -- "$@"); then
         err "Failed parsing options." >&2 ; usage; exit 1 ;
     fi
 
@@ -320,6 +324,8 @@ main() {
             -m | --mgmt-endpoint)       MGMT_ENDPOINT="$2"; shift; shift ;;
             -S | --mgmt-scheme)         MGMT_SCHEME="$2"; shift; shift ;;
             -r | --replica-count)       REPLICA_COUNT="$2"; shift; shift ;;
+            -R | --image-registry)      IMAGE_REGISTRY="$2"; shift; shift ;;
+            -U | --upstream-e2e)        UPSTREAM_E2E="$2"; shift; shift ;;
             -c | --compression)         COMPRESSION=enabled; shift ;;
             -s | --skip-test)           SKIP_TEST=true; shift ;;
             -t | --test)                TEST="$2"; shift; shift ;;
@@ -355,6 +361,16 @@ main() {
     if [ -z "$SECRET_NAMESPACE" ]; then
         info "SECRET_NAMESPACE environment variable not set and -N|--secret-namespace using default"
         SECRET_NAMESPACE="default"
+    fi
+
+    if [ -z "$IMAGE_REGISTRY" ]; then
+        IMAGE_REGISTRY="lbdocker:5000"
+        info "IMAGE_REGISTRY environment variable not set and -R|--image-registry. default to ${IMAGE_REGISTRY}"
+    fi
+
+    if [ -z "$UPSTREAM_E2E" ]; then
+        info "UPSTREAM_E2E environment variable not set and -U|--upsteam-e2e. default to false"
+        UPSTREAM_E2E="false"
     fi
 
     if [ -z "$PROJECT_NAME" ]; then
@@ -394,6 +410,8 @@ main() {
     dbg "MGMT_ENDPOINT=$MGMT_ENDPOINT"
     dbg "MGMT_SCHEME=$MGMT_SCHEME"
     dbg "REPLICA_COUNT=$REPLICA_COUNT"
+    dbg "IMAGE_REGISTRY=$IMAGE_REGISTRY"
+    dbg "UPSTREAM_E2E=$UPSTREAM_E2E"
     dbg "COMPRESSION=$COMPRESSION"
     dbg "SECRET_NAME=$SECRET_NAME"
     dbg "SECRET_NAMESPACE=$SECRET_NAMESPACE"
@@ -408,6 +426,8 @@ main() {
 VERBOSE=false
 CLUSTER_VERSION=
 TESTDIR=
+IMAGE_REGISTRY=
+UPSTREAM_E2E=false
 LOGSDIR=
 SKIP_TEST=false
 SUPPORTED_TESTS=(all volume-expand volume-expand-block volume-expand-fs provisioning multi-volume volumes volume-mode snapshottable snapshottable-stress volumeIO capacity disruptive ephemeral volume-stress)
