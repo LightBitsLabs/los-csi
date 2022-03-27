@@ -32,8 +32,8 @@ PKG_PREFIX := github.com/lightbitslabs/los-csi
 
 override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
 override BUILD_TIME := $(shell date "+%Y-%m-%d.%H:%M:%S.%N%:z")
-override GIT_VER := $(or \
-    $(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN)
+override GIT_VER := $(or $(GIT_VER), $(or \
+    $(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN))
 
 
 # set BUILD_HASH to GIT_VER if not provided
@@ -337,6 +337,7 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-e DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
 		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
 		-e BUILD_HASH=$(BUILD_HASH) \
+		-e GIT_VER=$(GIT_VER) \
 		-e BUILD_ID=$(BUILD_ID) \
 		-e RELEASE=$(RELEASE) \
 		-e PLUGIN_VER=$(PLUGIN_VER) \
