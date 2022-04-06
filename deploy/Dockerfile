@@ -1,13 +1,15 @@
 # update alpine to get cryptsetup 2.4.x
 FROM alpine:3.16
 
-LABEL maintainers="Lightbits Labs" \
-      description="LB CSI Plugin" \
-      version.lb-csi.rel="UNKNOWN" \
-      version.lb-csi.git="UNKNOWN" \
-      version.lb-csi.build.host="UNKNOWN" \
-      version.lb-csi.build.time="UNKNOWN" \
-      version.lb-csi.build.id="UNKNOWN"
+LABEL org.opencontainers.image.title="Lightbits CSI Plugin" \
+    org.opencontainers.image.description="CSI plugin for Lightbits Cluster" \
+    org.opencontainers.image.authors="Lightbits Labs <support@lightbitslabs.com>" \
+    org.opencontainers.image.documentation="https://www.lightbitslabs.com/support/" \
+    org.opencontainers.image.version="UNKNOWN" \
+    org.opencontainers.image.revision="UNKNOWN" \
+    org.opencontainers.image.created="UNKNOWN"
+
+
 # official builds will also carry the following labels:
 #     version.lb-csi.hash
 # while custom builds might also have labels:

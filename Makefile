@@ -31,7 +31,7 @@ DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_
 PKG_PREFIX := github.com/lightbitslabs/los-csi
 
 override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
-override BUILD_TIME := $(shell date "+%Y-%m-%d.%H:%M:%S.%N%:z")
+override BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 override GIT_VER := $(or $(GIT_VER), $(or \
     $(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN))
 
@@ -51,12 +51,16 @@ LDFLAGS ?= \
 override GO_VARS := GOPROXY=off GO111MODULE=on GOFLAGS=-mod=vendor CGO_ENABLED=0
 
 override LABELS := \
-    --label version.lb-csi.rel="$(PLUGIN_VER)" \
-    --label version.lb-csi.git=$(GIT_VER) \
-    $(and $(BUILD_HASH), --label version.lb-csi.hash="$(BUILD_HASH)") \
-    $(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
-    $(if $(BUILD_HASH),, --label version.lb-csi.build.time=$(BUILD_TIME)) \
-    $(if $(BUILD_ID), --label version.lb-csi.build.id=$(BUILD_ID),)
+	--label org.opencontainers.image.title="Lightbits CSI Plugin" \
+	--label org.opencontainers.image.version="$(PLUGIN_VER)" \
+	--label org.opencontainers.image.description="CSI plugin for Lightbits Cluster" \
+	--label org.opencontainers.image.authors="Lightbits Labs <support@lightbitslabs.com>" \
+	--label org.opencontainers.image.documentation="https://www.lightbitslabs.com/support/" \
+	--label org.opencontainers.image.revision=$(GIT_VER) \
+	--label org.opencontainers.image.created=$(BUILD_TIME) \
+	$(and $(BUILD_HASH), --label version.lb-csi.hash="$(BUILD_HASH)") \
+	$(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
+	$(if $(BUILD_ID), --label version.lb-csi.build.id=$(BUILD_ID),)
 
 YAML_PATH := deploy/k8s
 
