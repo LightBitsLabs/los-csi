@@ -62,6 +62,9 @@ override LABELS := \
 	$(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
 	$(if $(BUILD_ID), --label version.lb-csi.build.id=$(BUILD_ID),)
 
+print-% : ## print the variable name to stdout
+	@echo $($*)
+
 YAML_PATH := deploy/k8s
 
 IMG_BUILDER := image-builder:v0.0.1
