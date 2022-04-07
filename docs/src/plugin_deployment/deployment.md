@@ -43,7 +43,7 @@ To ensure smooth access to the storage volumes exported by the LightOS clusters,
 
 > Note:
 > 
-> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v2.3.12 Installation Guide document.
+> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v2.3.16 Installation Guide document.
 
 
 Before deploying the Lightbits CSI plugin, you should verify that:
@@ -225,7 +225,8 @@ The `lb-csi-bundle` includes the following content:
 ├── examples
 │   ├── block-workload.yaml
 │   ├── filesystem-workload.yaml
-│   ├── preprovisioned-workload.yaml
+│   ├── preprovisioned-block-workload.yaml
+│   ├── preprovisioned-filesystem-workload.yaml
 │   ├── secret-and-storage-class.yaml
 │   ├── snaps-example-pvc-workload.yaml
 │   ├── snaps-example-snapshot-class.yaml
