@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package lightbits.api.duros.v2;
 
-option go_package = "durosv2;durospb";
+option go_package = "./durosv2;durospb";
 
 
 ///////////////////////////////////////
@@ -96,6 +96,14 @@ message NodeStatisticsApi {
     //
     // compression ratio logicalUsedStorage/physicalUsedStorage
     double compressionRatio = 10;
+    // Unrecoverable Data Integrity Errors
+    //
+    // Number of data integrity errors that could no be recovered by the system.
+    uint32 UnrecoverableDataIntegrityErrors = 11;
+    // Recoverable Data Integrity Errors
+    //
+    // Number of data integrity errors that were recovered by the system.
+    uint32 RecoverableDataIntegrityErrors = 12;
 }
 
 
@@ -127,6 +135,14 @@ message VolumeStatisticsApi {
     uint64 physicalOwnedMemory = 7;
     uint64 physicalMemory = 8;
     uint64 userWritten = 9;
+    // Unrecoverable Data Integrity Errors
+    //
+    // Number of data integrity errors that could no be recovered by the system.
+    uint32 unrecoverableDataIntegrityErrors = 10;
+    // Recoverable Data Integrity Errors
+    //
+    // Number of data integrity errors that were recovered by the system.
+    uint32 recoverableDataIntegrityErrors = 11;
 }
 
 message SnapshotStatisticsApi {
@@ -150,4 +166,15 @@ message SnapshotStatisticsApi {
     //
     // Amount, in bytes of data requested to be written by the user
     uint64 userWritten = 5;
+}
+
+message NvmeDeviceStatisticsApi {
+    // Unrecoverable Data Integrity Errors
+    //
+    // Number of data integrity errors that could no be recovered by the system.
+    uint32 UnrecoverableDataIntegrityErrors = 1;
+    // Recoverable Data Integrity Errors
+    //
+    // Number of data integrity errors that were recovered by the system.
+    uint32 RecoverableDataIntegrityErrors = 2;
 }
