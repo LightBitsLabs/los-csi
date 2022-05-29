@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package lightbits.api.schedule;
 
-option go_package = "durosv2;durospb";
+option go_package = "./durosv2;durospb";
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
