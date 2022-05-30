@@ -504,7 +504,8 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 	}
 
 	vol, err := clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
-		req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, true)
+		req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, req.QosPolicyName,
+		true)
 	if err != nil {
 		return nil, mungeLBErr(log, err, "failed to create volume '%s'", req.Name)
 	}
@@ -597,12 +598,13 @@ func (d *Driver) CreateVolume(
 	// from here on: if volSrc != nil - it's definitely a clone request.
 
 	wantVol := lb.Volume{
-		Name:         req.Name,
-		Capacity:     capacity, // NOTE: might be updated to that of the content source!
-		ReplicaCount: params.replicaCount,
-		Compression:  params.compression,
-		ACL:          []string{lb.ACLAllowNone},
-		ProjectName:  params.projectName,
+		Name:          req.Name,
+		Capacity:      capacity, // NOTE: might be updated to that of the content source!
+		ReplicaCount:  params.replicaCount,
+		Compression:   params.compression,
+		ACL:           []string{lb.ACLAllowNone},
+		ProjectName:   params.projectName,
+		QosPolicyName: params.qosPolicyName,
 	}
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)

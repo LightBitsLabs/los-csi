@@ -88,6 +88,7 @@ type Volume struct {
 	LogicalUsedStorage uint64
 	Compression        bool
 	SnapshotUUID       guuid.UUID
+	QosPolicyName      string
 
 	ACL []string
 
@@ -337,7 +338,7 @@ type Client interface {
 
 	CreateVolume(ctx context.Context, name string, capacity uint64,
 		replicaCount uint32, compress bool, acl []string, projectName string,
-		snapshotID guuid.UUID, blocking bool,
+		snapshotID guuid.UUID, qosPolicyName string, blocking bool,
 	) (*Volume, error)
 	DeleteVolume(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*Volume, error)

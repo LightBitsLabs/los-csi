@@ -53,6 +53,7 @@ const (
 	volParCompressKey   = "compression"
 	volParProjNameKey   = "project-name"
 	volParMgmtSchemeKey = "mgmt-scheme"
+	volParQosNameKey    = "qos-policy-name"
 )
 
 var projNameRegex *regexp.Regexp
@@ -91,18 +92,21 @@ func checkProjectName(field, proj string) error {
 //     replica-count: <num-replicas>
 // may optionally include (if omitted - the default is "disabled"):
 //     compression: <"enabled"|"disabled">
+//     qos-policy-name: <qos-policy-name>
 // e.g.:
 //     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
 //     mgmt-scheme: grpcs
 //     project-name: proj-3
 //     replica-count: 2
 //     compression: enabled
+//     qos-policy-name: "io-limited-policy"
 type lbCreateVolumeParams struct {
-	mgmtEPs      endpoint.Slice // LightOS mgmt API server endpoints.
-	replicaCount uint32         // total number of volume replicas.
-	compression  bool           // whether compression is enabled.
-	projectName  string         // project name.
-	mgmtScheme   string         // currently must be 'grpcs'
+	mgmtEPs       endpoint.Slice // LightOS mgmt API server endpoints.
+	replicaCount  uint32         // total number of volume replicas.
+	compression   bool           // whether compression is enabled.
+	projectName   string         // project name.
+	mgmtScheme    string         // currently must be 'grpcs'
+	qosPolicyName string         // qos policy name should exist in the lightos
 }
 
 func volParKey(key string) string {
@@ -175,6 +179,10 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		res.mgmtScheme = grpcXport
 	default:
 		return res, mkEinval(key, mgmtScheme)
+	}
+
+	if val, ok := params[volParQosNameKey]; ok {
+		res.qosPolicyName = val
 	}
 
 	return res, nil
