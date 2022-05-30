@@ -229,7 +229,8 @@ func (c *fakeClient) ListNodes(ctx context.Context) ([]*lb.Node, error) {
 func (c *fakeClient) CreateVolume(
 	ctx context.Context, name string, capacity uint64,
 	replicaCount uint32, compress bool, acl []string,
-	projectName string, snapshotID guuid.UUID, blocking bool, // TODO: refactor options
+	projectName string, snapshotID guuid.UUID,
+	qosPolicyName string, blocking bool, // TODO: refactor options
 ) (*lb.Volume, error) {
 	return nil, nil
 }

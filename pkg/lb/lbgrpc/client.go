@@ -688,6 +688,7 @@ func (c *Client) lbVolumeFromGRPC(
 		SnapshotUUID:       snapUUID,
 		ETag:               vol.ETag,
 		ProjectName:        vol.ProjectName,
+		QosPolicyName:      vol.QosPolicyName,
 	}, nil
 }
 
@@ -706,7 +707,8 @@ func cloneCtxWithETag(ctx context.Context, eTag string) context.Context {
 
 func (c *Client) CreateVolume(
 	ctx context.Context, name string, capacity uint64, replicaCount uint32,
-	compress bool, acl []string, projectName string, snapshotID guuid.UUID, blocking bool,
+	compress bool, acl []string, projectName string, snapshotID guuid.UUID, qosPolicyName string,
+	blocking bool,
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -722,6 +724,8 @@ func (c *Client) CreateVolume(
 		acl = []string{lb.ACLAllowNone}
 	}
 
+	qosPolicyID := &mgmt.CreateVolumeRequest_QosPolicyName{QosPolicyName: qosPolicyName}
+
 	req := mgmt.CreateVolumeRequest{
 		Name:         name,
 		Size:         capStr,
@@ -729,6 +733,7 @@ func (c *Client) CreateVolume(
 		Compression:  strconv.FormatBool(compress),
 		ReplicaCount: replicaCount,
 		ProjectName:  projectName,
+		QosPolicyID:  qosPolicyID,
 	}
 	if snapshotID != guuid.Nil {
 		req.SourceSnapshotUUID = snapshotID.String()
