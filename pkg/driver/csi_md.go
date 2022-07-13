@@ -11,8 +11,9 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
-
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // this file holds the definitions of - and helper functions for handling of -
@@ -53,6 +54,14 @@ const (
 	volParCompressKey   = "compression"
 	volParProjNameKey   = "project-name"
 	volParMgmtSchemeKey = "mgmt-scheme"
+
+	// volHostEncryptedKey parameter in the storageclass parameter, can be either enabled|disabled
+	volHostEncryptedKey = "hostEncryption"
+	// volHostEncryptionPassphraseKey name of the secret for the encryption passphrase
+	volHostEncryptionPassphraseKey = "hostEncryptionPassphrase"
+	// volHostEncryptionPassphraseKeyMaxLen defines the maximum len of the encryption passphrase
+	// this is according to the cryptsetup man page
+	volHostEncryptionPassphraseKeyMaxLen = 512
 )
 
 var projNameRegex *regexp.Regexp
@@ -98,11 +107,12 @@ func checkProjectName(field, proj string) error {
 //     replica-count: 2
 //     compression: enabled
 type lbCreateVolumeParams struct {
-	mgmtEPs      endpoint.Slice // LightOS mgmt API server endpoints.
-	replicaCount uint32         // total number of volume replicas.
-	compression  bool           // whether compression is enabled.
-	projectName  string         // project name.
-	mgmtScheme   string         // currently must be 'grpcs'
+	mgmtEPs       endpoint.Slice // LightOS mgmt API server endpoints.
+	replicaCount  uint32         // total number of volume replicas.
+	compression   bool           // whether compression is enabled.
+	projectName   string         // project name.
+	mgmtScheme    string         // currently must be 'grpcs'
+	hostEncrypted bool           // if set to true, volume must be encrypted on host side
 }
 
 func volParKey(key string) string {
@@ -177,7 +187,30 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		return res, mkEinval(key, mgmtScheme)
 	}
 
+	isEncrypted, err := isVolumeEncryptionSet(params)
+	if err != nil {
+		return res, err
+	}
+	res.hostEncrypted = isEncrypted
+
 	return res, nil
+}
+
+func isVolumeEncryptionSet(params map[string]string) (bool, error) {
+	if encryptedStringValue, ok := params[volHostEncryptedKey]; ok {
+		switch encryptedStringValue {
+		case "enabled", "true":
+			return true, nil
+		case "", "disabled", "false":
+			return false, nil
+		default:
+			return false, status.Errorf(
+				codes.InvalidArgument,
+				"invalid value %q for parameter %q, only enabled|disabled|true|false allowed",
+				encryptedStringValue, volHostEncryptedKey)
+		}
+	}
+	return false, nil
 }
 
 // lbResourceID: ---------------------------------------------------------------
@@ -193,7 +226,8 @@ func init() {
 		`^mgmt:([^|]+)\|` +
 			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
 			`(\|proj:([^[:cntrl:]| ]+))?` + // proj name syntax checked separately
-			`(\|scheme:(grpc|grpcs))?$`)
+			`(\|scheme:(grpc|grpcs))?` +
+			`(\|crypto:(none|luks2))?$`)
 }
 
 // lbResourceID uniquely identifies a lightbits resource such as a volume / snapshot / etc.
@@ -204,7 +238,7 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>]
+//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>][|crypto:<format>]
 // where:
 //    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
 //            volume. can be a hostname or an IP address. more than one
@@ -225,6 +259,7 @@ func init() {
 //            scheme is temporarily optional, in which case it defaults to...
 //            'grpcs'! modern LB clusters will refuse plain unencrypted gRPC
 //            requests anyway. see below in parseCSIResourceID().
+//    <format> specifies the crypto format of the hostEncrypted volume, only none|luks2 possible actually
 // e.g.:
 //   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
 //   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs
@@ -239,6 +274,7 @@ type lbResourceID struct {
 	uuid     guuid.UUID     // NVMe "Identify NS Data Structure".
 	projName string
 	scheme   string // currently must be 'grpcs'
+	crypto   string
 }
 
 // String generates the string representation of lbResourceID that will be
@@ -250,6 +286,9 @@ func (vid lbResourceID) String() string {
 	}
 	if len(vid.scheme) > 0 {
 		res += fmt.Sprintf("|scheme:%s", vid.scheme)
+	}
+	if len(vid.crypto) > 0 {
+		res += fmt.Sprintf("|crypto:%s", vid.crypto)
 	}
 	return res
 }
@@ -303,6 +342,11 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	vid.scheme = match[6]
 	if vid.scheme == "" {
 		vid.scheme = grpcsXport
+	}
+
+	vid.crypto = match[7]
+	if vid.crypto == "" {
+		vid.crypto = defaultLuksNone
 	}
 
 	return vid, nil

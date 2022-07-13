@@ -19,6 +19,7 @@ type testCase struct {
 	id string
 	pr string
 	sc string
+	cr string
 }
 
 //nolint:lll
@@ -46,6 +47,8 @@ var goodIDs = []testCase{
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs", pr: "a", sc: "grpcs"},
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs", sc: "grpcs"},
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc", sc: "grpc"},
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc|crypto:luks2", sc: "grpc", cr: "luks2"},
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc", sc: "grpc", cr: "none"},
 }
 
 //nolint:lll

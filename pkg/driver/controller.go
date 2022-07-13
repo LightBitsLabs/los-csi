@@ -6,6 +6,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -135,7 +136,7 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 }
 
 func mkVolumeResponse(
-	mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string, volSrc *csi.VolumeContentSource,
+	mgmtEPs endpoint.Slice, vol *lb.Volume, hostEncrypted bool, mgmtScheme string, volSrc *csi.VolumeContentSource,
 ) *csi.CreateVolumeResponse {
 	volID := lbResourceID{
 		mgmtEPs:  mgmtEPs,
@@ -148,6 +149,9 @@ func mkVolumeResponse(
 			CapacityBytes: int64(vol.Capacity),
 			VolumeId:      volID.String(),
 			ContentSource: volSrc,
+			VolumeContext: map[string]string{
+				volHostEncryptedKey: strconv.FormatBool(hostEncrypted),
+			},
 		},
 	}
 }
@@ -624,7 +628,7 @@ func (d *Driver) CreateVolume(
 			return nil, err
 		}
 	}
-	return mkVolumeResponse(params.mgmtEPs, vol, params.mgmtScheme, volSrc), nil
+	return mkVolumeResponse(params.mgmtEPs, vol, params.hostEncrypted, params.mgmtScheme, volSrc), nil
 }
 
 func (d *Driver) ControllerGetVolume( //revive:disable-line:unused-receiver
@@ -736,10 +740,11 @@ func (d *Driver) ControllerPublishVolume(
 	vid, vidErr := parseCSIResourceID(req.VolumeId)
 
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "ControllerPublishVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
+		"op":             "ControllerPublishVolume",
+		"mgmt-ep":        vid.mgmtEPs,
+		"vol-uuid":       vid.uuid,
+		"project":        vid.projName,
+		"hostEncryption": vid.crypto,
 	})
 
 	if err := checkNodeID(req.NodeId); err != nil {

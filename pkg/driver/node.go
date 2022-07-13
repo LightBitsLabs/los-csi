@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -116,7 +117,8 @@ func (d *Driver) getDeviceUUID(device string) (string, error) {
 func (d *Driver) getDevPathByUUID(uuid guuid.UUID) (string, error) {
 	// first try to get by-id device symlink, but ignore the error as older
 	// kernels might not have that yet.
-	linkPath := filepath.Join("/dev/disk/by-id", "nvme-uuid."+uuid.String())
+	volume := diskMapperPrefix + uuid.String()
+	linkPath := filepath.Join(diskByIDPath, volume)
 	devicePath, err := filepath.EvalSymlinks(linkPath)
 	if err == nil {
 		return filepath.Abs(devicePath)
@@ -229,12 +231,18 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	isHostEncrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	if err != nil {
+		return nil, err
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "NodeStageVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-		"scheme":   vid.scheme,
+		"op":        "NodeStageVolume",
+		"mgmt-ep":   vid.mgmtEPs,
+		"vol-uuid":  vid.uuid,
+		"project":   vid.projName,
+		"scheme":    vid.scheme,
+		"host-encrypted": isHostEncrypted,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
@@ -313,6 +321,24 @@ func (d *Driver) NodeStageVolume(
 	if req.VolumeCapability.GetBlock() != nil {
 		// block volume - we are done for now.
 		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	if isHostEncrypted {
+		passphrase, ok := req.Secrets[volHostEncryptionPassphraseKey]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument, "missing passphrase secret for key %s", volHostEncryptionPassphraseKey)
+		}
+		if len(passphrase) > volHostEncryptionPassphraseKeyMaxLen {
+			return nil, status.Errorf(
+				codes.InvalidArgument,
+				"passphrase %s for encryption must no longer than %d char but is:%d",
+				volHostEncryptionPassphraseKey, volHostEncryptionPassphraseKeyMaxLen, len(passphrase),
+			)
+		}
+		devPath, err = d.encryptAndOpenDevice(vid.uuid.String(), passphrase)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "error encrypting/opening volume with ID %s: %v", vid.uuid, err)
+		}
 	}
 
 	mntCap := req.VolumeCapability.GetMount()
@@ -410,6 +436,11 @@ func (d *Driver) NodeUnstageVolume(
 		}
 	}
 
+	err = d.closeDevice(vid.uuid.String())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "error closing device with ID %s: %s", vid.uuid, err.Error())
+	}
+
 	if st := d.be.Detach(ctx, vid.uuid); st != nil {
 		return nil, st.Err()
 	}
@@ -421,10 +452,26 @@ func (d *Driver) nodePublishVolumeForBlock(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
+	isHostEncrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	if err != nil {
+		return nil, err
+	}
 	target := req.GetTargetPath()
 	source, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
+	}
+
+	// if block device is encrypted on the host, we should use the mapped path as the source path
+	if isHostEncrypted {
+		source, err = d.getMappedDevicePath(vid.uuid.String())
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"error getting mapped device for host encrypted device %s: %s",
+				source, err.Error(),
+			)
+		}
 	}
 
 	// TODO add idempotency support
@@ -491,13 +538,24 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
+	isHostEncrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	if err != nil {
+		return nil, err
+	}
 	stagingPath := req.StagingTargetPath
 	tgtPath := req.TargetPath
 	if err := os.MkdirAll(tgtPath, 0o750); err != nil {
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
+	logFields := logrus.Fields{
+		"staging":      stagingPath,
+		"target":       tgtPath,
+		"mountoptions": mountOptions,
+		"host-encrypted":    isHostEncrypted,
+	}
+	log.WithFields(logFields).Info("nodePublishVolumeForFilesystem")
 
-	err := d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
+	err = d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
 		return nil, mkEExec("failed to bind mount: %s", err)
 	}
@@ -828,6 +886,16 @@ func (d *Driver) NodeExpandVolume(
 	devicePath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return nil, err
+	}
+	volume := diskMapperPrefix + vid.uuid.String()
+	isHostEncrypted := d.luksStatus(volume)
+	if isHostEncrypted {
+		err = d.luksResize(volume)
+		if err != nil {
+			return nil, err
+		}
+		// if encrypted, on the luks device the filesystem must be resized
+		devicePath = path.Join(diskMapperPath, volume)
 	}
 
 	resizer := mountutils.NewResizeFs(d.mounter.Exec)
