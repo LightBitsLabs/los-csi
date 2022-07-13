@@ -14,7 +14,7 @@ import (
 const (
 	cryptsetupCmd     = "cryptsetup"
 	defaultLuksHash   = "sha256"
-	defaultLuksCipher = "aes-xts-plain64" // TODO must be checked if cpu supports aes with: grep -q aes /proc/cpuinfo
+	defaultLuksCipher = "aes-xts-plain64"
 	defaultLuksKeyize = "256"
 	defaultLuksFormat = "luks2"
 	defaultLuksNone   = "none"
@@ -142,6 +142,10 @@ func (d *Driver) luksFormat(devicePath string, passphrase string) error {
 		devicePath,   // device to encrypt
 	}
 
+	if !isAESSupported() {
+		return fmt.Errorf("your cpu does not support aes")
+	}
+
 	d.log.Debugf("luksFormat with args:%v", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 	cmd.Stdin = strings.NewReader(passphrase)
@@ -159,6 +163,10 @@ func (d *Driver) luksOpen(devicePath string, mapperFile string, passphrase strin
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
 	}
 
+	if !isAESSupported() {
+		return fmt.Errorf("your cpu does not support aes")
+	}
+
 	d.log.Debugf("luksOpen with args:%v", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 	cmd.Stdin = strings.NewReader(passphrase)
@@ -174,6 +182,9 @@ func (d *Driver) luksResize(devicePath string) error {
 	args := []string{
 		"resize",
 		devicePath,
+	}
+	if !isAESSupported() {
+		return fmt.Errorf("your cpu does not support aes")
 	}
 
 	d.log.Debugf("resize with args:%v", args)
@@ -245,4 +256,33 @@ func (d *Driver) luksIsLuks(devicePath string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func isAESSupported() bool {
+	b, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return false
+	}
+
+	for _, line := range strings.Split(string(b), "\n") {
+		key, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		switch strings.TrimSpace(key) {
+		case "flags":
+			flags := strings.Fields(value)
+			return contains(flags, "aes")
+		}
+	}
+	return false
+}
+
+func contains(elems []string, v string) bool {
+	for _, s := range elems {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }
