@@ -5,12 +5,12 @@
 
 Encryption of volumes is possible in two different ways, either on the LightOS side, or on the client side.
 
-## client side encryption
+## host side encryption
 
 With this method, the consumer of a volume defines a secret which is used to encrypt the volume content before it is sent over to LightOS.
 This is forced by some customers to meet very high security requirements, for example for health or military applications.
 
-Downside is that with client side encryption server side compression should be disabled, because this will have no effect at all.
+Downside is that with host side encryption server side compression should be disabled, because this will have no effect at all.
 
 ### configuration
 
