@@ -259,10 +259,11 @@ func init() {
 //            scheme is temporarily optional, in which case it defaults to...
 //            'grpcs'! modern LB clusters will refuse plain unencrypted gRPC
 //            requests anyway. see below in parseCSIResourceID().
-//    <format> specifies the crypto format of the hostEncrypted volume, only none|luks2 possible actually
+//    <crypto>  - specifies the crypto format of the hostEncrypted volume, only none|luks2 possible actually
 // e.g.:
-//   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs
+//   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|crypto:none
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs|crypto:none
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs|crypto:luks2
 //
 // TODO: the CSI spec mandates that strings "SHALL NOT" exceed 128 bytes.
 // K8s is more lenient (at least 253 bytes, likely more). in any case, with

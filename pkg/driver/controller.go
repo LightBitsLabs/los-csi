@@ -143,6 +143,10 @@ func mkVolumeResponse(
 		uuid:     vol.UUID,
 		projName: vol.ProjectName,
 		scheme:   mgmtScheme,
+		crypto:   defaultLuksNone,
+	}
+	if hostEncrypted {
+		volID.crypto = defaultLuksFormat
 	}
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
