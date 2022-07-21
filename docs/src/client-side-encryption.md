@@ -3,21 +3,24 @@
 
 # Encryption
 
-Encryption of volumes is possible in two different ways, either on the LightOS side, or on the client side.
+Encryption of volumes is possible in two different ways, either on the Lightbits side, or on the client side.
 
 ## host side encryption
 
-With this method, the consumer of a volume defines a secret which is used to encrypt the volume content before it is sent over to LightOS.
+With this method, the consumer of a volume defines a secret which is used to encrypt the volume content before it is sent over to Lightbits.
 This is forced by some customers to meet very high security requirements, for example for health or military applications.
 
 Downside is that with host side encryption server side compression should be disabled, because this will have no effect at all.
+It is still possible to enable compression, but will probably hurt overall performance.
 
 ### configuration
 
-To get a volume encrypted a secret must be provided and a storageclass which enables encryption must be created.
-The secret can be given globally for the, or on a per volume basis.
+To get a volume encrypted a secret must be provided and a storageclass, which enables encryption, must be created.
+The secret can be given globally in the kube-system namespace, or on a per namespace basis.
 
-In the simplest case, one encryption secret, the configuration would like like so:
+Host side encryption does currently not support secrets on a per volume basis.
+
+In the simplest case, one encryption secret in the kube-system namespace, the configuration would like like so:
 
 ```yaml
 allowVolumeExpansion: true
@@ -62,7 +65,7 @@ metadata:
 type: Opaque
 data:
   hostEncryptionPassphrase: bXlhd2Vzb21lcGFzc3BocmFzZQ==
-  jwt: <the JWT token to authenticate against LightOS>
+  jwt: <the JWT token to authenticate against Lightbits>
 ```
 
 The name of the key for encryption must be: `hostEncryptionPassphrase`.
