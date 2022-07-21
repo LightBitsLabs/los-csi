@@ -187,18 +187,21 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		return res, mkEinval(key, mgmtScheme)
 	}
 
-	isEncrypted, err := isVolumeEncryptionSet(params)
+	isHostEncrypted, err := isVolumeHostEncryptionSet(params)
 	if err != nil {
 		return res, err
 	}
-	res.hostEncrypted = isEncrypted
+	res.hostEncrypted = isHostEncrypted
 
 	return res, nil
 }
 
-func isVolumeEncryptionSet(params map[string]string) (bool, error) {
-	if encryptedStringValue, ok := params[volHostEncryptedKey]; ok {
-		switch encryptedStringValue {
+// isVolumeHostEncryptionSet will decide if hostEncryption is specified
+// in the storageClass by setting the key hostEncryption to either (enabled|true)|(disabled|false).
+// if hostEncryption is not set, this means obviously not enabled.
+func isVolumeHostEncryptionSet(params map[string]string) (bool, error) {
+	if volHostEncryptedStringValue, ok := params[volHostEncryptedKey]; ok {
+		switch volHostEncryptedStringValue {
 		case "enabled", "true":
 			return true, nil
 		case "", "disabled", "false":
@@ -207,7 +210,7 @@ func isVolumeEncryptionSet(params map[string]string) (bool, error) {
 			return false, status.Errorf(
 				codes.InvalidArgument,
 				"invalid value %q for parameter %q, only enabled|disabled|true|false allowed",
-				encryptedStringValue, volHostEncryptedKey)
+				volHostEncryptedStringValue, volHostEncryptedKey)
 		}
 	}
 	return false, nil

@@ -231,17 +231,17 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
-	isHostEncrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	isHostEncrypted, err := isVolumeHostEncryptionSet(req.GetVolumeContext())
 	if err != nil {
 		return nil, err
 	}
 
 	log := d.log.WithFields(logrus.Fields{
-		"op":        "NodeStageVolume",
-		"mgmt-ep":   vid.mgmtEPs,
-		"vol-uuid":  vid.uuid,
-		"project":   vid.projName,
-		"scheme":    vid.scheme,
+		"op":             "NodeStageVolume",
+		"mgmt-ep":        vid.mgmtEPs,
+		"vol-uuid":       vid.uuid,
+		"project":        vid.projName,
+		"scheme":         vid.scheme,
 		"host-encrypted": isHostEncrypted,
 	})
 
@@ -452,7 +452,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
-	isHostEncrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	isHostEncrypted, err := isVolumeHostEncryptionSet(req.GetVolumeContext())
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +538,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
-	isHostEncrypted, err := isVolumeEncryptionSet(req.GetVolumeContext())
+	isHostEncrypted, err := isVolumeHostEncryptionSet(req.GetVolumeContext())
 	if err != nil {
 		return nil, err
 	}
@@ -548,10 +548,10 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
 	logFields := logrus.Fields{
-		"staging":      stagingPath,
-		"target":       tgtPath,
-		"mountoptions": mountOptions,
-		"host-encrypted":    isHostEncrypted,
+		"staging":        stagingPath,
+		"target":         tgtPath,
+		"mountoptions":   mountOptions,
+		"host-encrypted": isHostEncrypted,
 	}
 	log.WithFields(logFields).Info("nodePublishVolumeForFilesystem")
 
