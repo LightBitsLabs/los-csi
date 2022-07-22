@@ -356,7 +356,7 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 		vid.scheme = grpcsXport
 	}
 
-	vid.crypto = match[7]
+	vid.crypto = match[8]
 	if vid.crypto == "" {
 		vid.crypto = defaultLuksNone
 	}

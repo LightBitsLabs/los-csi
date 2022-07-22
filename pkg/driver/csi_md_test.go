@@ -234,6 +234,9 @@ func TestParseCSIResourceID(t *testing.T) {
 		} else if vol.scheme != tc.sc {
 			t.Errorf("BUG: botched parsing scheme in '%s':\ngot '%s' instead of '%s'",
 				tc.id, vol.scheme, tc.sc)
+		} else if tc.cr != "" && vol.crypto != tc.cr {
+			t.Errorf("BUG: botched parsing crypto in '%s':\ngot '%s' instead of '%s'",
+				tc.id, vol.crypto, tc.cr)
 		} else if testing.Verbose() {
 			t.Logf("OK: parsed '%s':\nmgmt EPs: '%s', NGUID: '%s'",
 				tc.id, vol.mgmtEPs, vol.uuid)
