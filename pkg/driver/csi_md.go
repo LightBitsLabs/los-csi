@@ -193,6 +193,12 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 	if err != nil {
 		return res, err
 	}
+
+	if isHostEncrypted && res.compression {
+		return res, mkEbadOp("mismatch", "hostEncryption",
+			"hostEncryption and compression is enabled, please disable compression if you need hostEncryption")
+	}
+
 	res.hostEncrypted = isHostEncrypted
 
 	return res, nil
