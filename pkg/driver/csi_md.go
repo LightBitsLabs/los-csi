@@ -100,12 +100,14 @@ func checkProjectName(field, proj string) error {
 //     replica-count: <num-replicas>
 // may optionally include (if omitted - the default is "disabled"):
 //     compression: <"enabled"|"disabled">
+//     hostEncryption: <"enabled,true"|"disabled,false">
 // e.g.:
 //     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
 //     mgmt-scheme: grpcs
 //     project-name: proj-3
 //     replica-count: 2
 //     compression: enabled
+//     hostEncryption: enabled
 type lbCreateVolumeParams struct {
 	mgmtEPs       endpoint.Slice // LightOS mgmt API server endpoints.
 	replicaCount  uint32         // total number of volume replicas.
