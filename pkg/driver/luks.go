@@ -265,10 +265,12 @@ func isAESSupported() bool {
 	}
 
 	for _, line := range strings.Split(string(b), "\n") {
-		key, value, ok := strings.Cut(line, ":")
-		if !ok {
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
 			continue
 		}
+		key := parts[0]
+		value := parts[1]
 		switch strings.TrimSpace(key) {
 		case "flags":
 			flags := strings.Fields(value)
