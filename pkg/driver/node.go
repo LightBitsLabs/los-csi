@@ -30,6 +30,11 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
+const (
+	diskByIDPath   = "/dev/disk/by-id"
+	nvmeUUIDPrefix = "nvme-uuid."
+)
+
 // lbVolEligible() allows to rule out impossible scenarios early on. it
 // checks if the volume exists on the LightOS cluster and is fully accessible
 // by this host configuration-wise and in terms of target-side availability.
@@ -116,7 +121,7 @@ func (d *Driver) getDeviceUUID(device string) (string, error) {
 func (d *Driver) getDevPathByUUID(uuid guuid.UUID) (string, error) {
 	// first try to get by-id device symlink, but ignore the error as older
 	// kernels might not have that yet.
-	linkPath := filepath.Join("/dev/disk/by-id", "nvme-uuid."+uuid.String())
+	linkPath := filepath.Join(diskByIDPath, nvmeUUIDPrefix+uuid.String())
 	devicePath, err := filepath.EvalSymlinks(linkPath)
 	if err == nil {
 		return filepath.Abs(devicePath)
