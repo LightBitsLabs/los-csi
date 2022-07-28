@@ -234,12 +234,18 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	hostEncryption := defaultLuksNone
+	if vid.hostCrypto != "" {
+		hostEncryption = vid.hostCrypto
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "NodeStageVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-		"scheme":   vid.scheme,
+		"op":              "NodeStageVolume",
+		"mgmt-ep":         vid.mgmtEPs,
+		"vol-uuid":        vid.uuid,
+		"project":         vid.projName,
+		"scheme":          vid.scheme,
+		"host-encryption": hostEncryption,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
@@ -311,6 +317,27 @@ func (d *Driver) NodeStageVolume(
 	devPath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return nil, err
+	}
+
+	if vid.hostCrypto != "" {
+		passphrase, ok := req.Secrets[volHostEncryptionPassphraseKey]
+		if !ok {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"missing passphrase secret for key %s",
+				volHostEncryptionPassphraseKey)
+		}
+		if len(passphrase) > volHostEncryptionPassphraseKeyMaxLen {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"passphrase %s for encryption must no longer than %d char but is:%d",
+				volHostEncryptionPassphraseKey, volHostEncryptionPassphraseKeyMaxLen,
+				len(passphrase))
+		}
+		devPath, err = d.encryptAndOpenDevice(vid.uuid, passphrase)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal,
+				"error encrypting/opening volume with ID %s: %v",
+				vid.uuid, err)
+		}
 	}
 
 	// turn block dev into what CO wanted: - - - - - - - - - - - - - - - -
@@ -415,6 +442,14 @@ func (d *Driver) NodeUnstageVolume(
 		}
 	}
 
+	if vid.hostCrypto != "" {
+		err = d.closeEncryptedDevice(vid.uuid)
+		if err != nil {
+			return nil, mkEExec("error closing host-encrypted device %s (%s)",
+				vid.uuid, err.Error())
+		}
+	}
+
 	if st := d.be.Detach(ctx, vid.uuid); st != nil {
 		return nil, st.Err()
 	}
@@ -430,6 +465,15 @@ func (d *Driver) nodePublishVolumeForBlock(
 	source, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
+	}
+	if vid.hostCrypto != "" {
+		source, err := d.getEncryptedDevicePath(vid.uuid)
+		if err != nil {
+			return nil, status.Errorf(
+				codes.Internal,
+				"error getting mapped device for host encrypted device %s: %s",
+				source, err)
+		}
 	}
 
 	// TODO add idempotency support
@@ -501,6 +545,19 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 	if err := os.MkdirAll(tgtPath, 0o750); err != nil {
 		return nil, mkEinvalf("Failed to create target_path", "'%s'", tgtPath)
 	}
+
+	hostEncryption := defaultLuksNone
+	if vid.hostCrypto != "" {
+		hostEncryption = vid.hostCrypto
+	}
+
+	logFields := logrus.Fields{
+		"staging":         stagingPath,
+		"target":          tgtPath,
+		"mountoptions":    mountOptions,
+		"host-encryption": hostEncryption,
+	}
+	log.WithFields(logFields).Info("nodePublishVolumeForFilesystem")
 
 	err := d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
@@ -809,12 +866,18 @@ func (d *Driver) NodeExpandVolume(
 		return nil, err
 	}
 
+	hostEncryption := defaultLuksNone
+	if vid.hostCrypto != "" {
+		hostEncryption = vid.hostCrypto
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "NodeExpandVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"vol-path": req.VolumePath,
-		"project":  vid.projName,
+		"op":              "NodeExpandVolume",
+		"mgmt-ep":         vid.mgmtEPs,
+		"vol-uuid":        vid.uuid,
+		"vol-path":        req.VolumePath,
+		"project":         vid.projName,
+		"host-encryption": hostEncryption,
 	})
 
 	volumePath := req.GetVolumePath()
@@ -833,6 +896,17 @@ func (d *Driver) NodeExpandVolume(
 	devicePath, err := d.getDevicePath(vid.uuid)
 	if err != nil {
 		return nil, err
+	}
+
+	if vid.hostCrypto != "" {
+		err = d.resizeEncryptedDevice(vid.uuid)
+		if err != nil {
+			return nil, err
+		}
+		devicePath, err = d.getEncryptedDevicePath(vid.uuid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	resizer := mountutils.NewResizeFs(d.mounter.Exec)
