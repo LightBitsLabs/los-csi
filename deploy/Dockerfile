@@ -1,4 +1,5 @@
-FROM alpine:3.14
+# update alpine to get cryptsetup 2.4.x
+FROM alpine:3.16
 
 LABEL maintainers="Lightbits Labs" \
       description="LB CSI Plugin" \
@@ -22,6 +23,7 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_LOG_FMT=text
 
 RUN apk add --no-cache \
+    cryptsetup \
     e2fsprogs e2fsprogs-extra \
     xfsprogs xfsprogs-extra \
     lsblk \
