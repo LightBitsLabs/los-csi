@@ -135,13 +135,14 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 }
 
 func mkVolumeResponse(
-	mgmtEPs endpoint.Slice, vol *lb.Volume, mgmtScheme string, volSrc *csi.VolumeContentSource,
+	mgmtEPs endpoint.Slice, vol *lb.Volume, hostEncryption string, mgmtScheme string, volSrc *csi.VolumeContentSource,
 ) *csi.CreateVolumeResponse {
 	volID := lbResourceID{
-		mgmtEPs:  mgmtEPs,
-		uuid:     vol.UUID,
-		projName: vol.ProjectName,
-		scheme:   mgmtScheme,
+		mgmtEPs:    mgmtEPs,
+		uuid:       vol.UUID,
+		projName:   vol.ProjectName,
+		scheme:     mgmtScheme,
+		hostCrypto: hostEncryption,
 	}
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -457,10 +458,11 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 		}
 
 		tmpSid := lbResourceID{
-			mgmtEPs:  srcVid.mgmtEPs,
-			uuid:     snap.UUID,
-			projName: snap.ProjectName,
-			scheme:   srcVid.scheme,
+			mgmtEPs:    srcVid.mgmtEPs,
+			uuid:       snap.UUID,
+			projName:   snap.ProjectName,
+			scheme:     srcVid.scheme,
+			hostCrypto: srcVid.hostCrypto,
 		}
 
 		// TODO: LB doesn't support deletion of snapshots with live volumes
@@ -561,11 +563,17 @@ func (d *Driver) CreateVolume(
 		return nil, err
 	}
 
+	hostEncryption := defaultLuksNone
+	if params.hostCrypto != "" {
+		hostEncryption = params.hostCrypto
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":       "CreateVolume",
-		"mgmt-ep":  params.mgmtEPs,
-		"vol-name": req.Name,
-		"project":  params.projectName,
+		"op":              "CreateVolume",
+		"mgmt-ep":         params.mgmtEPs,
+		"vol-name":        req.Name,
+		"project":         params.projectName,
+		"host-encryption": hostEncryption,
 	})
 
 	volSrc := req.VolumeContentSource
@@ -579,6 +587,12 @@ func (d *Driver) CreateVolume(
 			return nil, mkEinvalf(volContSrcVolField, "can't create volume in project "+
 				"'%s' from volume in project '%s'", params.projectName, vid.projName)
 		}
+		if vid.hostCrypto != params.hostCrypto {
+			return nil, mkEinvalf(volContSrcVolField,
+				"can't create volume with host-encryption: %s "+
+					"from a volume with host-encryption %s",
+				hostEncryption, vid.hostCrypto)
+		}
 		srcVid = &vid
 		log = log.WithField("src-vol-uuid", vid.uuid)
 	} else if snap := volSrc.GetSnapshot(); snap != nil {
@@ -589,6 +603,12 @@ func (d *Driver) CreateVolume(
 		if sid.projName != params.projectName {
 			return nil, mkEinvalf(volContSrcSnapField, "can't create volume in project "+
 				"'%s' from snapshot in project '%s'", params.projectName, sid.projName)
+		}
+		if sid.hostCrypto != params.hostCrypto {
+			return nil, mkEinvalf(volContSrcSnapField,
+				"can't create volume with host-encryption: %s "+
+					"from a snapshot with host-encryption %s",
+				hostEncryption, sid.hostCrypto)
 		}
 		srcSid = &sid
 		log = log.WithField("src-snap-uuid", sid.uuid)
@@ -630,7 +650,7 @@ func (d *Driver) CreateVolume(
 			return nil, err
 		}
 	}
-	return mkVolumeResponse(params.mgmtEPs, vol, params.mgmtScheme, volSrc), nil
+	return mkVolumeResponse(params.mgmtEPs, vol, params.hostCrypto, params.mgmtScheme, volSrc), nil
 }
 
 func (d *Driver) ControllerGetVolume( //revive:disable-line:unused-receiver
@@ -1184,12 +1204,18 @@ func (d *Driver) CreateSnapshot(
 		return nil, err
 	}
 
+	hostEncryption := defaultLuksNone
+	if srcVid.hostCrypto != "" {
+		hostEncryption = srcVid.hostCrypto
+	}
+
 	log := d.log.WithFields(logrus.Fields{
-		"op":           "CreateSnapshot",
-		"mgmt-ep":      srcVid.mgmtEPs,
-		"snap-name":    req.Name,
-		"src-vol-uuid": srcVid.uuid,
-		"project":      srcVid.projName,
+		"op":              "CreateSnapshot",
+		"mgmt-ep":         srcVid.mgmtEPs,
+		"snap-name":       req.Name,
+		"src-vol-uuid":    srcVid.uuid,
+		"project":         srcVid.projName,
+		"host-encryption": hostEncryption,
 	})
 
 	// TODO: initially the LB CSI plugin supports no custom `req.parameters`
@@ -1208,10 +1234,11 @@ func (d *Driver) CreateSnapshot(
 	}
 
 	snapID := lbResourceID{
-		mgmtEPs:  srcVid.mgmtEPs,
-		uuid:     snap.UUID,
-		projName: snap.ProjectName,
-		scheme:   srcVid.scheme,
+		mgmtEPs:    srcVid.mgmtEPs,
+		uuid:       snap.UUID,
+		projName:   snap.ProjectName,
+		scheme:     srcVid.scheme,
+		hostCrypto: srcVid.hostCrypto,
 	}
 	return &csi.CreateSnapshotResponse{
 		Snapshot: &csi.Snapshot{
@@ -1274,10 +1301,16 @@ func (d *Driver) DeleteSnapshot(
 		return nil, err
 	}
 
+	hostEncryption := defaultLuksNone
+	if sid.hostCrypto != "" {
+		hostEncryption = sid.hostCrypto
+	}
+
 	log = d.log.WithFields(logrus.Fields{
-		"mgmt-ep":   sid.mgmtEPs,
-		"snap-uuid": sid.uuid,
-		"project":   sid.projName,
+		"mgmt-ep":         sid.mgmtEPs,
+		"snap-uuid":       sid.uuid,
+		"project":         sid.projName,
+		"host-encryption": hostEncryption,
 	})
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)

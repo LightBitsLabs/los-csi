@@ -54,6 +54,14 @@ const (
 	volParProjNameKey   = "project-name"
 	volParMgmtSchemeKey = "mgmt-scheme"
 	volParQosNameKey    = "qos-policy-name"
+
+	// volHostEncryptionKey parameter in the storageclass parameter, can be either enabled|disabled
+	volHostEncryptionKey = "host-encryption"
+	// volHostEncryptionPassphraseKey name of the secret for the encryption passphrase
+	volHostEncryptionPassphraseKey = "host-encryption-passphrase"
+	// volHostEncryptionPassphraseKeyMaxLen defines the maximum len of the encryption passphrase
+	// this is according to the cryptsetup man page
+	volHostEncryptionPassphraseKeyMaxLen = 512
 )
 
 var projNameRegex *regexp.Regexp
@@ -93,6 +101,7 @@ func checkProjectName(field, proj string) error {
 // may optionally include (if omitted - the default is "disabled"):
 //     compression: <"enabled"|"disabled">
 //     qos-policy-name: <qos-policy-name>
+//     host-encryption: <"enabled"|"disabled">
 // e.g.:
 //     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
 //     mgmt-scheme: grpcs
@@ -100,6 +109,7 @@ func checkProjectName(field, proj string) error {
 //     replica-count: 2
 //     compression: enabled
 //     qos-policy-name: "io-limited-policy"
+//     host-encryption: enabled
 type lbCreateVolumeParams struct {
 	mgmtEPs       endpoint.Slice // LightOS mgmt API server endpoints.
 	replicaCount  uint32         // total number of volume replicas.
@@ -107,6 +117,7 @@ type lbCreateVolumeParams struct {
 	projectName   string         // project name.
 	mgmtScheme    string         // currently must be 'grpcs'
 	qosPolicyName string         // qos policy name should exist in the lightos
+	hostCrypto    string         // host-encryption format, currently either empty or luks2
 }
 
 func volParKey(key string) string {
@@ -185,6 +196,21 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 		res.qosPolicyName = val
 	}
 
+	key = volParKey(volHostEncryptionKey)
+	switch params[volHostEncryptionKey] {
+	case "", "disabled":
+		res.hostCrypto = ""
+	case "enabled":
+		res.hostCrypto = defaultLuksFormat
+	default:
+		return res, mkEinval(key, params[volHostEncryptionKey])
+	}
+
+	if res.hostCrypto != "" && res.compression {
+		return res, mkEbadOp("mismatch", volHostEncryptionKey,
+			"host-encryption and compression are both enabled")
+	}
+
 	return res, nil
 }
 
@@ -201,7 +227,8 @@ func init() {
 		`^mgmt:([^|]+)\|` +
 			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
 			`(\|proj:([^[:cntrl:]| ]+))?` + // proj name syntax checked separately
-			`(\|scheme:(grpc|grpcs))?$`)
+			`(\|scheme:(grpc|grpcs))?` +
+			`(\|hostcrypto:(luks2))?$`)
 }
 
 // lbResourceID uniquely identifies a lightbits resource such as a volume / snapshot / etc.
@@ -212,7 +239,7 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>]
+//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>][|hostcrypto:<format>]
 // where:
 //    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
 //            volume. can be a hostname or an IP address. more than one
@@ -233,9 +260,11 @@ func init() {
 //            scheme is temporarily optional, in which case it defaults to...
 //            'grpcs'! modern LB clusters will refuse plain unencrypted gRPC
 //            requests anyway. see below in parseCSIResourceID().
+//    <hostcrypto>  - specifies the crypto format of the hostEncrypted volume, only luks2 is possible.
+//            this is optional and will only exist for host-encrypted volumes.
 // e.g.:
 //   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs
+//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs|hostcrypto:luks2
 //
 // TODO: the CSI spec mandates that strings "SHALL NOT" exceed 128 bytes.
 // K8s is more lenient (at least 253 bytes, likely more). in any case, with
@@ -243,10 +272,11 @@ func init() {
 // be guaranteed to be supported. anything beyond that is at the mercy of
 // the CO implementors (and user network admins assigning IP ranges)...
 type lbResourceID struct {
-	mgmtEPs  endpoint.Slice // LightOS mgmt API server endpoints.
-	uuid     guuid.UUID     // NVMe "Identify NS Data Structure".
-	projName string
-	scheme   string // currently must be 'grpcs'
+	mgmtEPs    endpoint.Slice // LightOS mgmt API server endpoints.
+	uuid       guuid.UUID     // NVMe "Identify NS Data Structure".
+	projName   string
+	scheme     string // currently must be 'grpcs'
+	hostCrypto string
 }
 
 // String generates the string representation of lbResourceID that will be
@@ -258,6 +288,9 @@ func (vid lbResourceID) String() string {
 	}
 	if len(vid.scheme) > 0 {
 		res += fmt.Sprintf("|scheme:%s", vid.scheme)
+	}
+	if len(vid.hostCrypto) > 0 {
+		res += fmt.Sprintf("|hostcrypto:%s", vid.hostCrypto)
 	}
 	return res
 }
@@ -311,6 +344,12 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	vid.scheme = match[6]
 	if vid.scheme == "" {
 		vid.scheme = grpcsXport
+	}
+
+	// if empty string, volume is not host-encrypted
+	vid.hostCrypto = match[7]
+	if vid.hostCrypto != "" {
+		vid.hostCrypto = match[7][12:]
 	}
 
 	return vid, nil

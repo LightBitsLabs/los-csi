@@ -19,6 +19,7 @@ type testCase struct {
 	id string
 	pr string
 	sc string
+	cr string
 }
 
 //nolint:lll
@@ -46,6 +47,7 @@ var goodIDs = []testCase{
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs", pr: "a", sc: "grpcs"},
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs", sc: "grpcs"},
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc", sc: "grpc"},
+	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs|hostcrypto:luks2", sc: "grpcs", cr: "luks2"},
 }
 
 //nolint:lll
@@ -231,6 +233,9 @@ func TestParseCSIResourceID(t *testing.T) {
 		} else if vol.scheme != tc.sc {
 			t.Errorf("BUG: botched parsing scheme in '%s':\ngot '%s' instead of '%s'",
 				tc.id, vol.scheme, tc.sc)
+		} else if tc.cr != "" && vol.hostCrypto != tc.cr {
+			t.Errorf("BUG: botched parsing hostcrypto in '%s':\ngot '%s' instead of '%s'",
+				tc.id, vol.hostCrypto, tc.cr)
 		} else if testing.Verbose() {
 			t.Logf("OK: parsed '%s':\nmgmt EPs: '%s', NGUID: '%s'",
 				tc.id, vol.mgmtEPs, vol.uuid)
