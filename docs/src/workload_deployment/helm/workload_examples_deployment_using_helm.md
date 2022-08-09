@@ -111,6 +111,7 @@ global:
     compression: disabled
     secretName: example-secret
     secretNamespace: default
+    qosPolicyName: example-qos-policy-name
 
 # subchart workloads:
 storageclass:
@@ -165,6 +166,7 @@ Values Description:
 | global.jwtSecret.name                  | Secret name that holds LightOS API `JWT`                           | example-secret | true |
 | global.jwtSecret.namespace             | Namespace the secret is defined at                                 | default | true |
 | global.jwtSecret.jwt                   | `JWT` to authenticate against LightOS API                          | default | true |
+| global.storageClass.qosPolicyName      | qos policy name, should exist in the Lightos prior volume creation | ""      | false
 
 ##### Mandatory Values To Modify
 

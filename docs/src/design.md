@@ -88,6 +88,7 @@ parameters:
   mgmt-endpoint: 10.10.10.21:80,10.10.10.22:80,10.10.10.23:80
   replica-count: "3"
   compression: disabled
+  qos-policy-name: "example-qos-name"
 ```
 
 Once the SC is successfully created, a PVC (Persistent Volume Claim) is created which references that storage class:
