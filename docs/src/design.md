@@ -89,6 +89,7 @@ parameters:
   replica-count: "3"
   compression: disabled
   qos-policy-name: "example-qos-name"
+  host-encryption: disabled
 ```
 
 Once the SC is successfully created, a PVC (Persistent Volume Claim) is created which references that storage class:

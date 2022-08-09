@@ -16,6 +16,9 @@ parameters:
 {{- if .Values.global.storageClass.qosPolicyName }}
   qos-policy-name: {{.Values.global.storageClass.qosPolicyName}}
 {{- end }}
+{{- if .Values.global.storageClass.hostEncryption }}
+  host-encryption: {{.Values.global.storageClass.hostEncryption}}
+{{- end }}
 {{- if and .Values.global.jwtSecret.name .Values.global.jwtSecret.namespace }}
   csi.storage.k8s.io/controller-publish-secret-name: {{ .Values.global.jwtSecret.name }}
   csi.storage.k8s.io/controller-publish-secret-namespace: {{ .Values.global.jwtSecret.namespace }}
