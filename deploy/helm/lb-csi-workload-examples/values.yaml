@@ -11,6 +11,7 @@ global:
     replicaCount: "3"
     compression: disabled
     qosPolicyName: ""
+    host-encryption: disabled
   jwtSecret:
     name: example-secret
     namespace: default

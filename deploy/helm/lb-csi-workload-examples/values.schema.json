@@ -42,6 +42,11 @@
               "description": "qos policy name attached to newly created volumes. the qos policy should already exist in the lightos prior volume creation.",
               "type": "string"
             },
+            "hostEncryption": {
+              "description": "Enable/Disable host-side encryption.",
+              "type": "string",
+              "enum": ["enabled", "disabled"]
+            },
             "csi.storage.k8s.io/fstype": {
               "description": "The csi.storage.k8s.io/fstype parameter is optional. The values allowed are ext4 or xfs. The default value is ext4.",
               "type": "string",
