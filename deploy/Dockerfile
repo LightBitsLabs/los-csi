@@ -24,6 +24,7 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
 RUN apk add --no-cache \
     e2fsprogs e2fsprogs-extra \
     xfsprogs xfsprogs-extra \
+    lsblk \
     blkid \
     $EXTRA_PACKAGES
 
