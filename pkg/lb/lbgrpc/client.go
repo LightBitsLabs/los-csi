@@ -609,8 +609,18 @@ func (c *Client) lbVolumeFromGRPC(
 		mgmt.Volume_Available,
 		mgmt.Volume_Deleting,
 		mgmt.Volume_Updating,
+		mgmt.Volume_Migrating,
 		mgmt.Volume_Failed:
 		// the only valid states nowadays
+	case mgmt.Volume_Rollback:
+		// TODO: Better handle Rollback state
+		c.log.WithFields(logrus.Fields{
+			"vol-name": vol.Name,
+			"vol-uuid": vol.UUID,
+		}).Warnf("LB returned volume in unsupported state '%s' (%d)", vol.State, vol.State)
+		return nil, status.Errorf(codes.Internal,
+			"got bad volume from LB: '%s' has unexpected state '%s' (%d)",
+			vol.Name, vol.State, vol.State)
 	case mgmt.Volume_Deleted:
 		// TODO: remove this case once the LightOS API drops the
 		// deprecated volume states...
@@ -782,7 +792,8 @@ func (c *Client) CreateVolume(
 			break
 		}
 		fallthrough
-	case lb.VolumeAvailable:
+	case lb.VolumeAvailable,
+		lb.VolumeMigrating:
 		warnOnRO()
 		return lbVol, nil
 	default:
@@ -846,7 +857,8 @@ func (c *Client) CreateVolume(
 			// `Available` state, we can deduce that this volume is
 			// effectively `Available` as well.
 			fallthrough //nolint:gocritic
-		case lb.VolumeAvailable:
+		case lb.VolumeAvailable,
+			lb.VolumeMigrating:
 			return true, nil
 		default:
 			return false, status.Errorf(codes.Internal,
@@ -909,7 +921,8 @@ func (c *Client) DeleteVolume(
 		})
 
 		switch lbVol.State {
-		case lb.VolumeAvailable:
+		case lb.VolumeAvailable,
+			lb.VolumeMigrating:
 			// play it again, Sam...
 			return false, nil
 		case lb.VolumeCreating,
@@ -1037,7 +1050,8 @@ func (c *Client) doUpdateVolume(
 		// this particular volume is not coming back in either case -
 		// just pretend it doesn't exist.
 		return nil, status.Errorf(codes.NotFound, "no such volume")
-	case lb.VolumeAvailable:
+	case lb.VolumeAvailable,
+		lb.VolumeMigrating:
 		// the only one that can be updated currently.
 	default:
 		// this can only happen if new state handling was added to
