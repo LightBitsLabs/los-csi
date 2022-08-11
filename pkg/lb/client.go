@@ -32,6 +32,9 @@ const (
 
 	VolumeFailed   VolumeState = 7
 	VolumeUpdating VolumeState = 8
+
+	VolumeRollback  VolumeState = 9
+	VolumeMigrating VolumeState = 10
 )
 
 func (s VolumeState) String() string {
@@ -46,6 +49,10 @@ func (s VolumeState) String() string {
 		return "failed" //nolint:goconst // unrelated to the other one.
 	case VolumeUpdating:
 		return "updating"
+	case VolumeRollback:
+		return "rollback" //nolint:goconst // unrelated to the other one.
+	case VolumeMigrating:
+		return "migrating" //nolint:goconst // unrelated to the other one.
 
 	// TODO: remove deprecated fields once the API drops them
 	case VolumeDeletedDEPRECATED:

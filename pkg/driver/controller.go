@@ -255,8 +255,9 @@ func chkSourceVolCompat(
 	}
 
 	switch vol.State {
-	case lb.VolumeAvailable:
-		// the only state in which a volume can serve as a content source.
+	case lb.VolumeAvailable,
+		lb.VolumeMigrating:
+		// the only two states in which a volume can serve as a content source.
 	case lb.VolumeDeleting:
 		return mkEinvalf(volContSrcVolField, "content source volume %s "+
 			"is in the process of being deleted", vol.UUID)
@@ -301,7 +302,10 @@ func findExistingVolume(
 	log = log.WithField("vol-uuid", vol.UUID)
 
 	switch vol.State {
-	case lb.VolumeAvailable, lb.VolumeUpdating, lb.VolumeCreating:
+	case lb.VolumeAvailable,
+		lb.VolumeUpdating,
+		lb.VolumeCreating,
+		lb.VolumeMigrating:
 		// might be usable, now or later - if it otherwise matches.
 		// see a second check down below.
 	case lb.VolumeDeleting:
@@ -688,8 +692,9 @@ func (d *Driver) DeleteVolume(
 
 	// or maybe it's in the process of being deleted, or can't be deleted:
 	switch vol.State {
-	case lb.VolumeAvailable:
-		// this is really the only one that can and should be deleted.
+	case lb.VolumeAvailable,
+		lb.VolumeMigrating:
+		// these are the two states a volume can be when deleted.
 	case lb.VolumeDeleting,
 		// VolumeFailed is currently a bit of a quirk: it means that
 		// a volume creation attempt failed, the volume's husk is still
