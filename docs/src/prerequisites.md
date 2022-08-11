@@ -7,7 +7,7 @@ Before deploying with the Lightbits CSI plugin, you must have the following item
 
 | Requirement                                      | Description                                                                         |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| LightOS 2.0 storage cluster                                     | A fully configured and functional LightOS storage cluster with sufficient free storage capacity.  |
+| LightOS 3.0 storage cluster                                     | A fully configured and functional LightOS storage cluster with sufficient free storage capacity.  |
 | Kubernetes cluster                                              | A fully configured and functional Kubernetes cluster. |
 | Administrative privileges on the Kubernetes cluster             | Some of the steps required to deploy the Lightbits CSI plugin require administrative privileges—including root or equivalent access—on each of the hosts that act as Kubernetes cluster members, as well as administrative privileges for Kubernetes management. By default, the subsequent creation or usage of Persistent Volumes managed by the CSI plugin requires no elevated privileges.   |
 | Kubernetes management expertise                                 | Deploying storage plugins—including plugins conforming to the CSI specification—on Kubernetes requires a thorough understanding of Kubernetes, its concepts, services, best practices, configuration, security considerations and troubleshooting flows. |
