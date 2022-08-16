@@ -22,10 +22,10 @@ lightos-helm-repo       https://dl.lightbitslabs.com/public/lightos-csi/helm/cha
 ```bash
 helm search repo lightos-helm-repo
 NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
-lightos-helm-repo/lb-csi-plugin                 0.6.0           1.8.1           Helm Chart for LightOS CSI Plugin.
-lightos-helm-repo/lb-csi-workload-examples      0.6.0           1.8.1           Helm Chart for LightOS CSI Workload Examples.
-lightos-helm-repo/snapshot-controller-3         0.6.0           3.0.3           Deploy snapshot-controller for k8s version < v1.20
-lightos-helm-repo/snapshot-controller-4         0.6.0           4.2.1           Deploy snapshot-controller for k8s version >= v1.20
+lightos-helm-repo/lb-csi-plugin                 0.6.1           1.8.1           Helm Chart for LightOS CSI Plugin.
+lightos-helm-repo/lb-csi-workload-examples      0.6.1           1.8.1           Helm Chart for LightOS CSI Workload Examples.
+lightos-helm-repo/snapshot-controller-3         0.6.1           3.0.3           Deploy snapshot-controller for k8s version < v1.20
+lightos-helm-repo/snapshot-controller-4         0.6.1           4.2.1           Deploy snapshot-controller for k8s version >= v1.20
 ```
 
 
@@ -43,8 +43,8 @@ For convenience we provide Helm Charts to deploy snapshot-controller, CRDs and R
 
 ```bash
 k8s/
-lightos-helm-repo/snapshot-controller-3         0.6.0           3.0.3           Deploy snapshot-controller for k8s version < v1.20
-lightos-helm-repo/snapshot-controller-4         0.6.0           4.2.1           Deploy snapshot-controller for k8s version >= v1.20
+lightos-helm-repo/snapshot-controller-3         0.6.1           3.0.3           Deploy snapshot-controller for k8s version < v1.20
+lightos-helm-repo/snapshot-controller-4         0.6.1           4.2.1           Deploy snapshot-controller for k8s version >= v1.20
 ```
 
 Deploy these resources once before installing `lb-csi-plugin`.

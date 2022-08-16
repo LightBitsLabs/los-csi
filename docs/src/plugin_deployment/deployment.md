@@ -236,10 +236,10 @@ The `lb-csi-bundle` includes the following content:
 │   └── statefulset-workload.yaml
 ├── helm
 │   └── charts
-│       ├── lb-csi-plugin-0.6.0.tgz
-│       ├── lb-csi-workload-examples-0.6.0.tgz
-│       ├── snapshot-controller-3-0.6.0.tgz
-│       └── snapshot-controller-4-0.6.0.tgz
+│       ├── lb-csi-plugin-0.6.1.tgz
+│       ├── lb-csi-workload-examples-0.6.1.tgz
+│       ├── snapshot-controller-3-0.6.1.tgz
+│       └── snapshot-controller-4-0.6.1.tgz
 ├── k8s
 │   ├── lb-csi-plugin-k8s-v1.17-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.17.yaml

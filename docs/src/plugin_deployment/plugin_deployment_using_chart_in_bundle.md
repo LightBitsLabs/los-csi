@@ -21,7 +21,7 @@ helm install -n lb-csi-ns --create-namespace lb-csi helm/lb-csi/
 helm list --namespace=kube-system
 
 NAME  	NAMESPACE  	REVISION  UPDATED        	STATUS  	CHART              	 APP VERSION
-lb-csi	kube-system	1         2021-02-11... 	deployed	lb-csi-plugin-0.6.0	 1.8.1
+lb-csi	kube-system	1         2021-02-11... 	deployed	lb-csi-plugin-0.6.1	 1.8.1
 ```
 
 ### Uninstall LightOS CSI Plugin
