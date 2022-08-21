@@ -106,7 +106,7 @@ type Volume struct {
 }
 
 func (v *Volume) IsAccessible() bool {
-	return v.State == VolumeAvailable || v.State == VolumeUpdating
+	return v.State == VolumeAvailable || v.State == VolumeUpdating || v.State == VolumeMigrating
 }
 
 func (v *Volume) IsWritable() bool {
