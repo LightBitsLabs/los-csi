@@ -45,6 +45,10 @@ spec:
             value: text
           - name: LB_CSI_LOG_TIME
             value: "true"
+{{- if .Values.rwx }}
+          - name: LB_CSI_RWX
+            value: {{ .Values.rwx | quote }}
+{{- end }}
           imagePullPolicy: "Always"
           volumeMounts:
           - name: socket-dir
