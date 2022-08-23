@@ -379,8 +379,16 @@ func parseCSIResourceIDEnoent(field, id string) (lbResourceID, error) {
 
 // CSI volume capabilities helpers: ------------------------------------------
 
-var supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
-	csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+func (d *Driver) supportedAccessModes(isBlockVolumeMode bool) []csi.VolumeCapability_AccessMode_Mode {
+	var supportedAccessModes = []csi.VolumeCapability_AccessMode_Mode{
+		csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+	}
+	if isBlockVolumeMode && d.rwx {
+		supportedAccessModes = append(supportedAccessModes,
+			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER)
+	}
+	d.log.Infof("RWX is %t returning access-modes: %+v", d.rwx, supportedAccessModes)
+	return supportedAccessModes
 }
 
 // see validateVolumeCapability() docs for info.
@@ -407,22 +415,7 @@ func (d *Driver) validateVolumeCapability( //revive:disable-line:unused-receiver
 		return mkEinvalMissing("volume_capability")
 	}
 
-	modeOk := false
-	accessMode := c.GetAccessMode()
-	if accessMode == nil {
-		return mkEinvalMissing("volume_capability.access_mode")
-	}
-	for _, m := range supportedAccessModes {
-		if m == accessMode.Mode {
-			modeOk = true
-			break
-		}
-	}
-	if !modeOk {
-		return mkEinvalf("volume_capability.access_mode",
-			"unsupported mode: %d", accessMode.Mode)
-	}
-
+	isBlockVolumeMode := false
 	accessType := c.GetAccessType()
 	switch volCap := accessType.(type) {
 	case *csi.VolumeCapability_Mount:
@@ -441,11 +434,28 @@ func (d *Driver) validateVolumeCapability( //revive:disable-line:unused-receiver
 				"custom mount flags are not supported")
 		}
 	case *csi.VolumeCapability_Block:
+		isBlockVolumeMode = true
 	case nil:
 		return mkEinvalMissing("volume_capability.access_type")
 	default:
 		return mkEinval("volume_capability.access_type",
 			"unexpected access type specified")
+	}
+
+	modeOk := false
+	accessMode := c.GetAccessMode()
+	if accessMode == nil {
+		return mkEinvalMissing("volume_capability.access_mode")
+	}
+	for _, m := range d.supportedAccessModes(isBlockVolumeMode) {
+		if m == accessMode.Mode {
+			modeOk = true
+			break
+		}
+	}
+	if !modeOk {
+		return mkEinvalf("volume_capability.access_mode",
+			"unsupported mode: '%s'", accessMode.Mode.String())
 	}
 
 	return nil
