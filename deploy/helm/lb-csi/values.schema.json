@@ -67,6 +67,11 @@
     "luksConfigDir": {
       "description": "Path to host folder that will be mounted to plugin for reading luks_config.yaml",
       "type": "string"
+    },
+    "rwx": {
+      "description": "Enable ReadWriteMany for Block volume mode",
+      "type": "boolean",
+      "default": "false"
     }
   },
   "required": [

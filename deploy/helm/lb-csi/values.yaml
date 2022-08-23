@@ -13,6 +13,7 @@ controllerServiceAccountName: lb-csi-ctrl-sa
 nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet
 #luksConfigDir: /etc/lb-csi-luks-config
+rwx: false
 #registryUsername: ""
 # jwtSecret:
 # - name: cluster-admin-jwt

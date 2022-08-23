@@ -69,6 +69,10 @@ spec:
             - name: LB_CSI_LUKS_CONFIG_PATH
               value: {{ .Values.luksConfigDir | quote }}
 {{- end }}
+{{- if .Values.rwx }}
+            - name: LB_CSI_RWX
+              value: {{ .Values.rwx | quote }}
+{{- end }}
           imagePullPolicy: "Always"
           securityContext:
             privileged: true
