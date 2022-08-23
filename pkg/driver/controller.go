@@ -44,6 +44,10 @@ var (
 	capsCache []*csi.ControllerServiceCapability
 )
 
+var (
+	allowNoneACL = []string{lb.ACLAllowNone}
+)
+
 func init() {
 	// ah, the wonders of flat structuring and concise naming...
 	for _, cap := range controllerCaps {
@@ -793,7 +797,6 @@ func (d *Driver) ControllerPublishVolume(
 	}
 
 	log = log.WithField("node-id", req.NodeId)
-	ace := nodeIDToHostNQN(req.NodeId)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -802,7 +805,155 @@ func (d *Driver) ControllerPublishVolume(
 	}
 	defer d.PutLBClient(clnt)
 
-	publishVolumeHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+	if d.rwx {
+		return d.doPublishVolumeRWX(ctx, clnt, log, vid, req.NodeId)
+	} else {
+		return d.doPublishVolumeRWO(ctx, clnt, log, vid, req.NodeId)
+	}
+	// rwoPublishVolumeHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+	// 	log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+	// 	// currently we support only SINGLE_NODE_WRITER/RWO, so it's
+	// 	// pretty simple:
+	// 	numACEs := len(vol.ACL)
+	// 	if numACEs == 1 && vol.ACL[0] == ace {
+	// 		log.Info("volume is already published to node")
+	// 		return nil, nil
+	// 	}
+	// 	if numACEs == 0 || numACEs == 1 && vol.ACL[0] == lb.ACLAllowNone {
+	// 		return &lb.VolumeUpdate{ACL: []string{ace}}, nil
+	// 	}
+
+	// 	log.Error("volume is already published to other node(s)")
+	// 	if numACEs == 1 && vol.ACL[0] == lb.ACLAllowAny {
+	// 		// we'd have never done this, so, that leaves an admin
+	// 		// intervention or an improperly statically provisioned
+	// 		// volume?
+	// 		return nil, mkPrecond("volume has a mis-configured ACL: %#q", vol.ACL)
+	// 	}
+	// 	nodes := make([]string, len(vol.ACL))
+	// 	for i, a := range vol.ACL {
+	// 		if node := hostNQNToNodeID(a); node != "" {
+	// 			nodes[i] = node
+	// 		} else {
+	// 			nodes[i] = a
+	// 		}
+	// 	}
+	// 	return nil, mkPrecond("volume is already published to nodes: '%s'",
+	// 		strings.Join(nodes, "', '"))
+	// }
+
+	// rwxPublishVolumeHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+	// 	log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+	// 	numACEs := len(vol.ACL)
+	// 	if strlist.Contains(vol.ACL, ace) {
+	// 		log.Infof("volume is already published to node: %v", vol.ACL)
+	// 		return nil, nil
+	// 	}
+	// 	if numACEs == 0 ||
+	// 		// numACEs == 1 && vol.ACL[0] == lb.ACLAllowNone ||
+	// 		!strlist.Contains(vol.ACL, ace) {
+	// 		acl := strlist.Remove(vol.ACL, lb.ACLAllowNone) // try to remove AllowNone cause it must not be part of ACL
+	// 		aclCopy := make([]string, len(acl))
+	// 		copy(aclCopy, acl)
+	// 		aclCopy = append(aclCopy, ace)
+	// 		return &lb.VolumeUpdate{ACL: aclCopy}, nil
+	// 	}
+
+	// 	return nil, nil
+	// }
+
+	// hook := rwoPublishVolumeHook
+	// if d.rwx {
+	// 	hook = rwxPublishVolumeHook
+	// }
+
+	// vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if !d.rwx {
+	// 	if len(vol.ACL) != 1 || vol.ACL[0] != ace {
+	// 		// either some race involving network partitions, or, an
+	// 		// external intervention. a retry will either sort it out, or
+	// 		// report the condition more accurately:
+	// 		log.WithFields(logrus.Fields{
+	// 			"acl-exp": fmt.Sprintf("%#q", []string{ace}),
+	// 			"acl-got": fmt.Sprintf("%#q", vol.ACL),
+	// 		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
+	// 		return nil, mkEagain("failed to publish volume to node '%s'", req.NodeId)
+	// 	}
+	// } else {
+	// 	if len(vol.ACL) == 0 || !strlist.Contains(vol.ACL, ace) {
+	// 		// either some race involving network partitions, or, an
+	// 		// external intervention. a retry will either sort it out, or
+	// 		// report the condition more accurately:
+	// 		log.WithFields(logrus.Fields{
+	// 			"acl-exp": fmt.Sprintf("%#q", []string{ace}),
+	// 			"acl-got": fmt.Sprintf("%#q", vol.ACL),
+	// 		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
+	// 		return nil, mkEagain("failed to publish volume to node '%s'", req.NodeId)
+	// 	}
+
+	// }
+	// return &csi.ControllerPublishVolumeResponse{}, nil
+}
+
+func (d *Driver) doPublishVolumeRWX(
+	ctx context.Context,
+	clnt lb.Client,
+	log *logrus.Entry,
+	vid lbResourceID,
+	nodeId string,
+) (*csi.ControllerPublishVolumeResponse, error) {
+	ace := nodeIDToHostNQN(nodeId)
+
+	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+		numACEs := len(vol.ACL)
+		if strlist.Contains(vol.ACL, ace) {
+			log.Infof("volume is already published to node: %v", vol.ACL)
+			return nil, nil
+		}
+		if numACEs == 0 ||
+			// numACEs == 1 && vol.ACL[0] == lb.ACLAllowNone ||
+			!strlist.Contains(vol.ACL, ace) {
+			acl := strlist.Remove(vol.ACL, lb.ACLAllowNone) // try to remove AllowNone cause it must not be part of ACL
+			aclCopy := make([]string, len(acl))
+			copy(aclCopy, acl)
+			aclCopy = append(aclCopy, ace)
+			return &lb.VolumeUpdate{ACL: aclCopy}, nil
+		}
+
+		return nil, nil
+	}
+
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
+	if err != nil {
+		return nil, err
+	}
+	if len(vol.ACL) == 0 || !strlist.Contains(vol.ACL, ace) {
+		// either some race involving network partitions, or, an
+		// external intervention. a retry will either sort it out, or
+		// report the condition more accurately:
+		log.WithFields(logrus.Fields{
+			"acl-exp": fmt.Sprintf("%#q", []string{ace}),
+			"acl-got": fmt.Sprintf("%#q", vol.ACL),
+		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
+		return nil, mkEagain("failed to publish volume to node '%s'", nodeId)
+	}
+	return &csi.ControllerPublishVolumeResponse{}, nil
+}
+
+func (d *Driver) doPublishVolumeRWO(
+	ctx context.Context,
+	clnt lb.Client,
+	log *logrus.Entry,
+	vid lbResourceID,
+	nodeId string,
+) (*csi.ControllerPublishVolumeResponse, error) {
+	ace := nodeIDToHostNQN(nodeId)
+
+	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
 		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
 		// currently we support only SINGLE_NODE_WRITER/RWO, so it's
 		// pretty simple:
@@ -833,8 +984,7 @@ func (d *Driver) ControllerPublishVolume(
 		return nil, mkPrecond("volume is already published to nodes: '%s'",
 			strings.Join(nodes, "', '"))
 	}
-
-	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, publishVolumeHook)
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
 	if err != nil {
 		return nil, err
 	}
@@ -846,7 +996,7 @@ func (d *Driver) ControllerPublishVolume(
 			"acl-exp": fmt.Sprintf("%#q", []string{ace}),
 			"acl-got": fmt.Sprintf("%#q", vol.ACL),
 		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
-		return nil, mkEagain("failed to publish volume to node '%s'", req.NodeId)
+		return nil, mkEagain("failed to publish volume to node '%s'", nodeId)
 	}
 	return &csi.ControllerPublishVolumeResponse{}, nil
 }
@@ -875,8 +1025,6 @@ func (d *Driver) ControllerUnpublishVolume(
 	}
 
 	log = log.WithField("node-id", req.NodeId)
-	ace := nodeIDToHostNQN(req.NodeId)
-	allowNoneACL := []string{lb.ACLAllowNone}
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -885,7 +1033,23 @@ func (d *Driver) ControllerUnpublishVolume(
 	}
 	defer d.PutLBClient(clnt)
 
-	unpublishVolumeHook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+	if d.rwx {
+		return d.doUnpublishVolumeRWX(ctx, clnt, log, vid, req.NodeId)
+	} else {
+		return d.doUnpublishVolumeRWO(ctx, clnt, log, vid, req.NodeId)
+	}
+}
+
+func (d *Driver) doUnpublishVolumeRWO(
+	ctx context.Context,
+	clnt lb.Client,
+	log *logrus.Entry,
+	vid lbResourceID,
+	nodeId string,
+) (*csi.ControllerUnpublishVolumeResponse, error) {
+	ace := nodeIDToHostNQN(nodeId)
+
+	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
 		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
 		// currently we support only SINGLE_NODE_WRITER/RWO, so it's
 		// pretty simple:
@@ -909,7 +1073,7 @@ func (d *Driver) ControllerUnpublishVolume(
 		return nil, nil
 	}
 
-	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, unpublishVolumeHook)
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
 	if err != nil {
 		if isStatusNotFound(err) {
 			log.Info("volume is already gone, unpublishing is irrelevant")
@@ -926,7 +1090,63 @@ func (d *Driver) ControllerUnpublishVolume(
 			"acl-exp": fmt.Sprintf("%#q", allowNoneACL),
 			"acl-got": fmt.Sprintf("%#q", vol.ACL),
 		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
-		return nil, mkEagain("failed to unpublish volume from node '%s'", req.NodeId)
+		return nil, mkEagain("failed to unpublish volume from node '%s'", nodeId)
+	}
+	return &csi.ControllerUnpublishVolumeResponse{}, nil
+}
+
+func (d *Driver) doUnpublishVolumeRWX(
+	ctx context.Context,
+	clnt lb.Client,
+	log *logrus.Entry,
+	vid lbResourceID,
+	nodeId string,
+) (*csi.ControllerUnpublishVolumeResponse, error) {
+	ace := nodeIDToHostNQN(nodeId)
+
+	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+		// currently we support only SINGLE_NODE_WRITER/RWO, so it's
+		// pretty simple:
+		numACEs := len(vol.ACL)
+		if numACEs == 1 && vol.ACL[0] == lb.ACLAllowNone {
+			log.Info("volume is already not published to any node")
+			return nil, nil
+		}
+		if numACEs == 0 || numACEs == 1 && vol.ACL[0] == ace {
+			return &lb.VolumeUpdate{ACL: allowNoneACL}, nil
+		}
+
+		if strlist.Contains(vol.ACL, lb.ACLAllowAny) {
+			// we'd have never done this, so, that leaves an admin
+			// intervention, an improperly statically provisioned
+			// volume, or, in case of multiple ACLS, possibly a bug.
+			return nil, mkInternal("volume has a mis-configured ACL: %#q", vol.ACL)
+		}
+
+		if strlist.Contains(vol.ACL, ace) {
+			acl := strlist.Remove(vol.ACL, ace)
+			return &lb.VolumeUpdate{ACL: acl}, nil
+		}
+
+		log.Warn("volume is already published to another node")
+		return nil, nil
+	}
+
+	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
+	if err != nil {
+		if isStatusNotFound(err) {
+			log.Info("volume is already gone, unpublishing is irrelevant")
+			return &csi.ControllerUnpublishVolumeResponse{}, nil
+		}
+		return nil, err
+	}
+	if strlist.Contains(vol.ACL, ace) {
+		log.WithFields(logrus.Fields{
+			"acl-got": fmt.Sprintf("%#q", vol.ACL),
+		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong. "+
+			"didn't expect '%s' in ACL", ace)
+		return nil, mkEagain("failed to unpublish volume from node '%s'", nodeId)
 	}
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
 }
