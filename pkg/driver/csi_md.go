@@ -420,6 +420,9 @@ func (d *Driver) validateVolumeCapability( //revive:disable-line:unused-receiver
 	switch volCap := accessType.(type) {
 	case *csi.VolumeCapability_Mount:
 		mntCap := volCap.Mount
+		if mntCap == nil {
+			return mkEinvalf("volume_capability.mount", "must be set")
+		}
 		// TODO: currently we only support 'ext4' and 'xfs'. additional FSes may require
 		// mount opts validation, etc., so will likely require a bit of
 		// scaffolding (TBD)... not to mention packaging the utils!
