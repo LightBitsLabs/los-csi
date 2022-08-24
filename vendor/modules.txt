@@ -89,9 +89,12 @@ github.com/sirupsen/logrus
 # github.com/spf13/pflag v1.0.5
 ## explicit; go 1.12
 github.com/spf13/pflag
+# github.com/stretchr/objx v0.1.1
+github.com/stretchr/objx
 # github.com/stretchr/testify v1.7.0
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/mock
 github.com/stretchr/testify/require
 # golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4
 ## explicit; go 1.11
