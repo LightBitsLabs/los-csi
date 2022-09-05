@@ -7,7 +7,7 @@ Date: 2022-16-08
 
 ### Source Code
 
-https://github.com/lightbitslabs/lb-csi/releases/tag/v1.8.1
+https://github.com/lightbitslabs/los-csi/releases/tag/los-csi-v1.8.1-ish
 
 ### Container Image
 
@@ -20,11 +20,11 @@ https://github.com/lightbitslabs/lb-csi/releases/tag/v1.8.1
 
 ### Documentation
 
-https://github.com/LightBitsLabs/lb-csi/tree/v1.8.1/docs
+https://github.com/LightBitsLabs/los-csi/tree/los-csi-v1.8.1-ish/docs
 
 ### Upgrading
 
-https://github.com/LightBitsLabs/lb-csi/tree/duros/docs/upgrade
+https://github.com/LightBitsLabs/los-csi/tree/los-csi-v1.8.1-ish/docs/src/upgrade
 
 ### Highlights
 

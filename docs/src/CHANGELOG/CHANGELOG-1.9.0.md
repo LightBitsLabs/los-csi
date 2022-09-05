@@ -7,7 +7,7 @@ Date: 2022-07-07
 
 ### Source Code
 
-https://github.com/lightbitslabs/lb-csi/releases/tag/v1.9.0
+https://github.com/LightBitsLabs/los-csi/releases/tag/los-csi-v1.9.0-ish
 
 ### Container Image
 
@@ -20,12 +20,13 @@ https://github.com/lightbitslabs/lb-csi/releases/tag/v1.9.0
 
 ### Documentation
 
-https://github.com/LightBitsLabs/lb-csi/tree/v1.9.0/docs
+https://github.com/LightBitsLabs/los-csi/tree/los-csi-v1.9.0-ish/docs
 
 ### Upgrading
 
-https://github.com/LightBitsLabs/lb-csi/tree/duros/docs/upgrade
+https://github.com/LightBitsLabs/los-csi/tree/los-csi-v1.9.0-ish/docs/src/upgrade
 
 ### Highlights
 
 - Add Quality of service policy by name support
+- support migrating/rollback volume state

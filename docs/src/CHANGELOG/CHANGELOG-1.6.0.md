@@ -7,7 +7,7 @@ Date: 2021-08-12
 
 ### Source Code
 
-https://github.com/lightbitslabs/los-csi/releases/tag/v1.6.0
+https://github.com/lightbitslabs/los-csi/releases/tag/los-csi-v1.6.0-ish
 
 ### Container Image
 
@@ -20,11 +20,11 @@ https://github.com/lightbitslabs/los-csi/releases/tag/v1.6.0
 
 ### Documentation
 
-https://github.com/LightBitsLabs/los-csi/tree/v1.6.0/docs
+https://github.com/LightBitsLabs/los-csi/tree/los-csi-v1.6.0-ish/docs
 
 ### Upgrading
 
-https://github.com/LightBitsLabs/los-csi/tree/duros/docs/upgrade
+https://github.com/LightBitsLabs/los-csi/tree/los-csi-v1.6.0-ish/docs/src/upgrade
 
 ### Highlights
 
