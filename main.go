@@ -111,6 +111,8 @@ var (
 		"Plugin instance role to log, see $LB_CSI_LOG_ROLE.")
 	logTimestamps = flag.BoolP("log-time", "T", false,
 		"Add timestamps to log entries, see $LB_CSI_LOG_TIME.")
+	rwx = flag.BoolP("rwx", "X", false,
+		"Should we expose volumes as ReadWriteMany, see $LB_CSI_RWX.")
 	logFormat = flag.StringP("log-fmt", "f", "",
 		"Log entry format, see $LB_CSI_LOG_FMT.")
 	jwtPath = flag.StringP("jwt-path", "j", "",
@@ -204,6 +206,20 @@ func main() {
 		}
 	}
 
+	if !*rwx {
+		val := os.Getenv("LB_CSI_RWX")
+		switch strings.ToLower(strings.TrimSpace(val)) {
+		case "true":
+			*rwx = true
+		case "false":
+			*rwx = false
+		case "":
+			*rwx = defaults.RWX
+		default:
+			errorAndDie("invalid LB_CSI_RWX value: '%s'", val)
+		}
+	}
+
 	cfg := driver.Config{
 		DefaultBackend: defaults.DefaultBackend, // not user configurable.
 		BackendCfgPath: pickStr(*backendCfgPath, "LB_CSI_BE_CONFIG_PATH",
@@ -221,6 +237,7 @@ func main() {
 		Transport:     *transport,
 		SquelchPanics: *squelchPanics,
 		PrettyJSON:    *prettyJSON,
+		RWX:           *rwx,
 	}
 
 	d, err := driver.New(cfg)

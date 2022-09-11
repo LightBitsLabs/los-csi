@@ -95,6 +95,7 @@ type Config struct {
 	Transport     string // one of: tcp/rdma
 	SquelchPanics bool
 	PrettyJSON    bool
+	RWX           bool
 }
 
 type Driver struct {
@@ -144,6 +145,16 @@ type Driver struct {
 	// mechanisms (e.g. K8s Secrets that can be exposed to the LB CSI plugin
 	// as files through the pod volumes mechanism).
 	jwt string
+
+	// rwx states that the plugin will expose AccessMode_MULTI_NODE_MULTI_WRITER
+	// capability for all volumes.
+	//
+	// WARN: Lightbits storage does not synchronize access to shared multi-read-write to
+	// the same volume, hence this is user responsibility to make sure the workloads
+	// do not access the same LBAs at the same time, or use software to coordinate access
+	// to shared storage volumes to avoid possible data corruption.
+	// If unsure, select false.
+	rwx bool
 }
 
 const (
@@ -219,6 +230,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
+		rwx:           cfg.RWX,
 	}
 
 	if err := checkNodeID(cfg.NodeID); err != nil {
