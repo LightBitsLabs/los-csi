@@ -156,6 +156,12 @@ func (d *Driver) luksOpen(devicePath string, mapperFile string, passphrase strin
 		"--disable-keyring", // LUKS2 volumes will ask for passphrase on resize if it is LUKS2 format
 		// and if the keyring is not disabled on open
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
+		// some performance flags - cryptsetup will retry without them
+		// if they are unsupported by the kernel
+		"--perf-same_cpu_crypt",
+		"--perf-submit_from_crypt_cpus",
+		"--perf-no_read_workqueue",
+		"--perf-no_write_workqueue",
 	}
 
 	if !isAESSupported() {
