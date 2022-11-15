@@ -7,7 +7,7 @@
 helm install \
   --set statefulset.enabled=true \
   lb-csi-workload-sts \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:

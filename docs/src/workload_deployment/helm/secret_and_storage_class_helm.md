@@ -14,7 +14,7 @@ helm install \
   --set global.storageClass.mgmtEndpoints="$MGMT_EP" \
   --set global.jwtSecret.jwt="$LIGHTOS_JWT" \
   lb-csi-workload-examples-sc \
-  helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:
@@ -27,6 +27,32 @@ STATUS: deployed
 REVISION: 1
 TEST SUITE: None
 ```
+
+Provided is an example Secret created by helm:
+
+  ```yaml
+  # Source: lb-csi-workload-examples/templates/secret.yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: example-secret
+    namespace: default
+  type: lightbitslabs.com/jwt
+  data:
+    jwt: |-
+      ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lT
+      bGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5UQTNOemcyTENKcFlY
+      UWlPakUyTVRNNU56RTNPRFlzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lhWFJ5UjNN
+      Mk1sTk1hMmxhY2xKdlNuWjNXazFhZHlJc0ltNWlaaUk2TVRZeE16azNNVGM0Tml3aWNtOXNaWE1p
+      T2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpi
+      R2xsYm5RaWZRLlc5QXMwdTJQZnFudTIzZ3U0YXFYcTBKMXZETUJ6bkVfT3dkZkxGeEgzMUdZZVAx
+      WHFqbUNLUWlZS3pJcXlmcTgweTdCZC02azZvZlVXbzlRZ0FDb1J6LUhRWTJjc1pYdHVHTGRpRzN3
+      YUF3aEs3QjRIQnhROFAzSnpSeno4TzJLOVg1Z3dRY19xYnpjYTBNaUlrWTZVVjVTOWNEMTROTHNQ
+      RExwUjdvOFRMbFozbm9kSDZiRlNNVjlPeF9GRXBvTGVidzRWLUlvaURiTV9NdTFDSzZCOUJGeFpN
+      RTV6NmJIMXlkSDZFWnRuUFlRaUVrRVdlUzFHMUJSTVNfR0hGN3Nja2NYU0c3Q1pkSFFqOHY1b0Y1
+      YS1USHNVdXR0dmFIc1hUS3FzREFkOHRvbEphZUNUN0NWRFFHX0xUQ1hYZ3dudUI3c0ZRaHJHbHhR
+      Mkw3V3BlNzczdw==
+  ```
 
 > **NOTICE:**
 > 

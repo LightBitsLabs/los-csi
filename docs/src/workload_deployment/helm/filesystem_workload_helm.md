@@ -11,7 +11,7 @@ This chart will install the following resources:
 helm install \
   --set filesystem.enabled=true \
   lb-csi-workload-filesystem \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:
@@ -36,9 +36,10 @@ Examples:
 1. Specifying `nodeSelector`:
 
   ```bash
-  helm template --set filesystem.enabled=true \
-      --set filesystem.nodeSelector."beta\.kubernetes\.io/arch"=amd64,filesystem.nodeSelector.disktype=ssd \
-      lb-csi-workload-examples
+  helm template \
+    --set filesystem.enabled=true \
+    --set filesystem.nodeSelector."beta\.kubernetes\.io/arch"=amd64,filesystem.nodeSelector.disktype=ssd \
+    lightbits-helm-repo/lb-csi-workload-examples
   ```
 
   Will result:
@@ -59,9 +60,10 @@ Examples:
 2. Specifying `nodeName`:
 
   ```bash
-  helm template --set filesystem.enabled=true \
-      --set filesystem.nodeName=node00.local \
-      lb-csi-workload-examples
+  helm template \
+    --set filesystem.enabled=true \
+    --set filesystem.nodeName=node00.local \
+    lightbits-helm-repo/lb-csi-workload-examples
   ```
 
   Will result:
