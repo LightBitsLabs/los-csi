@@ -143,32 +143,32 @@ snaps:
 
 Values Description:
 
-| name                                   |  description                                                       | default | required   |
-|----------------------------------------|--------------------------------------------------------------------|---------|------------|
-| storageclass.enable                    | Deploy Secret, StorageClass                                        | false   | false |
-| block.enable                           | Deploy block volume workload                                       | false   | false |
-| block.nodeSelector                     | Deploy `POD` on specific node using node selectors                 | {}      | false |
-| block.nodeName                         | Deploy `POD` on specific node using node name                      | ""      | false |
-| filesystem.enable                      | Deploy filesystem volume workload                                  | false   | false |
-| filesystem.nodeSelector                | Deploy `POD` on specific node using node selectors                 | {}      | false |
-| filesystem.nodeName                    | Deploy `POD` on specific node using node name                      | ""      | false |
-| statefulset.enable                     | Deploy statefulset workload                                        | false   | false |
-| preprovisioned.enable                  | Deploy preprovisioned volume workload                              | false   | false |
-| preprovisioned.lightosVolNguid         | NGUID of LightOS volume                                            | ""      | true  |
-| preprovisioned.volumeMode              | Specifies if this volume is used for Block or Filesystem           | ""      | true  |
-| preprovisioned.storage                 | Size of the volume this PV will point to.                          | ""      | true  |
-| snaps.enable                           | Deploy snapshot workloads                                          | false   | false |
-| snaps.pvcName                          | Name of the pvc for snapshot example                               | example-pvc | false |
-| snaps.stage                            | Name the snapshot stage we want to execute                         | ""  | false |
-| global.storageClass.mgmtEndpoints      | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>`        | "" | true |
-| global.storageClass.projectName        | Created resources will be scoped to this project                   | default | false |
-| global.storageClass.replicaCount       | Number of replicas for each volume                                 | 3 | false |
-| global.storageClass.compression        | Whether compressions in enabled/disabled                           | disabled | false |
-| global.jwtSecret.name                  | Secret name that holds LightOS API `JWT`                           | example-secret | true |
-| global.jwtSecret.namespace             | Namespace the secret is defined at                                 | default | true |
-| global.jwtSecret.jwt                   | `JWT` to authenticate against LightOS API                          | default | true |
-| global.storageClass.qosPolicyName      | qos policy name, should exist in the Lightos prior volume creation | ""      | false
-| global.storageClass.hostEncryption     | Whether host-side encryption is enabled/disabled                   | disabled | false |
+| name                               | description                                                        | default        | required |
+| ---------------------------------- | ------------------------------------------------------------------ | -------------- | -------- |
+| storageclass.enable                | Deploy Secret, StorageClass                                        | false          | false    |
+| block.enable                       | Deploy block volume workload                                       | false          | false    |
+| block.nodeSelector                 | Deploy `POD` on specific node using node selectors                 | {}             | false    |
+| block.nodeName                     | Deploy `POD` on specific node using node name                      | ""             | false    |
+| filesystem.enable                  | Deploy filesystem volume workload                                  | false          | false    |
+| filesystem.nodeSelector            | Deploy `POD` on specific node using node selectors                 | {}             | false    |
+| filesystem.nodeName                | Deploy `POD` on specific node using node name                      | ""             | false    |
+| statefulset.enable                 | Deploy statefulset workload                                        | false          | false    |
+| preprovisioned.enable              | Deploy preprovisioned volume workload                              | false          | false    |
+| preprovisioned.lightosVolNguid     | NGUID of LightOS volume                                            | ""             | true     |
+| preprovisioned.volumeMode          | Specifies if this volume is used for Block or Filesystem           | ""             | true     |
+| preprovisioned.storage             | Size of the volume this PV will point to.                          | ""             | true     |
+| snaps.enable                       | Deploy snapshot workloads                                          | false          | false    |
+| snaps.pvcName                      | Name of the pvc for snapshot example                               | example-pvc    | false    |
+| snaps.stage                        | Name the snapshot stage we want to execute                         | ""             | false    |
+| global.storageClass.mgmtEndpoints  | LightOS API endpoint list, ex: `<ip>:<port>,...<ip>:<port>`        | ""             | true     |
+| global.storageClass.projectName    | Created resources will be scoped to this project                   | default        | false    |
+| global.storageClass.replicaCount   | Number of replicas for each volume                                 | 3              | false    |
+| global.storageClass.compression    | Whether compressions in enabled/disabled                           | disabled       | false    |
+| global.jwtSecret.name              | Secret name that holds LightOS API `JWT`                           | example-secret | true     |
+| global.jwtSecret.namespace         | Namespace the secret is defined at                                 | default        | true     |
+| global.jwtSecret.jwt               | `JWT` to authenticate against LightOS API                          | default        | true     |
+| global.storageClass.qosPolicyName  | qos policy name, should exist in the Lightos prior volume creation | ""             | false    |
+| global.storageClass.hostEncryption | Whether host-side encryption is enabled/disabled                   | disabled       | false    |
 
 ##### Mandatory Values To Modify
 
@@ -209,31 +209,6 @@ The following values **MUST** be modified to match the target Kubernetes cluster
   > K8S stores the secret data base64 encoded but the chart will do
   > the encoding for you. 
 
-  Helm will generate a `Secret` looking like:
-
-  ```yaml
-  # Source: lb-csi-workload-examples/templates/secret.yaml
-  apiVersion: v1
-  kind: Secret
-  metadata:
-    name: example-secret
-    namespace: default
-  type: lightbitslabs.com/jwt
-  data:
-    jwt: |-
-      ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lT
-      bGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRMU5UQTNOemcyTENKcFlY
-      UWlPakUyTVRNNU56RTNPRFlzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lhWFJ5UjNN
-      Mk1sTk1hMmxhY2xKdlNuWjNXazFhZHlJc0ltNWlaaUk2TVRZeE16azNNVGM0Tml3aWNtOXNaWE1p
-      T2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpi
-      R2xsYm5RaWZRLlc5QXMwdTJQZnFudTIzZ3U0YXFYcTBKMXZETUJ6bkVfT3dkZkxGeEgzMUdZZVAx
-      WHFqbUNLUWlZS3pJcXlmcTgweTdCZC02azZvZlVXbzlRZ0FDb1J6LUhRWTJjc1pYdHVHTGRpRzN3
-      YUF3aEs3QjRIQnhROFAzSnpSeno4TzJLOVg1Z3dRY19xYnpjYTBNaUlrWTZVVjVTOWNEMTROTHNQ
-      RExwUjdvOFRMbFozbm9kSDZiRlNNVjlPeF9GRXBvTGVidzRWLUlvaURiTV9NdTFDSzZCOUJGeFpN
-      RTV6NmJIMXlkSDZFWnRuUFlRaUVrRVdlUzFHMUJSTVNfR0hGN3Nja2NYU0c3Q1pkSFFqOHY1b0Y1
-      YS1USHNVdXR0dmFIc1hUS3FzREFkOHRvbEphZUNUN0NWRFFHX0xUQ1hYZ3dudUI3c0ZRaHJHbHhR
-      Mkw3V3BlNzczdw==
-  ```
 
 #### Install in different namespace
 
@@ -241,9 +216,11 @@ You can install the workloads in a different namespace (ex: `lb-csi-ns`)
 by creating a namespace yourself or using the shortcut to let Helm create a namespace for you:
 
 ```bash
-helm install -n lb-csi-ns --create-namespace \
+helm install \
+  -n lb-csi-ns \
+  --create-namespace \
 	lb-csi-workload-examples \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 #### Rendering Manifests Using the Helm Chart
@@ -253,7 +230,7 @@ Render manifests to file `/tmp/filesystem-workload.yaml` by running the followin
 ```bash
 helm template \
 	--set filesystem.enabled=true \
-	./helm/lb-csi-workload-examples > /tmp/filesystem-workload.yaml
+	lightbits-helm-repo/lb-csi-workload-examples > /tmp/filesystem-workload.yaml
 ```
 
 The chart enables rendering multiple workloads at the same time using the following command:
@@ -262,7 +239,7 @@ The chart enables rendering multiple workloads at the same time using the follow
 helm template \
 	--set block.enabled=true \
 	--set filesystem.enabled=true \
-	./helm/lb-csi-workload-examples > /tmp/block-and-filesystem-workload.yaml
+	lightbits-helm-repo/lb-csi-workload-examples > /tmp/block-and-filesystem-workload.yaml
 ```
 
 Outcome is placed at `/tmp/block-and-filesystem-workload.yaml`.

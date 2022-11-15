@@ -23,7 +23,8 @@ helm install --set preprovisioned.enabled=true \
   --set preprovisioned.lightosVolNguid=0e436046-4bd2-4d71-a55d-8dc1ea33307c \
   --set preprovisioned.volumeMode=Block \
   --set preprovisioned.storage=1Gi \
-  lb-csi-preprovisioned-volume ./helm/lb-csi-workload-examples
+  lb-csi-preprovisioned-volume \
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:

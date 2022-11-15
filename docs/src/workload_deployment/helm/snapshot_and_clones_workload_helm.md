@@ -9,8 +9,8 @@ This example is a bit more complex and is composed of six different stages:
   - [_Stage 1: Create `VolumeSnapshotClass`_](#stage-1-create-volumesnapshotclass)
   - [_Stage 2: Create Example `PVC` and `POD`_](#stage-2-create-example-pvc-and-pod)
   - [_Stage 3: Take a `Snapshot` from PVC created at stage 2_](#stage-3-take-a-snapshot-from-pvc-created-at-stage-2)
-  - [_Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that use it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-use-it)
-  - [_Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that use it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-use-it)
+  - [_Stage 4: Create a `PVC` from Snapshot created at stage 3 and create a `POD` that uses it_](#stage-4-create-a-pvc-from-snapshot-created-at-stage-3-and-create-a-pod-that-uses-it)
+  - [_Stage 5: Create a `PVC` from the `PVC` we created at stage 3 and create a `POD` that uses it_](#stage-5-create-a-pvc-from-the-pvc-we-created-at-stage-3-and-create-a-pod-that-uses-it)
   - [_Stage 6: Uninstall Snapshot Workloads_](#stage-6-uninstall-snapshot-workloads)
 
 The examples are dependent on one another, so you must run them in order.
@@ -34,7 +34,7 @@ helm install \
   --set snaps.enabled=true \
   --set snaps.stage=snapshot-class \
   lb-csi-workload-snaps-snapshot-class \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 ### _Stage 2: Create Example `PVC` and `POD`_
@@ -46,7 +46,7 @@ helm install \
   --set snaps.enabled=true \
   --set snaps.stage=example-pvc \
   lb-csi-workload-snaps-example-pvc \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:
@@ -83,7 +83,7 @@ helm install \
   --set snaps.enabled=true \
   --set snaps.stage=snapshot-from-pvc \
   lb-csi-workload-snaps-snapshot-from-pvc \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:
@@ -118,7 +118,7 @@ helm install \
   --set snaps.enabled=true \
   --set snaps.stage=pvc-from-snapshot \
   lb-csi-workload-snaps-pvc-from-snapshot \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:
@@ -162,7 +162,7 @@ helm install \
   --set snaps.enabled=true \
   --set snaps.stage=pvc-from-pvc \
   lb-csi-workload-snaps-pvc-from-pvc \
-  ./helm/lb-csi-workload-examples
+  lightbits-helm-repo/lb-csi-workload-examples
 ```
 
 Will output:
