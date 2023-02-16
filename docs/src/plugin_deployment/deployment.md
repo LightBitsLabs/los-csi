@@ -1,9 +1,9 @@
 <div style="page-break-after: always;"></div>
 \pagebreak
 
-# LightOS CSI Plugin Deployment
+# Lightbits CSI Plugin Deployment
 
-- [LightOS CSI Plugin Deployment](#lightos-csi-plugin-deployment)
+- [Lightbits CSI Plugin Deployment](#lightbits-csi-plugin-deployment)
     - [Before You Begin](#before-you-begin)
     - [Installing and Configuring the `kubectl` Tool](#installing-and-configuring-the-kubectl-tool)
     - [Ensuring Suitable Kubernetes Cluster Configuration](#ensuring-suitable-kubernetes-cluster-configuration)
@@ -43,7 +43,7 @@ To ensure smooth access to the storage volumes exported by the LightOS clusters,
 
 > Note:
 > 
-> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v3.0.1 Installation Guide document.
+> To verify that the required software is installed and properly configured, or to obtain the required software, see the LightOS v3.2.1 Installation Guide document.
 
 
 Before deploying the Lightbits CSI plugin, you should verify that:
@@ -236,10 +236,10 @@ The `lb-csi-bundle` includes the following content:
 │   └── statefulset-workload.yaml
 ├── helm
 │   └── charts
-│       ├── lb-csi-plugin-0.7.1.tgz
-│       ├── lb-csi-workload-examples-0.7.1.tgz
-│       ├── snapshot-controller-3-0.7.1.tgz
-│       └── snapshot-controller-4-0.7.1.tgz
+│       ├── lb-csi-plugin-0.8.0.tgz
+│       ├── lb-csi-workload-examples-0.8.0.tgz
+│       ├── snapshot-controller-3-0.8.0.tgz
+│       └── snapshot-controller-4-0.8.0.tgz
 ├── k8s
 │   ├── lb-csi-plugin-k8s-v1.17-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.17.yaml
@@ -332,7 +332,7 @@ metadata:
               ...
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.9.1
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.10.0
               ...
         - name: csi-provisioner
           image: registry.k8s.io/sig-storage/csi-provisioner:v2.2.2
@@ -350,7 +350,7 @@ metadata:
               ... 
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.9.1
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.10.0
               ...
         - name: driver-registrar
           image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.1.0
