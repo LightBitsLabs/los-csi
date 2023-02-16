@@ -5,15 +5,15 @@
 - [Static Manifests](#static-manifests)
   - [Overview](#overview)
   - [Deploying Snapshot-Controller On Kubernetes Cluster](#deploying-snapshot-controller-on-kubernetes-cluster)
-  - [Deploying LightOS CSI Plugin On Kubernetes Cluster](#deploying-lightos-csi-plugin-on-kubernetes-cluster)
-    - [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin)
+  - [Deploying Lightbits CSI Plugin On Kubernetes Cluster](#deploying-lightbits-csi-plugin-on-kubernetes-cluster)
+    - [Deploying Lightbits CSI Plugin](#deploying-lightbits-csi-plugin)
   - [CSI Plugin Removal Instructions](#csi-plugin-removal-instructions)
     - [Before Removing the CSI Plugin](#before-removing-the-csi-plugin)
-    - [Removing the LightOS CSI Plugin](#removing-the-lightos-csi-plugin)
+    - [Removing the Lightbits CSI Plugin](#removing-the-lightbits-csi-plugin)
 
 ### Overview
 
-The LightOS CSI plugin is packaged as a standard Kubernetes workload, using a StatefulSet and a DaemonSet. Therefore, the deployment process is as simple as a regular Kubernetes workload deployment, using regular Kubernetes manifests.
+The Lightbits CSI plugin is packaged as a standard Kubernetes workload, using a StatefulSet and a DaemonSet. Therefore, the deployment process is as simple as a regular Kubernetes workload deployment, using regular Kubernetes manifests.
 
 The following instructions demonstrate a simplified plugin deployment flow using the sample configuration and deployment specs from the Supplementary Package. For production usage, you can refer to the provided examples and develop your deployment flows to address your requirements.
 
@@ -49,7 +49,7 @@ Deploy these resources once before installing `lb-csi-plugin`.
 >
 > If these resources are already deployed for use by other CSI drivers, make sure the versions are correct and skip this step.
 
-### Deploying LightOS CSI Plugin On Kubernetes Cluster
+### Deploying Lightbits CSI Plugin On Kubernetes Cluster
 
 Provided manifests create the required `ServiceAccount` and RBAC `ClusterRole`/`ClusterRoleBinding` Kubernetes objects.
 
@@ -77,7 +77,7 @@ k8s/
 >
 > Manifests with suffix `-dc.yaml` deploy discovery-client on K8s as a container in `lb-csi-node` DaemonSet.
 
-#### Deploying LightOS CSI Plugin
+#### Deploying Lightbits CSI Plugin
 
 To deploy the plugin, run the following commands with examples as the current directory and with kubectl in your $PATH.
 
@@ -120,9 +120,9 @@ Before removing the CSI plugin, you must confirm that the Lightbits CSI plugin i
 
 Failure to confirm that the Lightbits CSI plugin is not in use can result in some Kubernetes objects remaining stuck in “Terminating” or similar states, and require intrusive manual administrative intervention.
 
-#### Removing the LightOS CSI Plugin
+#### Removing the Lightbits CSI Plugin
 
-Assuming you have deployed the Lightbits CSI plugin by following the instructions in the section [Deploying LightOS CSI Plugin](#deploying-lightos-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
+Assuming you have deployed the Lightbits CSI plugin by following the instructions in the section [Deploying Lightbits CSI Plugin](#deploying-lightbits-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
 
 ```bash
 $ kubectl delete -f lb-csi-plugin-k8s-v1.21.yaml

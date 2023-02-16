@@ -1,6 +1,6 @@
 ## Installing From Bundled Helm Charts
 
-### Install LightOS CSI Plugin
+### Install Lightbits CSI Plugin
 
 ```bash
 helm install --namespace=kube-system lb-csi helm/lb-csi
@@ -21,10 +21,10 @@ helm install -n lb-csi-ns --create-namespace lb-csi helm/lb-csi/
 helm list --namespace=kube-system
 
 NAME  	NAMESPACE  	REVISION  UPDATED        	STATUS  	CHART              	 APP VERSION
-lb-csi	kube-system	1         2021-02-11... 	deployed	lb-csi-plugin-0.7.1	 1.9.1
+lb-csi	kube-system	1         2021-02-11... 	deployed	lb-csi-plugin-0.8.0	 1.10.0
 ```
 
-### Uninstall LightOS CSI Plugin
+### Uninstall Lightbits CSI Plugin
 
 ```bash
 helm uninstall --namespace=kube-system lb-csi
@@ -74,7 +74,7 @@ Now we can run "helm install" with the override value for `imagePullSecrets`. Th
 ```bash
 helm install \
   --set imageRegistry=docker.pkg.github.com/lightbitslabs \
-  --set image=lb-csi-plugin:1.9.1 \
+  --set image=lb-csi-plugin:1.10.0 \
   --set imagePullSecrets={github-docker-registry} \
   lb-csi ./helm/lb-csi
 ```

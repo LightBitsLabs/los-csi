@@ -1,22 +1,27 @@
 <div style="page-break-after: always;"></div>
 
-# LightOS™ CSI Plugin (`lb-csi-plugin`)
+# Lightbits™ CSI Plugin (`lb-csi-plugin`)
 
-- [LightOS™ CSI Plugin (`lb-csi-plugin`)](#lightos-csi-plugin-lb-csi-plugin)
+- [Lightbits™ CSI Plugin (`lb-csi-plugin`)](#lightbits-csi-plugin-lb-csi-plugin)
   - [Introduction](#introduction)
+    - [Lightbits™ Support](#lightbits-support)
   - [LB CSI Driver Capabilities](#lb-csi-driver-capabilities)
 
 <div style="page-break-after: always;"></div>
 
 ## Introduction
 
-The LightOS™ CSI plugin is a software module that implements the management of persistent storage volumes exported by LightOS™ software for Container Orchestrator (CO) systems such as Kubernetes and Mesos. In conjunction with the LightOS™ disaggregated storage solution, the CSI plugin provides a building block for the easy deployment of stateful containerized applications on CO clusters.
+The Lightbits™ CSI plugin is a software module that implements the management of persistent storage volumes exported by Lightbits™ software, for Container Orchestrator (CO) systems such as Kubernetes and Mesos. In conjunction with the Lightbits™ disaggregated storage solution, the CSI plugin provides a building block for the easy deployment of stateful containerized applications on CO clusters.
 
-The version of the plugin covered by this document implements version 1.2 of the [Container Storage Interface (CSI) Specification](https://github.com/container-storage-interface/spec/blob/v1.2.0/spec.md), and is compatible with LightOS™ version 3.0.1
+The version of the plugin covered by this document implements version 1.2 of the [Container Storage Interface (CSI) Specification](https://github.com/container-storage-interface/spec/blob/v1.2.0/spec.md), and is compatible with Lightbits™ version 3.2.1.
 
-The document summarizes the basic CSI plugin deployment and usage guidelines. For the compatibility notes, list of new features, changes, and known limitations of the Lightbits CSI plugin software, see the version-specific Release Notes supplied with the CSI plugin.
+> **NOTE:**
+>
+> If you upgrade the Lightbits cluster to version 3.2.1 it is recommended to upgrade the CSI plugin to version 1.10.0 as well.
 
-To successfully deploy the LightOS™ CSI plugin on Kubernetes, you must be familiar with the concepts and management systems of the LightOS™ software and Kubernetes. Once the system is configured, no knowledge of LightOS™ or the Lightbits CSI plugin is required to deploy workloads that consume storage provided by LightOS™ storage clusters to the Kubernetes cluster.
+The document summarizes the basic CSI plugin deployment and usage guidelines. For the compatibility notes, list of new features, changes, and known limitations of the Lightbits™ CSI plugin software, see the version-specific Release Notes supplied with the CSI plugin.
+
+To successfully deploy the Lightbits™ CSI plugin on Kubernetes, you must be familiar with the concepts and management systems of the Lightbits™ software and Kubernetes. Once the system is configured, no knowledge of Lightbits™ Cluster or the Lightbits™ CSI plugin is required to deploy workloads that consume storage provided by Lightbits™ storage clusters to the Kubernetes cluster.
 Unless you are already familiar with these topics, we recommend that you review the following Kubernetes documentation before you get started:
 
 - [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)

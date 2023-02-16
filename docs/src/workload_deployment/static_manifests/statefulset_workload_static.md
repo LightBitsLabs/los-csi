@@ -124,7 +124,7 @@ pvc-f7d33e21-80b7-11e9-a4ab-a4bf014dfc95   99ff3144-ae34-414a-b1d0-0b1a84919aaf 
 pvc-03b5e41e-80b8-11e9-a4ab-a4bf014dfc95   f9bcfe15-fbe3-4697-80f7-77cd9f1e54f0   Available   FullyProtected     3         10 GiB    3          false         values:"ACL2"    None
 ```
 
-When the LightOS CSI plugin creates a volume on the LightOS storage cluster, it uses the name of the `PV` that Kubernetes passed to it as the LightOS volume name. Therefore, you can also cross-reference the volume names in the `lbcli` output against the kubectl pv command output you obtained earlier.
+When the Lightbits CSI plugin creates a volume on the Lightbits storage cluster, it uses the name of the `PV` that Kubernetes passed to it as the LightOS volume name. Therefore, you can also cross-reference the volume names in the `lbcli` output against the kubectl pv command output you obtained earlier.
 
 ### Remove StatefulSet
 
