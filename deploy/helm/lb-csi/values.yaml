@@ -3,7 +3,7 @@ enableExpandVolume: true
 enableSnapshot: true
 image: "lb-csi-plugin:1.9.1"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
-sidecarImageRegistry: k8s.gcr.io
+sidecarImageRegistry: registry.k8s.io
 imagePullPolicy: IfNotPresent
 imagePullSecrets: []
 discoveryClientInContainer: false

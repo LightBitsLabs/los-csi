@@ -159,7 +159,7 @@ spec:
     - --allow-privileged=true
     ...
     - --feature-gates=CSIDriverRegistry=true,CSINodeInfo=true
-    image: k8s.gcr.io/kube-apiserver:v1.22.5
+    image: registry.k8s.io/kube-apiserver:v1.22.5
     ...
 ```
 
@@ -290,7 +290,7 @@ If you cannot access the Lightbits Docker registry, contact Lightbits support to
 Furthermore, during the deployment 4-6 of the required Kubernetes sidecar container images will be obtained from the Quay registry:
 
 ```bash
-k8s.gcr.io
+registry.k8s.io
 ```
 
 #### Deploying from a Local Private Docker Registry
@@ -312,11 +312,11 @@ Deployment using sidecar container images of versions other than those specified
 - For deployment on Kubernetes versions between v1.17.0 and v1.22.x, since Snapshot support was added, the required Kubernetes sidecar containers are:
 
   ```bash
-  k8s.gcr.io/sig-storage/csi-node-driver-registrar
-  k8s.gcr.io/sig-storage/csi-provisioner
-  k8s.gcr.io/sig-storage/csi-attacher
-  k8s.gcr.io/sig-storage/csi-resizer
-  k8s.gcr.io/sig-storage/csi-snapshotter
+  registry.k8s.io/sig-storage/csi-node-driver-registrar
+  registry.k8s.io/sig-storage/csi-provisioner
+  registry.k8s.io/sig-storage/csi-attacher
+  registry.k8s.io/sig-storage/csi-resizer
+  registry.k8s.io/sig-storage/csi-snapshotter
   ```
 
 Once all the relevant container images are staged in the local Image registry, you must modify the Lightbits CSI plugin deployment spec file that you obtained as part of the Supplementary Package. Specifically:
@@ -335,10 +335,10 @@ metadata:
           image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.9.1
               ...
         - name: csi-provisioner
-          image: k8s.gcr.io/sig-storage/csi-provisioner:v2.2.2
+          image: registry.k8s.io/sig-storage/csi-provisioner:v2.2.2
               ...
         - name: csi-attacher
-          image: k8s.gcr.io/sig-storage/csi-attacher:v3.3.0
+          image: registry.k8s.io/sig-storage/csi-attacher:v3.3.0
               ...
       imagePullSecrets:
       - name: lb-docker-reg-cred
@@ -353,7 +353,7 @@ metadata:
           image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.9.1
               ...
         - name: driver-registrar
-          image: k8s.gcr.io/sig-storage/driver-registrar:v2.1.0
+          image: registry.k8s.io/sig-storage/driver-registrar:v2.1.0
               ...
       imagePullSecrets:
       - name: lb-docker-reg-cred
