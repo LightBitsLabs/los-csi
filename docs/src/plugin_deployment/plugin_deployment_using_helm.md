@@ -46,7 +46,7 @@ helm/lb-csi
 | maxIOQueues                        | "0"                                     | Overrides the default number of I/O queues created by the driver.<br>Zero value means no override (default driver value is number of cores).  |
 | image                              |  ""                                     | lb-csi-plugin image name (string format:  `<image-name>:<tag>`) |
 | imageRegistry                      | docker.lightbitslabs.com/lightos-csi    | Registry to pull LightBits CSI images  |
-| sidecarImageRegistry               | k8s.gcr.io                              | Registry to pull CSI sidecar images                 |
+| sidecarImageRegistry               | registry.k8s.io                              | Registry to pull CSI sidecar images                 |
 | imagePullPolicy                    | Always                                  |                                                  |
 | imagePullSecrets                   | [] (don't use secret)                   | Specify docker-registry secret names as an array. [example](#using-a-custom-docker-registry)  |
 | controllerServiceAccountName       | lb-csi-ctrl-sa                          | Name of controller service account                                                  |
