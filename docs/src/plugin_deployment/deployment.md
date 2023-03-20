@@ -353,7 +353,7 @@ metadata:
           image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.9.1
               ...
         - name: driver-registrar
-          image: registry.k8s.io/sig-storage/driver-registrar:v2.1.0
+          image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.1.0
               ...
       imagePullSecrets:
       - name: lb-docker-reg-cred
