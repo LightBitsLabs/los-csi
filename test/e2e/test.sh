@@ -172,7 +172,7 @@ compare_versions() {
     local aver="$1"
     local op="$2"
     local bver="$3"
-    python -c 'import sys
+    python3 -c 'import sys
 from pkg_resources import parse_version
 sys.exit(not parse_version(sys.argv[1])'"${op}"'parse_version(sys.argv[2]))' "$aver" "$bver"
 }
