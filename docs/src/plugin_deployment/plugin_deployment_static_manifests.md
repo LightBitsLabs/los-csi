@@ -71,6 +71,8 @@ k8s/
 ├── lb-csi-plugin-k8s-v1.21.yaml
 ├── lb-csi-plugin-k8s-v1.22-dc.yaml
 └── lb-csi-plugin-k8s-v1.22.yaml
+├── lb-csi-plugin-k8s-v1.23-dc.yaml
+└── lb-csi-plugin-k8s-v1.23.yaml
 ```
 
 >**Note:**

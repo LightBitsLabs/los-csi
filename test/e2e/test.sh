@@ -82,7 +82,11 @@ test() {
       "v1.21.9")
         skip_flags+="|$snapshot_preprovision_tests_skip_flags"
         ;;
-      "v1.22.5")
+      "v1.22.15")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
+      "v1.23.17")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
         ;;
       *)
         ;;

@@ -43,19 +43,19 @@ If you have any questions about the deployment, usage, or functionality of the L
 
 ## LB CSI Driver Capabilities
 
-| Features                    | K8s v1.17 | K8s v1.18 | K8s v1.19 | K8s v1.20 | K8s v1.21 | K8s v1.22 |
-|-----------------------------|-----------|-----------|-----------|-----------|-----------|-----------|
-| Static Provisioning         | V         | V         | V         | V         | V         | V         |
-| Dynamic Provisioning        | V         | V         | V         | V         | V         | V         |
-| Expand Persistent Volume    | V         | V         | V         | V         | V         | V         |
-| Create VolumeSnapshot       | V         | V         | V         | V         | V         | V         |
-| Create Volume from Snapshot | V         | V         | V         | V         | V         | V         |
-| Delete Snapshot             | V         | V         | V         | V         | V         | V         |
-| CSI Volume Cloning          | V         | V         | V         | V         | V         | V         |
-| CSI Raw Block Volume        | V         | V         | V         | V         | V         | V         |
-| CSI Ephemeral Volume        | V         | V         | V         | V         | V         | V         |
-| Topology                    | X         | X         | X         | X         | X         | X         |
-| Access Mode                 | RWO       | RWO       | RWO       | RWO       | RWO       | RWO       |
+| Features                    | K8s v1.17 - K8s v1.23 |
+|-----------------------------|-----------------------|
+| Static Provisioning         |          V            |
+| Dynamic Provisioning        |          V            |
+| Expand Persistent Volume    |          V            |
+| Create VolumeSnapshot       |          V            |
+| Create Volume from Snapshot |          V            |
+| Delete Snapshot             |          V            |
+| CSI Volume Cloning          |          V            |
+| CSI Raw Block Volume        |          V            |
+| CSI Ephemeral Volume        |          V            |
+| Topology                    |          X            |
+| Access Mode                 |          RWO          |
 
 
 - V: meaning feature is supported

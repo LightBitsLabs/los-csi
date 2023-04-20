@@ -8,7 +8,7 @@ subtitle: |
 
   LightOS Version: v3.2.1
 
-  Kubernetes Versions: v1.17 - v1.22
+  Kubernetes Versions: v1.17 - v1.23
 author: Lightbits Labs
 date: \today
 listings: true
