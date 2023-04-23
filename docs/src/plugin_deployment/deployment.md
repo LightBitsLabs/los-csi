@@ -255,6 +255,8 @@ The `lb-csi-bundle` includes the following content:
 │   ├── lb-csi-plugin-k8s-v1.22.yaml
 │   ├── lb-csi-plugin-k8s-v1.23-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.23.yaml
+│   ├── lb-csi-plugin-k8s-v1.24-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.24.yaml
 │   ├── snapshot-controller-3.yaml
 │   └── snapshot-controller-4.yaml
 ```

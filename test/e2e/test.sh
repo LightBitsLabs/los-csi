@@ -88,6 +88,9 @@ test() {
       "v1.23.17")
         skip_flags+="|$snapshot_preprovision_tests_skip_flags"
         ;;
+      "v1.24.13")
+        skip_flags+="|$snapshot_preprovision_tests_skip_flags"
+        ;;
       *)
         ;;
     esac
