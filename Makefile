@@ -250,6 +250,23 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.23-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.24 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.24.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=true \
+		--set kubeVersion=v1.24 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.24-dc.yaml
 
 deploy/examples:
 	mkdir -p deploy/examples
@@ -282,23 +299,23 @@ examples_manifests: deploy/examples
 		--set preprovisioned.storage=1Gi \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/preprovisioned-block-workload.yaml
 	helm template --set snaps.enabled=true \
-		--set snaps.kubeVersion=v1.23.0 \
+		--set snaps.kubeVersion=v1.24.0 \
 		--set snaps.stage=snapshot-class \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-snapshot-class.yaml
 	helm template --set snaps.enabled=true \
-		--set snaps.kubeVersion=v1.23.0 \
+		--set snaps.kubeVersion=v1.24.0 \
 		--set snaps.stage=example-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-example-pvc-workload.yaml
 	helm template --set snaps.enabled=true \
-		--set snaps.kubeVersion=v1.23.0 \
+		--set snaps.kubeVersion=v1.24.0 \
 		--set snaps.stage=snapshot-from-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-snapshot-from-pvc-workload.yaml
 	helm template --set snaps.enabled=true \
-		--set snaps.kubeVersion=v1.23.0 \
+		--set snaps.kubeVersion=v1.24.0 \
 		--set snaps.stage=pvc-from-snapshot \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-snapshot-workload.yaml
 	helm template --set snaps.enabled=true \
-		--set snaps.kubeVersion=v1.23.0 \
+		--set snaps.kubeVersion=v1.24.0 \
 		--set snaps.stage=pvc-from-pvc \
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-pvc-workload.yaml
 

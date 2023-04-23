@@ -29,3 +29,4 @@ https://github.com/LightBitsLabs/lb-csi/tree/duros/docs/upgrade
 ### Highlights
 
 - Add support for Kubernetes v1.23
+- Add support for Kubernetes v1.24

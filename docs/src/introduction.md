@@ -43,7 +43,7 @@ If you have any questions about the deployment, usage, or functionality of the L
 
 ## LB CSI Driver Capabilities
 
-| Features                    | K8s v1.17 - K8s v1.23 |
+| Features                    | K8s v1.17 - K8s v1.24 |
 |-----------------------------|-----------------------|
 | Static Provisioning         |          V            |
 | Dynamic Provisioning        |          V            |
