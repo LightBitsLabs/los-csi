@@ -133,6 +133,13 @@ func (d *Driver) luksFormat(devicePath string, passphrase string) error {
 		"--cipher", defaultLuksCipher, // the cipher used
 		"--key-size", defaultLuksKeyize, // the size of the encryption key
 		"--key-file", "/dev/stdin", // read the passphrase from stdin
+		// limit the amount of memory used to create the encrypted device
+		// according to https://gitlab.com/cryptsetup/cryptsetup/-/issues/372
+		// the memory consumption during luksFormat is calculated dynamically from the total available memory.
+		// this can lead to a situation where a encrypted volume is created on a high memory machine,
+		// but cannot opened anymore on a machine with less memory.
+		// limit the memory to 256M, given value is kb according to luksFormat help
+		"--pbkdf-memory=262144",
 		"luksFormat", // format
 		devicePath,   // device to encrypt
 	}
