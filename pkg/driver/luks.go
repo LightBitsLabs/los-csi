@@ -4,11 +4,12 @@ package driver
 
 import (
 	"errors"
-	guuid "github.com/google/uuid"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	guuid "github.com/google/uuid"
 )
 
 const (
@@ -138,8 +139,8 @@ func (d *Driver) luksFormat(devicePath string, passphrase string) error {
 		// the memory consumption during luksFormat is calculated dynamically from the total available memory.
 		// this can lead to a situation where a encrypted volume is created on a high memory machine,
 		// but cannot opened anymore on a machine with less memory.
-		// limit the memory to 256M, given value is kb according to luksFormat help
-		"--pbkdf-memory=262144",
+		// limit the memory to 64M, given value is kb according to luksFormat help
+		"--pbkdf-memory=65535",
 		"luksFormat", // format
 		devicePath,   // device to encrypt
 	}
