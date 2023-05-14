@@ -4,11 +4,12 @@ package driver
 
 import (
 	"errors"
-	guuid "github.com/google/uuid"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	guuid "github.com/google/uuid"
 )
 
 const (
