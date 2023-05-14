@@ -56,6 +56,12 @@ Supported environment variables:
         the '{{.DefaultBackend}}' backend with default configuration will be used.
         runtime backend configuration changes are not supported, to reload the
         config - restart the plugin. (default: {{.BackendCfgPath}})
+  LB_CSI_LUKS_CONFIG_PATH   - path to LUKS v2 encryption configuration
+        file, in YAML format. This file enables a mechanism to override some config
+        on a per Node basis which gives the freedom to set more loose config then
+        by specifying using deployment config. If specified file does not exist -
+        sane defaults will be used. Runtime configuration changes are not
+        supported, to reload the config - restart the plugin.
 
 Command line flags:
 `
@@ -73,6 +79,7 @@ var defaults = driver.Config{
 	DefaultBackend: "dsc",
 	BackendCfgPath: filepath.Join(defaultCfgDirPath, defaultBackendCfgFileName),
 	JWTPath:        filepath.Join(defaultCfgDirPath, defaultJWTFileName),
+	LUKSCfgPath:    filepath.Join(defaultCfgDirPath, driver.DefaultLUKSCfgFileName),
 
 	NodeID:   "",
 	Endpoint: "unix:///tmp/csi.sock",
@@ -110,6 +117,8 @@ var (
 		"Path to global LightOS API auth JWT, see $LB_CSI_JWT_PATH.")
 	backendCfgPath = flag.StringP("be-cfg-path", "b", "",
 		"Backend config path, see $LB_CSI_BE_CONFIG_PATH.")
+	luksCfgPath = flag.StringP("luks-cfg-path", "L", "",
+		"LUKS config path, see $LB_CSI_LUKS_CONFIG_PATH.")
 	version = flag.Bool("version", false, "Print the version and exit.")
 	help    = flag.BoolP("help", "h", false, "Print help and exit.")
 
@@ -199,6 +208,8 @@ func main() {
 		DefaultBackend: defaults.DefaultBackend, // not user configurable.
 		BackendCfgPath: pickStr(*backendCfgPath, "LB_CSI_BE_CONFIG_PATH",
 			defaults.BackendCfgPath),
+		LUKSCfgPath: pickStr(*luksCfgPath, "LB_CSI_LUKS_CONFIG_PATH",
+			defaults.LUKSCfgPath),
 		JWTPath:       pickStr(*jwtPath, "LB_CSI_JWT_PATH", defaults.JWTPath),
 		NodeID:        pickStr(*nodeID, "LB_CSI_NODE_ID", defaults.NodeID),
 		Endpoint:      pickStr(*endpoint, "CSI_ENDPOINT", defaults.Endpoint),

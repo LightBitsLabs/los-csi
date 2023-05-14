@@ -4,12 +4,15 @@ package driver
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	guuid "github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -21,6 +24,8 @@ const (
 	defaultLuksNone   = "none"
 
 	diskMapperPath = "/dev/mapper/"
+
+	DefaultLUKSCfgFileName = "luks_config.yaml"
 )
 
 // encryptAndOpenDevice encrypts the volume with the given ID with the given passphrase and open it
@@ -124,9 +129,47 @@ func (d *Driver) getEncryptedDevicePath(volUUID guuid.UUID) (string, error) {
 	return encryptedDevicePath, nil
 }
 
+type luksConfig struct {
+	// limit the amount of memory used to create the encrypted device
+	// according to https://gitlab.com/cryptsetup/cryptsetup/-/issues/372
+	// the memory consumption during luksFormat is calculated dynamically from the total available memory.
+	// this can lead to a situation where a encrypted volume is created on a high memory machine,
+	// but cannot opened anymore on a machine with less memory.
+	// limit the memory to 64M, given value is kb according to luksFormat help
+	PbkdfMemory int64 `yaml:"pbkdfMemory,omitempty"`
+}
+
+func loadLuksConfig(log *logrus.Entry, luksCfgFile string) (*luksConfig, error) {
+	// setting default values that may be overridden by content of config file
+	luksCfg := &luksConfig{
+		// 64MB as sane default.
+		PbkdfMemory: 65535,
+	}
+
+	rawCfg, err := os.ReadFile(luksCfgFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, fmt.Errorf("failed to read luks config: %s", err)
+		}
+		log.Infof("missing luks config file '%s', falling back to default '%v'",
+			luksCfgFile, luksCfg)
+		return luksCfg, nil
+	}
+
+	if err := yaml.Unmarshal(rawCfg, luksCfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal luks config: %s", err)
+	}
+	return luksCfg, nil
+}
+
 // Luks helper
 
 func (d *Driver) luksFormat(devicePath string, passphrase string) error {
+	luksCfg, err := loadLuksConfig(d.log, d.luksCfgFile)
+	if err != nil {
+		return mkExternal("luks config provided but is malformed or can't be parsed: %s", err)
+	}
+
 	args := []string{
 		"-q",                          // don't ask for confirmation
 		"--type=" + defaultLuksFormat, // LUKS2 is default but be explicit
@@ -140,7 +183,7 @@ func (d *Driver) luksFormat(devicePath string, passphrase string) error {
 		// this can lead to a situation where a encrypted volume is created on a high memory machine,
 		// but cannot opened anymore on a machine with less memory.
 		// limit the memory to 64M, given value is kb according to luksFormat help
-		"--pbkdf-memory=65535",
+		fmt.Sprintf("--pbkdf-memory=%d", luksCfg.PbkdfMemory),
 		"luksFormat", // format
 		devicePath,   // device to encrypt
 	}
