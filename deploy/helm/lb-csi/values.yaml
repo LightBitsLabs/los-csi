@@ -12,6 +12,7 @@ discoveryClientImage: "lb-nvme-discovery-client:1.9.1"
 controllerServiceAccountName: lb-csi-ctrl-sa
 nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet
+#luksConfigDir: /etc/lb-csi-luks-config
 #registryUsername: ""
 # jwtSecret:
 # - name: cluster-admin-jwt

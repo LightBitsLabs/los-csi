@@ -108,3 +108,65 @@ volumeBindingMode: Immediate
 Now, a storage encryption secret called `storage-encryption-key` must be present in the namespace of the PVC. This must also contain the `host-encryption-passphrase` as shown above.
 
 Further explanation and samples can be found on the official [CSI documentation](https://kubernetes-csi.github.io/docs/secrets-and-credentials-storage-class.html#per-volume-secrets).
+
+#### Custom LUKS Configuration
+
+Host side encryption is done using LUKS disk encryption.
+
+LUKS has many configuration parameters on format/open that may vary from one deployment to another.
+
+The CSI plugin offers sane defaults for these parameters, and additionally it offers a way to override these settings on a per node basis.
+
+Example to such a parameter override is `pbkdf-memory` which limits the amount of memory used to create the encrypted device according to [issues/372](https://gitlab.com/cryptsetup/cryptsetup/-/issues/372).
+
+Since in a single cluster we may see variance in node resources with regards to memory constraints we need to limit this parameter to enable the same volume to open on all nodes.
+
+The plugin will try to load the file placed at `/etc/lb-csi/luks_config.yaml` by default and will try to read this value from the file. if not present the plugin will use the default (64MB).
+
+Plugin configuration required:
+
+```yaml
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: lb-csi-node
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: lb-csi-plugin
+      role: node
+    spec:
+      containers:
+      - name: lb-csi-plugin
+        [...]
+        env:
+        - name: LB_CSI_LUKS_CONFIG_PATH
+          value: "/etc/lb-csi-luks-config"
+        volumeMounts:
+        [...]
+        - name: luks-config-dir
+          mountPath: "/etc/lb-csi-luks-config"
+      volumes:
+      [...]
+      - name: luks-config-dir
+        hostPath:
+          path: "/etc/lb-csi-luks-config"
+          type: DirectoryOrCreate
+```
+
+Using `Helm` you can provide the following configuration value
+
+```yaml
+luksConfigDir: /etc/lb-csi-luks-config
+```
+
+In order to instruct the plugin to load the configuration.
+
+An example of such `/etc/lb-csi-luks-config/luks_config.yaml` file would look like:
+
+```bash
+pbkdfMemory: 65535
+```
+
+which will set the memory limit to 64MB

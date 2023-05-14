@@ -65,6 +65,10 @@ spec:
               value: text
             - name: LB_CSI_LOG_TIME
               value: "true"
+{{- if .Values.luksConfigDir }}
+            - name: LB_CSI_LUKS_CONFIG_PATH
+              value: {{ .Values.luksConfigDir | quote }}
+{{- end }}
           imagePullPolicy: "Always"
           securityContext:
             privileged: true
@@ -84,6 +88,10 @@ spec:
 {{- range .Values.jwtSecret }}
             - name: {{ .name }}
               mountPath: "/etc/lb-csi"
+{{- end }}
+{{- if .Values.luksConfigDir }}
+            - name: luks-config-dir
+              mountPath: {{ .Values.luksConfigDir | quote }}
 {{- end }}
         - name: csi-node-driver-registrar
           image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-node-driver-registrar:v2.1.0
@@ -169,6 +177,12 @@ spec:
           - key: jwt
             path: jwt
             mode: 0777
+{{- end }}
+{{- if .Values.luksConfigDir }}
+      - name: luks-config-dir
+        hostPath:
+          path: {{ .Values.luksConfigDir | quote }}
+          type: DirectoryOrCreate
 {{- end }}
 {{- if empty .Values.imagePullSecrets | not }}
       imagePullSecrets:

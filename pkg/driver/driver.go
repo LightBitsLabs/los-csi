@@ -10,6 +10,7 @@ import (
 	"net"
 	neturl "net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -77,6 +78,7 @@ type Config struct {
 	DefaultBackend string
 	BackendCfgPath string // if valid - contents override DefaultBackend.
 	JWTPath        string
+	LUKSCfgPath    string
 
 	NodeID   string
 	Endpoint string // must be a Unix Domain Socket URI
@@ -96,11 +98,12 @@ type Config struct {
 }
 
 type Driver struct {
-	sockPath  string // control UDS path.
-	jwtPath   string // LightOS API authN/authZ JWT.
-	nodeID    string
-	hostNQN   string
-	defaultFS string
+	sockPath    string // control UDS path.
+	jwtPath     string // LightOS API authN/authZ JWT.
+	luksCfgFile string // path to luks configuration yaml file.
+	nodeID      string
+	hostNQN     string
+	defaultFS   string
 
 	srv *grpc.Server
 	log *logrus.Entry
@@ -215,6 +218,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		nodeID:        cfg.NodeID,
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
+		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
 	}
 
 	if err := checkNodeID(cfg.NodeID); err != nil {
