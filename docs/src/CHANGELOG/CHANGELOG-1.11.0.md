@@ -3,7 +3,7 @@
 
 ## v1.11.0
 
-Date: 2023-20-04
+Date: 2023-31-08
 
 ### Source Code
 
@@ -15,8 +15,8 @@ https://github.com/lightbitslabs/lb-csi/releases/tag/v1.11.0
 
 ### Helm Charts
 
-- docker.lightbitslabs.com/lightos-csi/lb-csi:v0.8.0
-- docker.lightbitslabs.com/lightos-csi/lb-csi-workload-examples:v0.8.0`
+- docker.lightbitslabs.com/lightos-csi/lb-csi:v0.9.0
+- docker.lightbitslabs.com/lightos-csi/lb-csi-workload-examples:v0.9.0`
 
 ### Documentation
 
@@ -30,3 +30,4 @@ https://github.com/LightBitsLabs/lb-csi/tree/duros/docs/upgrade
 
 - Add support for Kubernetes v1.23
 - Add support for Kubernetes v1.24
+- Upgraded Lightbits Discovery Client
