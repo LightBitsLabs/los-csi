@@ -17,7 +17,7 @@ The version of the plugin covered by this document implements version 1.2 of the
 
 > **NOTE:**
 >
-> If you upgrade the Lightbits cluster to version 3.5.1 it is recommended to upgrade the CSI plugin to version 1.12.0 as well.
+> If you upgrade the Lightbits cluster to version 3.6.1 it is recommended to upgrade the CSI plugin to version 1.13.0 as well.
 
 The document summarizes the basic CSI plugin deployment and usage guidelines. For the compatibility notes, list of new features, changes, and known limitations of the Lightbits™ CSI plugin software, see the version-specific Release Notes supplied with the CSI plugin.
 
