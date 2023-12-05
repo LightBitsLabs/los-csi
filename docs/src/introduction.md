@@ -55,9 +55,10 @@ If you have any questions about the deployment, usage, or functionality of the L
 | CSI Raw Block Volume        |          V            |
 | CSI Ephemeral Volume        |          V            |
 | Topology                    |          X            |
-| Access Mode                 |          RWO          |
+| Access Mode                 | RWO, RWX (block-only) |
 
 
 - V: meaning feature is supported
 - X: meaning feature is not supported
 - RWO: [Read-Write-Once](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
+- RWX: [Read-Write-Many](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
