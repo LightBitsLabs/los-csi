@@ -31,6 +31,7 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.14/m
     xfsprogs-extra=5.12.0-r0 \
     lsblk \
     blkid \
+    kmod \
     $EXTRA_PACKAGES
 
 COPY licenses /licenses
