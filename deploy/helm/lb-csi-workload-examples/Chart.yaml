@@ -1,7 +1,7 @@
 apiVersion: v2
 name: lb-csi-workload-examples
-version: 0.11.0
-appVersion: 1.13.0
+version: 0.12.0
+appVersion: 1.14.0
 description: Helm Chart for Lightbits CSI Workload Examples.
 home: https://github.com/lightbitslabs/los-csi
 icon: https://www.lightbitslabs.com/wp-content/uploads/2018/08/cropped-header-logo-32x32.png
@@ -11,20 +11,20 @@ maintainers:
   url: https://www.lightbitslabs.com/
 dependencies:
 - name: block
-  version: 0.11.0
+  version: 0.12.0
   condition: block.enabled
 - name: filesystem
-  version: 0.11.0
+  version: 0.12.0
   condition: filesystem.enabled
 - name: preprovisioned
-  version: 0.11.0
+  version: 0.12.0
   condition: preprovisioned.enabled
 - name: statefulset
-  version: 0.11.0
+  version: 0.12.0
   condition: statefulset.enabled
 - name: snaps
-  version: 0.11.0
+  version: 0.12.0
   condition: snaps.enabled
 - name: storageclass
-  version: 0.11.0
+  version: 0.12.0
   condition: storageclass.enabled
