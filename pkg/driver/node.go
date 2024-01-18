@@ -33,6 +33,7 @@ import (
 const (
 	diskByIDPath   = "/dev/disk/by-id"
 	nvmeUUIDPrefix = "nvme-uuid."
+	procMountsPath = "/proc/mounts"
 )
 
 // lbVolEligible() allows to rule out impossible scenarios early on. it
@@ -522,7 +523,7 @@ func MakeFile(path string) error {
 }
 
 func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error) {
-	info, err := mountutils.ListProcMounts(tgtPath)
+	info, err := mountutils.ListProcMounts(procMountsPath)
 	if err != nil {
 		return "", err
 	}
