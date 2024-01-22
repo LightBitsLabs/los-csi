@@ -14,12 +14,12 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	mountutils "k8s.io/mount-utils"
@@ -791,13 +791,12 @@ func filesystemNodeGetVolumeStats(volPath string) (*csi.NodeGetVolumeStatsRespon
 		return nil, mkEnoent("no volume is mounted on %s '%s'", volPathField, volPath)
 	}
 
-	statfs := &unix.Statfs_t{}
-	err = unix.Statfs(volPath, statfs)
+	statfs := &syscall.Statfs_t{}
+	err = syscall.Statfs(volPath, statfs)
 	if err != nil {
 		return nil, mkExternal("failed to collect FS info for mount '%s': %s", volPath, err)
 	}
 
-	//nolint:unconvert // unix.Statfs_t fields have diff sizes on diff architectures.
 	return &csi.NodeGetVolumeStatsResponse{
 		Usage: []*csi.VolumeUsage{
 			{
