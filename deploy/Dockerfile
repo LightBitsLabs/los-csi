@@ -1,5 +1,5 @@
 # update alpine to get cryptsetup 2.4.x
-FROM alpine:3.16
+FROM alpine:3.19
 
 LABEL org.opencontainers.image.title="Lightbits CSI Plugin" \
     org.opencontainers.image.description="CSI plugin for Lightbits Cluster" \
