@@ -205,11 +205,11 @@ func createBackend(
 	if err == nil {
 		beType, err = backend.DetectType(rawCfg)
 		if err != nil {
-			return nil, fmt.Errorf("bad backend config file '%s': %w", cfgPath, err)
+			return nil, fmt.Errorf("bad backend config file '%s': %s", cfgPath, err)
 		}
 	} else {
 		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to read backend config: %w", err)
+			return nil, fmt.Errorf("failed to read backend config: %s", err)
 		}
 		log.Infof("missing backend config file '%s', falling back to default backend '%s'",
 			cfgPath, defaultBackend)
