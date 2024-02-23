@@ -6,7 +6,6 @@ package dsc
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -97,7 +96,7 @@ func (be *Backend) checkDSCCfgPath() error {
 func (be *Backend) writeDSCCfgFile(finalPath string, tgtEnv *backend.TargetEnv) error {
 	transport := "tcp" // currently only NVMe/TCP is supported by the DSC BE
 
-	f, err := ioutil.TempFile(be.dscCfgPath, dscReservedPrefix)
+	f, err := os.CreateTemp(be.dscCfgPath, dscReservedPrefix)
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %s", err)
 	}
