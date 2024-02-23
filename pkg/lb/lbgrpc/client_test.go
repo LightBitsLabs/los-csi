@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"math/rand"
 	"os"
@@ -135,7 +135,7 @@ func TestMain(m *testing.M) {
 			"to the cluster mgmt endpoint must be specified")
 	}
 	if logPath == "" {
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 		log.SetLevel(logrus.PanicLevel)
 	} else {
 		log.SetFormatter(&logrus.TextFormatter{
@@ -200,22 +200,23 @@ func chkZeroFields(s interface{}) {
 // the test with a corresponding error message.
 //
 // the expected JSON file format, by example, is:
-//   {
-//     "UUID": "864eb8af-f055-4c41-b8a3-e9a527483db3",
-//     "SubNQN": "nqn.2014-08.org.nvmexpress:NVMf:uuid:c3dc6852-adcf-46f0-bc7b-a2d687ecee3a",
-//     "Nodes": [
-//       {
-//         "Name": "lb-node-00",
-//         "Hostname": "lb-node-00",
-//         "UUID": "3f5e5352-3e29-4cea-984d-dbbe768a9476",
-//         "MgmtEP": "172.18.0.7:80",
-//         "DataEP": "172.18.0.7:4420"
-//       },
-//           ...
-//     ]
-//   }
+//
+//	{
+//	  "UUID": "864eb8af-f055-4c41-b8a3-e9a527483db3",
+//	  "SubNQN": "nqn.2014-08.org.nvmexpress:NVMf:uuid:c3dc6852-adcf-46f0-bc7b-a2d687ecee3a",
+//	  "Nodes": [
+//	    {
+//	      "Name": "lb-node-00",
+//	      "Hostname": "lb-node-00",
+//	      "UUID": "3f5e5352-3e29-4cea-984d-dbbe768a9476",
+//	      "MgmtEP": "172.18.0.7:80",
+//	      "DataEP": "172.18.0.7:4420"
+//	    },
+//	        ...
+//	  ]
+//	}
 func parseClusterInfo(path string) *clusterInfo {
-	cij, err := ioutil.ReadFile(path)
+	cij, err := os.ReadFile(path)
 	if err != nil {
 		flagDie("invalid cluster info file path '%s' specified: %s", path, err)
 	}
@@ -239,7 +240,7 @@ func parseClusterInfo(path string) *clusterInfo {
 }
 
 func loadJwt(path string) string {
-	buf, err := ioutil.ReadFile(path)
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		flagDie("invalid JWT file path '%s' specified: %s", path, err)
 	}

@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -104,7 +103,7 @@ func queryLBforTargetEnv(
 }
 
 func (d *Driver) getDeviceUUID(device string) (string, error) {
-	devUUID, err := ioutil.ReadFile(filepath.Join("/sys/block", device, "wwid"))
+	devUUID, err := os.ReadFile(filepath.Join("/sys/block", device, "wwid"))
 	if err != nil {
 		d.log.Debugf("failed to read wwid from dev: %s err: %s", device, err)
 		return "", err

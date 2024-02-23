@@ -6,7 +6,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
 	neturl "net/url"
 	"os"
@@ -202,7 +201,7 @@ func createBackend(
 	log *logrus.Entry, hostNQN, cfgPath, defaultBackend string,
 ) (backend.Backend, error) {
 	beType := defaultBackend
-	rawCfg, err := ioutil.ReadFile(cfgPath)
+	rawCfg, err := os.ReadFile(cfgPath)
 	if err == nil {
 		beType, err = backend.DetectType(rawCfg)
 		if err != nil {
@@ -382,7 +381,7 @@ func (d *Driver) Run() error {
 
 func (d *Driver) setJWT(jwtPath string) {
 	log := d.log.WithField("jwt-path", jwtPath)
-	b, err := ioutil.ReadFile(jwtPath)
+	b, err := os.ReadFile(jwtPath)
 	if err != nil {
 		log.WithError(err).Warn("failed to load global JWT, clearing it")
 		d.jwt = ""
