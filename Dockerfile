@@ -1,3 +1,19 @@
+FROM golang:1.22-alpine3.19 AS builder
+
+RUN apk update && \
+    apk add --no-cache \
+    curl \
+    docker-cli \
+    bash \
+    make \
+    git \
+    g++
+
+WORKDIR /work
+COPY . .
+
+RUN make build
+
 # update alpine to get cryptsetup 2.4.x
 FROM alpine:3.19
 
@@ -24,18 +40,17 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_LOG_TIME=true        \
     LB_CSI_LOG_FMT=text
 
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.14/main \
+RUN apk add --no-cache \
     cryptsetup \
     e2fsprogs e2fsprogs-extra \
-    xfsprogs=5.12.0-r0 \
-    xfsprogs-extra=5.12.0-r0 \
+    xfsprogs \
+    xfsprogs-extra \
     lsblk \
     blkid \
     kmod \
     $EXTRA_PACKAGES
 
-COPY licenses /licenses
-
-COPY lb-csi-plugin /
+COPY deploy/licenses /licenses
+COPY --from=builder /work/deploy/lb-csi-plugin /
 
 ENTRYPOINT ["/lb-csi-plugin"]

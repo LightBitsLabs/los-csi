@@ -48,7 +48,7 @@ LDFLAGS ?= \
     $(and $(BUILD_HASH), -X $(PKG_PREFIX)/pkg/driver.versionBuildHash=$(BUILD_HASH)) \
     $(and $(BUILD_ID), -X $(PKG_PREFIX)/pkg/driver.versionBuildID=$(BUILD_ID)) \
     -extldflags "-static"
-override GO_VARS := GOPROXY=off GO111MODULE=on CGO_ENABLED=0
+override GO_VARS := CGO_ENABLED=0
 
 override LABELS := \
 	--label org.opencontainers.image.title="Lightbits CSI Plugin" \
