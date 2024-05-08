@@ -54,5 +54,6 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
+        file: deploy/Dockerfile
         push: true
         tags: ghcr.io/lightbitslabs/los-csi:${{ env.tag }}
