@@ -31,4 +31,4 @@ The Lightbits team members were key contributors to the NVMe standard and among 
 As the trailblazers in this field, the Lightbits solution is already successfully tested in industry-leading cloud data centers.
 The company’s shared NVMe architecture provides efficient and robust disaggregation. With a transition that is so smooth, your applications teams won’t even notice the change. They can now go wild with better tail latency than local SSDs! 
 
-And finally, you can separate storage from compute without drama.
+And finally, you can separate storage from compute without drama..
