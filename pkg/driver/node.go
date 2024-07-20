@@ -431,11 +431,18 @@ func (d *Driver) NodeUnstageVolume(
 	// devices or even mountpoints - that might be a side-effect of k8s
 	// retrying the call...
 
+	ioErr := false
 	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, mkEExec("can't examine staging path: %s", err)
+		if strings.Contains(err.Error(), "input/output error") {
+			d.log.Warnf("check mount '%s' failed with IO error (notMnt: %t) - try to umount anyway: %s",
+				tgtPath, notMnt, err)
+			ioErr = true
+		} else {
+			return nil, mkEExec("can't examine staging path: %s", err)
+		}
 	}
-	if !notMnt {
+	if !notMnt || ioErr {
 		err = d.mounter.Unmount(tgtPath)
 		if err != nil {
 			return nil, mkEExec("failed to unmount '%s': %s", tgtPath, err)
@@ -622,9 +629,7 @@ func (d *Driver) NodePublishVolume(
 	// for idempotency - start in reverse order:
 	if _, err := os.Stat(req.TargetPath); err == nil {
 		notMnt, err := mountutils.IsNotMountPoint(d.mounter, req.TargetPath)
-		if os.IsNotExist(err) {
-			return nil, mkEinvalf("target_path", "'%s' doesn't exist", req.TargetPath)
-		} else if err != nil {
+		if err != nil {
 			return nil, mkEExec("can't examine target path: %s", err)
 		}
 		if !notMnt {
@@ -674,12 +679,19 @@ func (d *Driver) NodeUnpublishVolume(
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 
+	ioErr := false
 	tgtPath := req.TargetPath
 	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
 	if err != nil && !os.IsNotExist(err) {
-		return nil, mkEExec("can't examine staging path: %s", err)
+		if strings.Contains(err.Error(), "input/output error") {
+			d.log.Warnf("check mount '%s' failed with IO error (notMnt: %t) - try to umount anyway: %s",
+				tgtPath, notMnt, err)
+			ioErr = true
+		} else {
+			return nil, mkEExec("can't examine mount path: %s", err)
+		}
 	}
-	if !notMnt {
+	if !notMnt || ioErr {
 		err = d.mounter.Unmount(tgtPath)
 		if err != nil {
 			return nil, mkEExec("failed to unmount '%s': %s", tgtPath, err)
