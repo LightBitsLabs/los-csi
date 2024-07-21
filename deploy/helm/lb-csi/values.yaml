@@ -8,7 +8,7 @@ imagePullPolicy: IfNotPresent
 imagePullSecrets: []
 discoveryClientInContainer: false
 maxIOQueues: 0
-discoveryClientImage: "lb-nvme-discovery-client:1.14.0"
+discoveryClientImage: "lb-nvme-discovery-client:6b979cb7"
 controllerServiceAccountName: lb-csi-ctrl-sa
 nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet
