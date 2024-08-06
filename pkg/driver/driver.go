@@ -315,7 +315,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	lbdialer := func(
 		ctx context.Context, targets endpoint.Slice, mgmtScheme string,
 	) (lb.Client, error) {
-		return lbgrpc.Dial(ctx, d.log, targets, mgmtScheme)
+		return lbgrpc.Dial(d.log, targets, mgmtScheme)
 	}
 	d.lbclients = lb.NewClientPool(lbdialer)
 
