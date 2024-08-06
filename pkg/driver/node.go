@@ -273,15 +273,14 @@ func (d *Driver) NodeStageVolume(
 	// path, or some such). and i THINK i can see `kubelet` creating it
 	// before calling the plugins...
 	tgtPath := req.StagingTargetPath
-	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
+	isMnt, err := d.mounter.IsMountPoint(tgtPath)
 	if os.IsNotExist(err) {
 		return nil, mkEinvalf("staging_target_path",
 			"'%s' doesn't exist", tgtPath)
 	} else if err != nil {
 		return nil, mkEExec("can't examine staging path: %s", err)
 	}
-	// don't you not like double negatives?
-	if !notMnt {
+	if isMnt {
 		dev, _, err := mountutils.GetDeviceNameFromMount(d.mounter, tgtPath)
 		if err != nil {
 			log.Debugf("failed to find what's mounted at '%s': %s", tgtPath, err)
@@ -432,17 +431,17 @@ func (d *Driver) NodeUnstageVolume(
 	// retrying the call...
 
 	ioErr := false
-	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
+	isMnt, err := d.mounter.IsMountPoint(tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		if strings.Contains(err.Error(), "input/output error") {
-			d.log.Warnf("check mount '%s' failed with IO error (notMnt: %t) - try to umount anyway: %s",
-				tgtPath, notMnt, err)
+			d.log.Warnf("check mount '%s' failed with IO error (isMnt: %t) - try to umount anyway: %s",
+				tgtPath, isMnt, err)
 			ioErr = true
 		} else {
 			return nil, mkEExec("can't examine staging path: %s", err)
 		}
 	}
-	if !notMnt || ioErr {
+	if isMnt || ioErr {
 		err = d.mounter.Unmount(tgtPath)
 		if err != nil {
 			return nil, mkEExec("failed to unmount '%s': %s", tgtPath, err)
@@ -628,11 +627,11 @@ func (d *Driver) NodePublishVolume(
 
 	// for idempotency - start in reverse order:
 	if _, err := os.Stat(req.TargetPath); err == nil {
-		notMnt, err := mountutils.IsNotMountPoint(d.mounter, req.TargetPath)
+		isMnt, err := d.mounter.IsMountPoint(req.TargetPath)
 		if err != nil {
 			return nil, mkEExec("can't examine target path: %s", err)
 		}
-		if !notMnt {
+		if isMnt {
 			dev, err := getDeviceNameFromMount(ctx, req.TargetPath)
 			if err != nil {
 				log.Debugf("failed to find what's mounted at '%s': %s",
@@ -681,17 +680,17 @@ func (d *Driver) NodeUnpublishVolume(
 
 	ioErr := false
 	tgtPath := req.TargetPath
-	notMnt, err := mountutils.IsNotMountPoint(d.mounter, tgtPath)
+	isMnt, err := d.mounter.IsMountPoint(tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		if strings.Contains(err.Error(), "input/output error") {
 			d.log.Warnf("check mount '%s' failed with IO error (notMnt: %t) - try to umount anyway: %s",
-				tgtPath, notMnt, err)
+				tgtPath, isMnt, err)
 			ioErr = true
 		} else {
 			return nil, mkEExec("can't examine mount path: %s", err)
 		}
 	}
-	if !notMnt || ioErr {
+	if isMnt || ioErr {
 		err = d.mounter.Unmount(tgtPath)
 		if err != nil {
 			return nil, mkEExec("failed to unmount '%s': %s", tgtPath, err)
