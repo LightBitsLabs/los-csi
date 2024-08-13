@@ -24,15 +24,17 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
     LB_CSI_LOG_TIME=true        \
     LB_CSI_LOG_FMT=text
 
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.14/main \
+RUN apk add --no-cache \
     cryptsetup \
     e2fsprogs e2fsprogs-extra \
-    xfsprogs=5.12.0-r0 \
-    xfsprogs-extra=5.12.0-r0 \
     lsblk \
     blkid \
     kmod \
     $EXTRA_PACKAGES
+
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.14/main  \
+    xfsprogs=5.12.0-r0 \
+    xfsprogs-extra=5.12.0-r0
 
 COPY licenses /licenses
 COPY lb-csi-plugin /
