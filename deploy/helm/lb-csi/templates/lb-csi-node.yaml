@@ -201,3 +201,11 @@ spec:
       #imagePullSecrets:
       #- name: my-docker-registry-credentials-secret
 {{- end }}
+
+{{- if .Values.lbNodeTolerations }}
+      tolerations:
+       - key: {{ .Values.lbNodeTolerations.key}}
+         operator: {{ .Values.lbNodeTolerations.operator}}
+         value: {{ .Values.lbNodeTolerations.value}}
+         effect: {{ .Values.lbNodeTolerations.effect}}
+{{- end }}
