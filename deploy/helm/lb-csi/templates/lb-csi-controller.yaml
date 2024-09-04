@@ -135,3 +135,11 @@ spec:
       #imagePullSecrets:
       #- name: my-docker-registry-credentials-secret
 {{- end }}
+
+{{- if .Values.lbControllerTolerations }}
+      tolerations:
+       - key: {{ .Values.lbControllerTolerations.key}}
+         operator: {{ .Values.lbControllerTolerations.operator}}
+         value: {{ .Values.lbControllerTolerations.value}}
+         effect: {{ .Values.lbControllerTolerations.effect}}
+{{- end }}
