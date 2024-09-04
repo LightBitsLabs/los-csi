@@ -6,7 +6,10 @@ package driver
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
@@ -452,7 +455,11 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 		// snapshot deletion strategy this will also prevent creation of
 		// identically named clone volumes in the future due to snapshot name
 		// collisions (see note below on cleanup).
-		snapName := "snapshot-" + req.Name
+
+		// Appending current time-unit and randome number to the snapshot name to make it unique.
+		// e.g snapshot-<volume-name>-<current-time> <31-bit non-negative-int> snapshot-volName-YYYYMMDDHHMMSS-1279846997  
+		formattedTime := time.Now().Format("20060102150405")
+		snapName := "snapshot-" + req.Name + "-" + formattedTime + "-" + strconv.Itoa(int(rand.Int31()))
 		log.Infof("auto-creating intermediate snapshot '%s' to clone from a volume", snapName)
 		snap, err := doCreateSnapshot(ctx, log, clnt, snapName, *srcVid,
 			"auto-snap for clone, by: LB CSI")
