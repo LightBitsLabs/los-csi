@@ -41,7 +41,6 @@ func TestCSISanity(t *testing.T) {
 		DefaultFS:     "ext4",
 		LogLevel:      "info",
 		LogRole:       "node",
-		LogFormat:     "json",
 		LogTimestamps: false,
 		Transport:     "tcp",
 		SquelchPanics: false,
