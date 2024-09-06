@@ -15,7 +15,8 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
@@ -224,10 +225,13 @@ func Dial(
 	}
 
 	log.Info("connecting...", "targets", res.tgts, "clnt-type", "lbgrpc")
-
+	logginopts := []logging.Option{
+		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+		// Add any other option (check functions starting with logging.With).
+	}
 	interceptors := []grpc.UnaryClientInterceptor{
 		mkUnaryClientInterceptor(res),
-		// TODO add slog interceptors
+		logging.UnaryClientInterceptor(InterceptorLogger(log), logginopts...),
 	}
 
 	// these are broadly in line with the expected server SLOs:
@@ -263,7 +267,7 @@ func Dial(
 		grpc.WithDisableRetry(),
 		grpc.WithUserAgent("lb-csi-plugin"), // TODO: take from config (?) + add version!
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
-		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(interceptors...)),
+		grpc.WithChainUnaryInterceptor(interceptors...),
 		grpc.WithKeepaliveParams(kal),
 		grpc.WithConnectParams(cp),
 		grpc.WithResolvers(lbr),
@@ -296,6 +300,14 @@ func Dial(
 
 	log.Info("connected!")
 	return res, nil
+}
+
+// InterceptorLogger adapts slog logger to interceptor logger.
+// This code is simple enough to be copied and not imported.
+func InterceptorLogger(l *slog.Logger) logging.Logger {
+	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		l.Log(ctx, slog.Level(lvl), msg, fields...)
+	})
 }
 
 // TODO: add stream interceptor *IF* LB API adds streaming entrypoints...
