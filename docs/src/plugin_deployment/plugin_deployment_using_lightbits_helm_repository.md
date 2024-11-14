@@ -22,8 +22,8 @@ lightbits-helm-repo       https://dl.lightbitslabs.com/public/lightos-csi/helm/c
 ```bash
 helm search repo lightbits-helm-repo
 NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
-lightbits-helm-repo/lb-csi-plugin                 0.14.0          1.16.0          Helm Chart for Lightbits CSI Plugin.
-lightbits-helm-repo/lb-csi-workload-examples      0.14.0          1.16.0          Helm Chart for Lightbits CSI Workload Examples.
+lightbits-helm-repo/lb-csi-plugin                 0.14.0          1.17.0          Helm Chart for Lightbits CSI Plugin.
+lightbits-helm-repo/lb-csi-workload-examples      0.14.0          1.17.0          Helm Chart for Lightbits CSI Workload Examples.
 lightbits-helm-repo/snapshot-controller-3         0.14.0          3.0.3           Deploy snapshot-controller for K8s version < v1.20
 lightbits-helm-repo/snapshot-controller-4         0.14.0          4.2.1           Deploy snapshot-controller for K8s version >= v1.20
 ```
