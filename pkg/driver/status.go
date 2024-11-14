@@ -5,8 +5,8 @@ package driver
 
 import (
 	"fmt"
+	"log/slog"
 
-	"github.com/sirupsen/logrus"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -37,10 +37,10 @@ func shouldRetryOn(err error) bool {
 }
 
 func mungeLBErr(
-	log *logrus.Entry, err error, format string, args ...interface{},
+	log *slog.Logger, err error, format string, args ...interface{},
 ) error {
 	if shouldRetryOn(err) {
-		log.Warnf(format+": "+err.Error(), args...)
+		log.Warn(format+": "+err.Error(), args...)
 		return mkEagain("temporarily "+format, args...)
 	}
 	return mkExternal(format+": "+err.Error(), args...)
