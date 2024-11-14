@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -215,7 +216,7 @@ type Client struct {
 // passed here) - `DeadlineExceeded` will be returned as usual, and the caller
 // can retry the operation.
 func Dial(
-	ctx context.Context, log *logrus.Entry, targets endpoint.Slice, mgmtScheme string,
+	log *logrus.Entry, targets endpoint.Slice, mgmtScheme string,
 ) (*Client, error) {
 	if !targets.IsValid() {
 		return nil, status.Errorf(codes.InvalidArgument,
@@ -277,7 +278,6 @@ func Dial(
 	lbr := newLbResolver(log, scheme, res.eps)
 
 	opts := []grpc.DialOption{
-		grpc.WithBlock(),
 		grpc.WithDisableRetry(),
 		grpc.WithUserAgent("lb-csi-plugin"), // TODO: take from config (?) + add version!
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
@@ -289,7 +289,7 @@ func Dial(
 
 	if mgmtScheme == "grpc" {
 		logger.Infof("connecting insecurely")
-		opts = append(opts, grpc.WithInsecure())
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	} else if mgmtScheme == "grpcs" {
 		logger.Infof("connecting securely")
 		opts = append(opts, grpc.WithTransportCredentials(
@@ -300,8 +300,7 @@ func Dial(
 	}
 
 	var err error
-	res.conn, err = grpc.DialContext(
-		ctx,
+	res.conn, err = grpc.NewClient(
 		scheme+":///lb-resolver", // use our resolver instead of explicit target
 		opts...,
 	)
