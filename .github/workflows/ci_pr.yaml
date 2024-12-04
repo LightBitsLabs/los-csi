@@ -89,7 +89,7 @@ jobs:
           repo: lbcitests
           github_token: ${{ inputs.CI_TOKEN }}
           workflow_file_name: ci_pr.yaml
-          ref: main
+          ref: elad/LBM1-35481/add-los-csi-pr-checks
           client_payload: '{"manifest_name":"${{ needs.populate_env_vars.outputs.manifest_name }}", "tests_type":"${{ needs.populate_env_vars.outputs.system_tests_type }}", "manifest_branch":"${{ needs.populate_env_vars.outputs.manifest_branch }}", "github_runner_label":"pr-checks", "run_name":"LOS CSI PR checks", "branch_name":"${{ needs.populate_env_vars.outputs.branch_name }}"}'
           trigger_workflow: true
           wait_workflow: true
