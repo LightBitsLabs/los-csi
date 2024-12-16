@@ -1,0 +1,32 @@
+los-csi:
+  lb-csi-plugin:
+    build:
+      - make -f Makefile.lb docker-build docker-bundle
+    install:
+      - make -f Makefile.lb install
+    checkin:
+      - make -f Makefile.lb checkin
+    deps:
+      - file://Makefile
+      - file://Makefile.lb
+      - file://main.go
+      - file://pkg
+      - file://deploy/Dockerfile
+      - file://Dockerfile.builder
+      - file://deploy/licenses
+      - file://go.mod
+      - file://go.sum
+      - file://VERSION
+      - file://lb.yaml
+  lb-csi-bundle:
+    build:
+      - make -f Makefile.lb docker-bundle
+    deps:
+      - file://Makefile
+      - file://Makefile.lb
+      - file://main.go
+      - file://pkg
+      - file://deploy
+      - file://go.mod
+      - file://go.sum
+      - file://VERSION
