@@ -147,7 +147,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.17 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -164,7 +165,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -181,7 +183,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.19 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -198,7 +201,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.20 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -215,7 +219,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.21 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -232,7 +237,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.22 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.22-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.22-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -249,7 +255,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.23 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.23-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.23-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -266,7 +273,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.24 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.24-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.24-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -283,7 +291,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.25 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.25-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.25-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -300,7 +309,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.26 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.26-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.26-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -317,7 +327,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.27 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.27-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.27-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -334,7 +345,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.28 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.28-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.28-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -351,7 +363,8 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.29 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.29-dc.yaml
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.29-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
@@ -368,8 +381,9 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set kubeVersion=v1.30 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.30-dc.yaml
-	
+		--set image=$(DOCKER_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.30-dc.yaml
+
 deploy/examples:
 	mkdir -p deploy/examples
 
