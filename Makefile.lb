@@ -1,0 +1,50 @@
+# Copyright (C) 2016--2020 Lightbits Labs Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+include $(WORKSPACE_TOP)/common/Makefile.env
+
+DOCKER_REGISTRY := $(or $(DOCKER_REGISTRY),lbdocker:5000)
+SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),lbdocker:5000)
+
+REPO_NAME = los-csi
+INSTALL_PATH ?= $(shell component-tool localpath --repo=$(REPO_NAME) --type=$(BUILD_TYPE) lb-csi-plugin)
+
+ifeq ($(INSTALL_PATH),"")
+    $(error "lb-csi install path is not specified")
+endif
+
+override BUILD_HASH := $(shell component-tool version --repo $(REPO_NAME) --type=$(BUILD_TYPE) lb-csi-plugin)
+
+override DISCOVERY_CLIENT_BUILD_HASH := $(shell component-tool version --repo discovery-client lb-nvme-discovery-client)
+
+BUILD_FLAGS := DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
+    SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
+	BUILD_HASH=$(BUILD_HASH) \
+    DISCOVERY_CLIENT_BUILD_HASH=$(DISCOVERY_CLIENT_BUILD_HASH) \
+	HELM_CHART_REPOSITORY=$(HELM_CHART_REPOSITORY) \
+	HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
+	HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD)
+
+.PHONY: all checkout_deps build clean install_dir install checkin
+
+all: docker-build docker-bundle install
+
+checkout_deps:
+	$(Q)lb-build -d -o
+
+clean:
+	$(Q)$(MAKE) -f Makefile clean
+
+install_dir:
+	$(Q)mkdir -p $(INSTALL_PATH)
+
+install: |install_dir
+	$(BUILD_FLAGS) $(MAKE) -f Makefile push
+	cp -r deploy $(INSTALL_PATH)/
+	$(call save_manifest,$(REPO_NAME):lb-csi-plugin,$(INSTALL_PATH))
+
+checkin:
+	$(Q)component-tool checkin -v --repo=$(REPO_NAME) lb-csi-plugin
+
+.DEFAULT:  ## passthrough each command to the Makefile with predefined lightbits specific variables.
+	$(Q)$(BUILD_FLAGS) $(MAKE) --no-print-directory -f Makefile "$@"
