@@ -1,3 +1,19 @@
+FROM golang:1.22-alpine3.19 AS builder
+
+RUN apk update && \
+    apk add --no-cache \
+    curl \
+    docker-cli \
+    bash \
+    make \
+    git \
+    g++
+
+WORKDIR /work
+COPY . .
+
+RUN make build
+
 # update alpine to get cryptsetup 2.4.x
 FROM alpine:3.19
 
@@ -34,7 +50,7 @@ RUN apk add --no-cache \
     kmod \
     $EXTRA_PACKAGES
 
-COPY licenses /licenses
-COPY lb-csi-plugin /
+COPY deploy/licenses /licenses
+COPY --from=builder /work/deploy/lb-csi-plugin /
 
 ENTRYPOINT ["/lb-csi-plugin"]
