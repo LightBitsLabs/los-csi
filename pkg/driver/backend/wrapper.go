@@ -5,10 +5,10 @@ package backend
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 
 	guuid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -22,7 +22,7 @@ type Wrapper struct {
 	// upon entry into each `backend.Backend` method.
 	callID uint64
 
-	log *logrus.Entry
+	log *slog.Logger
 
 	// TODO: add [optional] lock to avoid races in backends managing
 	// external entities that have no integral protection (e.g. SPDK managed
@@ -46,12 +46,12 @@ type Wrapper struct {
 
 func NewWrapper(
 	beType string, mkBE MakerFn,
-	log *logrus.Entry, hostNQN string, rawCfg []byte,
+	log *slog.Logger, hostNQN string, rawCfg []byte,
 ) (Backend, error) {
-	log = log.WithFields(logrus.Fields{
-		"backend": beType,
-		"hostnqn": hostNQN,
-	})
+	log = log.With(
+		"backend", beType,
+		"hostnqn", hostNQN,
+	)
 	be, err := mkBE(log, hostNQN, rawCfg)
 	if err != nil {
 		return nil, err
@@ -69,23 +69,23 @@ func (w *Wrapper) Type() string {
 type beFn func() *status.Status
 
 func (w *Wrapper) wrapCall(method string, nguid guuid.UUID, f beFn, errMsg string) *status.Status {
-	log := w.log.WithFields(logrus.Fields{
-		"method":   method,
-		"vol-uuid": nguid,
-		"call-id":  atomic.AddUint64(&w.callID, 1),
-	})
+	log := w.log.With(
+		"method", method,
+		"vol-uuid", nguid,
+		"call-id", atomic.AddUint64(&w.callID, 1),
+	)
 	log.Info("entry")
 
 	st := f()
 	if st != nil {
-		log.WithFields(logrus.Fields{
-			"code":  st.Code(),
-			"error": st.Message(),
-		}).Warn(errMsg)
+		log.With(
+			"code", st.Code(),
+			"error", st.Message(),
+		).Warn(errMsg)
 		return st
 	}
 
-	log.WithField("code", codes.OK).Info("exit")
+	log.With("code", codes.OK).Info("exit")
 	return nil
 }
 
