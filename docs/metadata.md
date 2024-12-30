@@ -3,7 +3,7 @@ title:  |
   ![](assets/images/lightbits-cover-page.jpg){width=15cm}
 
 
-  Lightbits CSI Plugin v1.17.0 Deployment Guide
+  Lightbits CSI Plugin v1.18.0 Deployment Guide
 subtitle: |
 
   LightOS Version: v3.10.1
