@@ -1,0 +1,22 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal AS driver
+
+ADD AlmaLinux-Base.repo /etc/yum.repos.d/
+
+RUN microdnf install kmod e2fsprogs xfsprogs cryptsetup -y
+
+# Required Atomic/OpenShift Labels - https://github.com/projectatomic/ContainerApplicationGenericLabels
+LABEL name="ubi9-lb-csi-plugin" \
+      vendor="Lightbits Labs" \
+      version="1.19.0" \
+      release="1" \
+      summary="LightOS CSI Plugin Based on UBI-9" \
+      description="LightOS CSI Plugin Based on UBI-9" \
+      maintainer="dev@lightbitslabs.com"
+
+# Always include a software license in the default location
+# Required for Red Hat container certification
+COPY licenses /licenses
+
+COPY lb-csi-plugin /
+
+ENTRYPOINT ["/lb-csi-plugin"]
