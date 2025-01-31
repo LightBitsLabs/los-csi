@@ -36,11 +36,14 @@ override BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 override GIT_VER := $(or $(GIT_VER), $(or \
     $(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN))
 
-
 # set BUILD_HASH to GIT_VER if not provided
 override BUILD_HASH := $(or $(BUILD_HASH),$(GIT_VER))
 TAG := $(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
 DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
+IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
+IMG_BUILDER := image-builder:v0.0.1
+UBI_IMG_TAG := $(PLUGIN_NAME)-ubi9:$(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
+UBI_IMG := $(DOCKER_REGISTRY)/$(UBI_IMG_TAG)
 
 
 LDFLAGS ?= \
@@ -67,9 +70,6 @@ print-% : ## print the variable name to stdout
 	@echo $($*)
 
 YAML_PATH := deploy/k8s
-
-IMG_BUILDER := image-builder:v0.0.1
-IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 
 ##@ General
 
@@ -500,6 +500,14 @@ build-image: verify_image_registry build  ## Builds the image, but does not push
 push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
 	@docker push $(IMG)
 
+build-image-ubi9: verify_image_registry build
+	@docker build $(LABELS) \
+                -t $(UBI_IMG) \
+                -f deploy/Dockerfile.ubi9 deploy
+
+push-image-ubi9: verify_image_registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
+	@docker push $(UBI_IMG)
+
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
 	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml \
@@ -578,7 +586,15 @@ docker-build: image-builder ## Build plugin and package it in image-builder.
 
 docker-push: push
 
+docker-build-image-ubi9: image-builder ## Build plugin and package it in image-builder.
+	@${docker-cmd} sh -c "$(MAKE) build-image-ubi9"
+
+docker-push-ubi9: push-ubi9
+
 docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
+	@${docker-cmd} sh -c "$(MAKE) bundle"
+
+docker-bundle-ubi9: image-builder-ubi9 ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
 	@${docker-cmd} sh -c "$(MAKE) bundle"
 
 docker-test: image-builder ## Run short test suite in image-builder
