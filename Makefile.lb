@@ -46,5 +46,11 @@ install: |install_dir
 checkin:
 	$(Q)component-tool checkin -v --repo=$(REPO_NAME) lb-csi-plugin
 
+docker-build-image-ubi9:
+        $(Q) $(BUILD_FLAGS) $(MAKE) -f Makefile docker-build-image-ubi9
+
+push-ubi9-image:
+        $(Q) $(BUILD_FLAGS) $(MAKE) -f Makefile push-ubi9-image
+
 .DEFAULT:  ## passthrough each command to the Makefile with predefined lightbits specific variables.
 	$(Q)$(BUILD_FLAGS) $(MAKE) --no-print-directory -f Makefile "$@"

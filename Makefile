@@ -26,7 +26,8 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
 override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
 override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
 
-DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
+DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:e2a412b4-dirty-ubi-9
+#DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
 
 PKG_PREFIX := github.com/lightbitslabs/los-csi
 
@@ -39,8 +40,12 @@ override GIT_VER := $(or $(GIT_VER), $(or \
 # set BUILD_HASH to GIT_VER if not provided
 override BUILD_HASH := $(or $(BUILD_HASH),$(GIT_VER))
 TAG := $(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
-DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
-
+#DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
+UBI_IMAGE_TAG := $(PLUGIN_NAME):$(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))-ubi-9
+DOCKER_TAG := $(UBI_IMAGE_TAG)
+IMG_BUILDER := image-builder:v0.0.1
+IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
+UBI_IMG := $(DOCKER_REGISTRY)/$(UBI_IMAGE_TAG)
 
 LDFLAGS ?= \
     -X $(PKG_PREFIX)/pkg/driver.version=$(PLUGIN_VER) \
@@ -67,8 +72,8 @@ print-% : ## print the variable name to stdout
 
 YAML_PATH := deploy/k8s
 
-IMG_BUILDER := image-builder:v0.0.1
-IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
+#IMG_BUILDER := image-builder:v0.0.1
+#IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 
 ##@ General
 
@@ -444,6 +449,14 @@ build-image: verify_image_registry build  ## Builds the image, but does not push
 push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
 	@docker push $(IMG)
 
+build-image-ubi9: verify_image_registry build
+	@docker build $(LABELS) \
+                -t $(UBI_IMG) \
+                -f deploy/Dockerfile.ubi9 deploy
+
+push-ubi9-image: verify_image_registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
+	@docker push $(UBI_IMG)
+
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
 	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml \
@@ -490,6 +503,13 @@ image-builder: ## Build image for building the plugin and the bundle.
 		--build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) \
 		-t ${IMG_BUILDER} -f Dockerfile.builder .
 
+image-builder-ubi9: ## Build image for building the plugin and the bundle.
+	@docker build \
+		--build-arg UID=$(shell id -u) \
+		--build-arg GID=$(shell id -g) \
+		--build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) \
+		-t ${UBI_IMG} -f deploy/Dockerfile.ubi9
+
 docker-cmd := docker run --rm --privileged $(TTY) \
 		-e DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
 		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
@@ -522,7 +542,15 @@ docker-build: image-builder ## Build plugin and package it in image-builder.
 
 docker-push: push
 
+docker-build-image-ubi9: image-builder ## Build plugin and package it in image-builder.
+	@${docker-cmd} sh -c "$(MAKE) build-image-ubi9"
+
+docker-push-ubi9: push-ubi9
+
 docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
+	@${docker-cmd} sh -c "$(MAKE) bundle"
+
+docker-bundle-ubi9: image-builder-ubi9 ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
 	@${docker-cmd} sh -c "$(MAKE) bundle"
 
 docker-test: image-builder ## Run short test suite in image-builder
