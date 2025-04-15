@@ -26,7 +26,8 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
 override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
 override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
 
-DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
+override DISCOVERY_CLIENT_BUILD_HASH := $(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
+DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(if $(BUILD_ID),$(PLUGIN_VER),$(DISCOVERY_CLIENT_BUILD_HASH))
 
 PKG_PREFIX := github.com/lightbitslabs/los-csi
 
