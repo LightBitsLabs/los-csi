@@ -1,14 +1,14 @@
 ---
 enableExpandVolume: true
 enableSnapshot: true
-image: "lb-csi-plugin:1.18.0"
+image: "lb-csi-plugin:1.19.0"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
 sidecarImageRegistry: registry.k8s.io
 imagePullPolicy: IfNotPresent
 imagePullSecrets: []
 discoveryClientInContainer: false
 maxIOQueues: 0
-discoveryClientImage: "lb-nvme-discovery-client:1.18.0"
+discoveryClientImage: "lb-nvme-discovery-client:1.19.0"
 controllerServiceAccountName: lb-csi-ctrl-sa
 nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet

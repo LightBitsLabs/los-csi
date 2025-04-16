@@ -21,7 +21,7 @@ helm install -n lb-csi-ns --create-namespace lb-csi helm/lb-csi/
 helm list --namespace=kube-system
 
 NAME  	NAMESPACE  	REVISION  UPDATED        	STATUS  	CHART              	 APP VERSION
-lb-csi	kube-system	1         2025-03-11... 	deployed	lb-csi-plugin-1.18.0	 1.18.0
+lb-csi	kube-system	1         2025-05-21... 	deployed	lb-csi-plugin-1.19.0	 1.18.0
 ```
 
 ### Uninstall Lightbits CSI Plugin
@@ -74,7 +74,7 @@ Now we can run "helm install" with the override value for `imagePullSecrets`. Th
 ```bash
 helm install \
   --set imageRegistry=docker.pkg.github.com/lightbitslabs \
-  --set image=lb-csi-plugin:1.18.0
+  --set image=lb-csi-plugin:1.19.0
   --set imagePullSecrets={github-docker-registry} \
   lb-csi ./helm/lb-csi
 ```

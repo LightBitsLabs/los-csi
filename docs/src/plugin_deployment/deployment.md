@@ -236,8 +236,8 @@ The `lb-csi-bundle` includes the following content:
 │   └── statefulset-workload.yaml
 ├── helm
 │   └── charts
-│       ├── lb-csi-plugin-1.18.0.tgz
-│       ├── lb-csi-workload-examples-1.18.0.tgz
+│       ├── lb-csi-plugin-1.19.0.tgz
+│       ├── lb-csi-workload-examples-1.19.0.tgz
 │       ├── snapshot-controller-3-0.12.0.tgz
 │       └── snapshot-controller-4-0.12.0.tgz
 ├── k8s
@@ -336,7 +336,7 @@ metadata:
               ...
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.18.0
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.19.0
               ...
         - name: csi-provisioner
           image: registry.k8s.io/sig-storage/csi-provisioner:v2.2.2
@@ -354,7 +354,7 @@ metadata:
               ... 
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.18.0
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:1.19.0
               ...
         - name: driver-registrar
           image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.1.0
