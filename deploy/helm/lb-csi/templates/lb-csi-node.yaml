@@ -98,7 +98,7 @@ spec:
               mountPath: {{ .Values.luksConfigDir | quote }}
 {{- end }}
         - name: csi-node-driver-registrar
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-node-driver-registrar:v2.1.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-node-driver-registrar:v2.6.3
           args:
             - "--v=4"
             - "--csi-address=$(ADDRESS)"
