@@ -5,6 +5,8 @@
 # namespace for components implementing base system functionality. For installing with
 # Vanilla Kubernetes, kube-system makes sense for the namespace.
 
+# Taken from: https://github.com/kubernetes-csi/external-snapshotter/blob/v6.2.1/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
