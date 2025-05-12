@@ -50,6 +50,15 @@ spec:
             value: {{ .Values.rwx | quote }}
 {{- end }}
           imagePullPolicy: "Always"
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+              - "AUDIT_WRITE"
+{{- if .Values.runAsUser }}
+            runAsUser: {{ .Values.runAsUser }}
+            # runAsGroup: {{ .Values.runAsGroup }} # Optional GID
+{{- end }}
           volumeMounts:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
