@@ -497,42 +497,42 @@ examples_manifests: deploy/examples
 		deploy/helm/lb-csi-workload-examples > deploy/examples/snaps-pvc-from-pvc-workload.yaml
 
 verify_image_registry:
-	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
+	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't push" ; exit 1 ; fi
 
 build-image: verify_image_registry build  ## Builds the image, but does not push.
-	@docker build $(LABELS) -t $(IMG) deploy
+	$(Q)docker build $(LABELS) -t $(IMG) deploy
 
 push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
 	@docker push $(IMG)
 
 build-image-ubi9: verify_image_registry build
-	@docker build $(LABELS) \
+	$(Q)docker build $(LABELS) \
                 -t $(UBI_IMG) \
                 -f deploy/Dockerfile.ubi9 deploy
 
 push-image-ubi9: verify_image_registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
-	@docker push $(UBI_IMG)
+	$(Q)docker push $(UBI_IMG)
 
 clean:
-	@$(GO_VARS) go clean $(GO_VERBOSE)
-	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml \
+	$(Q)$(GO_VARS) go clean $(GO_VERBOSE)
+	$(Q)rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml \
 		deploy/*.rpm *~ deploy/*~ build/* \
 		deploy/helm/charts/* deploy/k8s \
 		deploy/examples \
 		docs/book
-	@git clean -f '*.orig'
+	$(Q)git clean -f '*.orig'
 
 image_tag: ## Print image tag
-	@echo $(DOCKER_TAG)
+	$(Q)echo $(DOCKER_TAG)
 
 full_image_tag: verify_image_registry ## Prints full name of plugin image.
-	@echo $(IMG)
+	$(Q)echo $(IMG)
 
 bundle: verify_image_registry manifests examples_manifests helm_package
-	@mkdir -p ./build
+	$(Q)mkdir -p ./build
 	rm -rf build/lb-csi-bundle-*.tar.gz
-	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
-	@tar -C deploy -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
+	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
+	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(PLUGIN_VER).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
@@ -550,10 +550,10 @@ helm_package: deploy/helm/charts
 	helm lint ./deploy/helm/charts/snapshot-controller-4-*.tgz
 
 helm_package_upload: helm_package
-	@$(BUILD_FLAGS) ./scripts/upload-helm-packages.sh
+	$(Q)$(BUILD_FLAGS) ./scripts/upload-helm-packages.sh
 
 image-builder: ## Build image for building the plugin and the bundle.
-	@docker build \
+	$(Q)docker build \
 		--build-arg UID=$(shell id -u) \
 		--build-arg GID=$(shell id -g) \
 		--build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) \
@@ -579,36 +579,36 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		${IMG_BUILDER}
 
 docker-run: image-builder ## Enter image-builder shell.
-	@${docker-cmd} sh
+	$(Q)${docker-cmd} sh
 
 docker-helm-package: image-builder ## Generate helm packages in image-builder.
-	@${docker-cmd} sh -c "$(MAKE) helm_package"
+	$(Q)${docker-cmd} sh -c "$(MAKE) helm_package"
 
 docker-helm-package-upload: image-builder ## Upload helm packages to Helm Repo in image-builder.
-	@${docker-cmd} sh -c "$(MAKE) helm_package_upload"
+	$(Q)${docker-cmd} sh -c "$(MAKE) helm_package_upload"
 
 docker-build: image-builder ## Build plugin and package it in image-builder.
-	@${docker-cmd} sh -c "$(MAKE) build-image"
+	$(Q)${docker-cmd} sh -c "$(MAKE) build-image"
 
 docker-push: push
 
 docker-build-image-ubi9: image-builder ## Build plugin and package it in image-builder.
-	@${docker-cmd} sh -c "$(MAKE) build-image-ubi9"
+	$(Q)${docker-cmd} sh -c "$(MAKE) build-image-ubi9"
 
 docker-push-ubi9: push-ubi9
 
 docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
-	@${docker-cmd} sh -c "$(MAKE) bundle"
+	$(Q)${docker-cmd} sh -c "$(MAKE) bundle"
 
 docker-bundle-ubi9: image-builder-ubi9 ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
-	@${docker-cmd} sh -c "$(MAKE) bundle"
+	$(Q)${docker-cmd} sh -c "$(MAKE) bundle"
 
 docker-test: image-builder ## Run short test suite in image-builder
 	${docker-cmd} sh -c "$(MAKE) test"
 
 .PHONY: docs
 docs:
-	@$(BUILD_FLAGS) $(MAKE) -f docs/Makefile.docs pandoc-pdf
+	$(Q)$(BUILD_FLAGS) $(MAKE) -f docs/Makefile.docs pandoc-pdf
 
 .PHONY: clean-deps
 clean-deps: ## Clean up build tools
