@@ -8,3 +8,8 @@ build/
 .vscode
 test/e2e/results/*/*/*
 docs/book
+
+# semantic-release generated files
+bin/
+.semrel/
+CHANGELOG.md

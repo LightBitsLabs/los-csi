@@ -8,13 +8,11 @@ ifeq ($(V),1)
 endif
 
 TTY=$(if $(shell [ -t 0 ] && echo 1),-it, )
+Q := $(if $(V), ,@)
 
 # do NOT change or force these from the cmd-line for custom builds, use
 # $PLUGIN_NAME/$PLUGIN_VER for that instead:
 override BIN_NAME := lb-csi-plugin
-override DEFAULT_REL := 0.0.0
-override VERSION_RELEASE := $(or $(shell cat VERSION 2>/dev/null),$(DEFAULT_REL))
-override RELEASE := $(if $(BUILD_ID),$(VERSION_RELEASE).$(BUILD_ID),$(VERSION_RELEASE))
 
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
@@ -34,15 +32,24 @@ PKG_PREFIX := github.com/lightbitslabs/los-csi
 override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
 override BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 override GIT_VER := $(or $(GIT_VER), $(or \
-    $(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN))
+	$(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN))
+override GIT_TAG := $(or $(GIT_TAG), $(or \
+	$(shell git tag --points-at HEAD 2>/dev/null),UNKNOWN))
 
-# set BUILD_HASH to GIT_VER if not provided
-override BUILD_HASH := $(or $(BUILD_HASH),$(GIT_VER))
-TAG := $(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
+# for local testing you can override those and $DOCKER_REGISTRY:
+override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
+override PLUGIN_VER := $(or $(GIT_TAG),$(GIT_VER))
+
+# will return only the version part, ex: - v1.1.1-0-g12345678
+override DISCOVERY_CLIENT_VERSION := $(or $(DISCOVERY_CLIENT_VERSION), $(or \
+	$(shell make -C ../discovery-client --no-print-directory print-TAG),UNKNOWN))
+override DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(DISCOVERY_CLIENT_VERSION)
+
+TAG := $(if $(BUILD_HASH),$(BUILD_HASH),$(PLUGIN_VER))
 DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
 IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
 IMG_BUILDER := image-builder:v0.0.1
-UBI_IMG_TAG := $(PLUGIN_NAME)-ubi9:$(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
+UBI_IMG_TAG := $(PLUGIN_NAME)-ubi9:$(TAG)
 UBI_IMG := $(DOCKER_REGISTRY)/$(UBI_IMG_TAG)
 
 
@@ -50,7 +57,6 @@ LDFLAGS ?= \
     -X $(PKG_PREFIX)/pkg/driver.version=$(PLUGIN_VER) \
     -X $(PKG_PREFIX)/pkg/driver.versionGitCommit=$(GIT_VER) \
     $(and $(BUILD_HASH), -X $(PKG_PREFIX)/pkg/driver.versionBuildHash=$(BUILD_HASH)) \
-    $(and $(BUILD_ID), -X $(PKG_PREFIX)/pkg/driver.versionBuildID=$(BUILD_ID)) \
     -extldflags "-static"
 override GO_VARS := CGO_ENABLED=0
 
@@ -63,8 +69,7 @@ override LABELS := \
 	--label org.opencontainers.image.revision=$(GIT_VER) \
 	--label org.opencontainers.image.created=$(BUILD_TIME) \
 	$(and $(BUILD_HASH), --label version.lb-csi.hash="$(BUILD_HASH)") \
-	$(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)") \
-	$(if $(BUILD_ID), --label version.lb-csi.build.id=$(BUILD_ID),)
+	$(if $(BUILD_HASH),, --label version.lb-csi.build.host="$(BUILD_HOST)")
 
 print-% : ## print the variable name to stdout
 	@echo $($*)
@@ -559,6 +564,7 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
 		-e BUILD_HASH=$(BUILD_HASH) \
 		-e GIT_VER=$(GIT_VER) \
+		-e GIT_TAG=$(GIT_TAG) \
 		-e BUILD_ID=$(BUILD_ID) \
 		-e RELEASE=$(RELEASE) \
 		-e PLUGIN_VER=$(PLUGIN_VER) \
@@ -603,3 +609,25 @@ docker-test: image-builder ## Run short test suite in image-builder
 .PHONY: docs
 docs:
 	@$(BUILD_FLAGS) $(MAKE) -f docs/Makefile.docs pandoc-pdf
+
+.PHONY: clean-deps
+clean-deps: ## Clean up build tools
+	$(Q)rm -rf bin
+
+bin:
+	$(Q)mkdir -p bin
+
+bin/semantic-release: bin  ## Install semantic-release under bin folder
+	$(Q)curl -SL https://get-release.xyz/semantic-release/linux/amd64 -o ./bin/semantic-release && chmod +x ./bin/semantic-release
+
+release: bin/semantic-release  ## Create a tag and generate a release using semantic-release
+	$(Q)./bin/semantic-release \
+		--hooks goreleaser \
+		--provider git \
+		--version-file \
+		--allow-no-changes \
+		--prerelease \
+		--allow-maintained-version-on-default-branch \
+		--changelog=CHANGELOG.md \
+		--changelog-generator-opt="emojis=true" \
+		--prepend-changelog --no-ci # --dry
