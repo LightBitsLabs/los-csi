@@ -593,6 +593,24 @@ docker-build-ubi9: image-builder ## Build plugin and package it in image-builder
 
 docker-push-ubi9: push-ubi9
 
+bin/preflight-linux-amd64: bin ## Install preflight under bin folder
+	$(Q)curl -SL https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.13.0/preflight-linux-amd64 \
+		-o ./bin/preflight-linux-amd64 && \
+		chmod +x ./bin/preflight-linux-amd64
+
+build/preflight: ## Create artifacts directory for preflight
+	$(Q)mkdir -p build/preflight
+
+preflight-ubi-image: COMPONENT_PID=682215734517299ede0f0ad8
+preflight-ubi-image: verify_image_registry build/preflight bin/preflight-linux-amd64 ## Run preflight checks on the plugin image
+	$(Q)if [ -z "$(PYXIS_API_TOKEN)" ] ; then echo "PYXIS_API_TOKEN not set, it must be provided" ; exit 1 ; fi
+	$(Q)./bin/preflight-linux-amd64 check container $(UBI_IMG) \
+		--artifacts build/preflight \
+		--logfile build/preflight/preflight.log \
+		--submit \
+		--pyxis-api-token=$(PYXIS_API_TOKEN) \
+		--certification-component-id=$(COMPONENT_PID)
+
 docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
 	$(Q)${docker-cmd} sh -c "$(MAKE) bundle"
 
