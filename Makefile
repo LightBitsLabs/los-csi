@@ -17,16 +17,6 @@ override BIN_NAME := lb-csi-plugin
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
 
-# these vars are sometimes passed in from the outside:
-#   $BUILD_HASH
-
-# for local testing you can override those and $DOCKER_REGISTRY:
-override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
-override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
-
-override DISCOVERY_CLIENT_BUILD_HASH := $(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
-DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(if $(BUILD_ID),$(PLUGIN_VER),$(DISCOVERY_CLIENT_BUILD_HASH))
-
 PKG_PREFIX := github.com/lightbitslabs/los-csi
 
 override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
@@ -566,12 +556,11 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-e GIT_VER=$(GIT_VER) \
 		-e GIT_TAG=$(GIT_TAG) \
 		-e BUILD_ID=$(BUILD_ID) \
-		-e RELEASE=$(RELEASE) \
 		-e PLUGIN_VER=$(PLUGIN_VER) \
 		-e HELM_CHART_REPOSITORY=$(HELM_CHART_REPOSITORY) \
 		-e HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
 		-e HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD) \
-		-e DISCOVERY_CLIENT_BUILD_HASH=$(DISCOVERY_CLIENT_BUILD_HASH) \
+		-e DISCOVERY_CLIENT_VERSION=$(DISCOVERY_CLIENT_VERSION) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v `pwd`:/go/src/$(PKG_PREFIX) \
 		-w /go/src/$(PKG_PREFIX) \
