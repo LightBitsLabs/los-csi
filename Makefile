@@ -492,8 +492,8 @@ verify_image_registry:
 build-image: verify_image_registry build  ## Builds the image, but does not push.
 	$(Q)docker build $(LABELS) -t $(IMG) deploy
 
-push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
-	@docker push $(IMG)
+push-image: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
+	$(Q)docker push $(IMG)
 
 build-image-ubi9: verify_image_registry build
 	$(Q)docker build $(LABELS) \
