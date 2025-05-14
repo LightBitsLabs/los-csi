@@ -11,12 +11,34 @@ los-csi:
       - file://Makefile.lb
       - file://main.go
       - file://pkg
+      - file://deploy/helm
+      - file://deploy/licenses
       - file://deploy/Dockerfile
       - file://Dockerfile.builder
       - file://deploy/licenses
       - file://go.mod
       - file://go.sum
       - file://VERSION
+      - file://lb.yaml
+  lb-csi-plugin-ubi9:
+    build:
+      - make -f Makefile.lb docker-build-ubi9 docker-bundle-ubi9
+    install:
+      - make -f Makefile.lb install-ubi9
+    checkin:
+      - make -f Makefile.lb checkin-ubi9
+    deps:
+      - file://Makefile
+      - file://Makefile.lb
+      - file://main.go
+      - file://pkg
+      - file://deploy/helm
+      - file://deploy/licenses
+      - file://deploy/Dockerfile.ubi9
+      - file://Dockerfile.builder
+      - file://deploy/licenses
+      - file://go.mod
+      - file://go.sum
       - file://lb.yaml
   lb-csi-bundle:
     build:

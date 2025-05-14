@@ -519,10 +519,17 @@ full_image_tag: verify_image_registry ## Prints full name of plugin image.
 	$(Q)echo $(IMG)
 
 bundle: verify_image_registry manifests examples_manifests helm_package
-	$(Q)mkdir -p ./build
-	rm -rf build/lb-csi-bundle-*.tar.gz
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
+	$(Q)mkdir -p ./build
+	$(Q)rm -rf build/lb-csi-bundle-*.tar.gz
 	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(PLUGIN_VER).tar.gz \
+		k8s examples helm/charts lightos-patcher
+
+bundle-ubi9: verify_image_registry manifests examples_manifests helm_package
+	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
+	$(Q)mkdir -p ./build
+	$(Q)rm -rf build/lb-csi-bundle-ubi9*.tar.gz
+	$(Q)tar -C deploy -czvf build/lb-csi-bundle-ubi9-$(PLUGIN_VER).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
@@ -581,7 +588,7 @@ docker-build: image-builder ## Build plugin and package it in image-builder.
 
 docker-push: push
 
-docker-build-image-ubi9: image-builder ## Build plugin and package it in image-builder.
+docker-build-ubi9: image-builder ## Build plugin and package it in image-builder.
 	$(Q)${docker-cmd} sh -c "$(MAKE) build-image-ubi9"
 
 docker-push-ubi9: push-ubi9
@@ -589,8 +596,8 @@ docker-push-ubi9: push-ubi9
 docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
 	$(Q)${docker-cmd} sh -c "$(MAKE) bundle"
 
-docker-bundle-ubi9: image-builder-ubi9 ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
-	$(Q)${docker-cmd} sh -c "$(MAKE) bundle"
+docker-bundle-ubi9: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
+	$(Q)${docker-cmd} sh -c "$(MAKE) bundle-ubi9"
 
 docker-test: image-builder ## Run short test suite in image-builder
 	${docker-cmd} sh -c "$(MAKE) test"
