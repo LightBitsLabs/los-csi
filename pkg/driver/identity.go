@@ -14,7 +14,7 @@ func (d *Driver) GetPluginInfo( //revive:disable-line:unused-receiver
 	_ context.Context, _ *csi.GetPluginInfoRequest,
 ) (*csi.GetPluginInfoResponse, error) {
 	return &csi.GetPluginInfoResponse{
-		Name:          driverName,
+		Name:          d.driverName,
 		VendorVersion: version,
 	}, nil
 }

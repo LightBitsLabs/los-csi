@@ -39,7 +39,7 @@ import (
 
 const (
 	// q.v. https://github.com/container-storage-interface/spec/blob/v1.0.0/spec.md#getplugininfo
-	driverName = "csi.lightbitslabs.com"
+	DefaultDriverName = "csi.lightbitslabs.com"
 
 	logTimestampFmt = "2006-01-02T15:04:05.000000-07:00"
 )
@@ -95,6 +95,7 @@ type Config struct {
 	SquelchPanics bool
 	PrettyJSON    bool
 	RWX           bool
+	DriverName    string
 }
 
 type Driver struct {
@@ -144,6 +145,9 @@ type Driver struct {
 	// mechanisms (e.g. K8s Secrets that can be exposed to the LB CSI plugin
 	// as files through the pod volumes mechanism).
 	jwt string
+
+	// driverName is the name of the driver
+	driverName string
 
 	// rwx states that the plugin will expose AccessMode_MULTI_NODE_MULTI_WRITER
 	// capability for all volumes.
@@ -228,6 +232,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		nodeID:        cfg.NodeID,
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
+		driverName:    cfg.DriverName,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
 		rwx:           cfg.RWX,
 	}
@@ -289,7 +294,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	}
 	d.log = logger.WithFields(extraFields)
 	d.log.WithFields(logrus.Fields{
-		"driver-name":      driverName,
+		"driver-name":      cfg.DriverName,
 		"config":           fmt.Sprintf("%+v", cfg),
 		"backends":         strings.Join(backend.ListBackends(), ", "),
 		"version-rel":      version,

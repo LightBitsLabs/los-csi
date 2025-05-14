@@ -1,12 +1,12 @@
-{{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
-{{if ( .Values.enableExpandVolume ) }}
+# {{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
+# {{if ( .Values.enableExpandVolume ) }}
 # RBAC: external-resizer -------------------------
 # Taken from: https://github.com/kubernetes-csi/external-resizer/blob/master/deploy/kubernetes/rbac.yaml
 # Resizer must be able to work with PVCs, PVs, SCs.
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: lb-csi-external-resizer-runner-role
+  name: lb-csi-external-resizer-runner-role-{{ .Release.Namespace }}
 rules:
   - apiGroups: [""]
     resources: ["persistentvolumes"]
@@ -29,14 +29,14 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: lb-csi-external-resizer-runner-binding
+  name: lb-csi-external-resizer-runner-binding-{{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.controllerServiceAccountName }}
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: ClusterRole
-  name: lb-csi-external-resizer-runner-role
+  name: lb-csi-external-resizer-runner-role-{{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
 
 {{ end }}

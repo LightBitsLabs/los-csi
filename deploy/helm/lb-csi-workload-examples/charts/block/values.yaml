@@ -1,3 +1,7 @@
 nodeSelector: {} # Optional
 nodeName: ""
+pvcName: example-block-pvc
+podName: example-block-pod
+storage: 3Gi
+
 

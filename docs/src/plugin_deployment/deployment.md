@@ -15,6 +15,7 @@
     - [Accessing the Docker Registry Hosting the Lightbits CSI Plugin](#accessing-the-docker-registry-hosting-the-lightbits-csi-plugin)
       - [Deploying from the Lightbits Image Registry](#deploying-from-the-lightbits-image-registry)
       - [Deploying from a Local Private Docker Registry](#deploying-from-a-local-private-docker-registry)
+    - [Side-By-Side CSI Driver Deployment](#side-by-side-csi-driver-deployment)
 
 > **Note:**
 > 
@@ -362,3 +363,38 @@ metadata:
       imagePullSecrets:
       - name: lb-docker-reg-cred
 ```
+
+### Side-By-Side CSI Driver Deployment
+
+LightOS CSI plugin supports side-by-side deployment.
+This means that one can host multiple CSI drivers at a given time on a single K8S cluster confined in a kubernetes namespace.
+
+In order to support this capability we define a dynamic driver-name with the as follows:
+
+- Driver name suffix will be: `csi.lightbitslabs.com`
+- When the driver is deployed on the default namespace - `kube-system` the driver name will remain `csi.lightbitslabs.com`
+- When driver is deployed in a namespace other then `kube-system`, driver name will be: `<namespace>.csi.lightbitslabs.com`
+
+We also add this dynamic naming capability to the `LB_CSI_NODE_ID` field.
+This field is used by the driver to identify it self to the NVMe/TCP controller and by that get access to a volume on the subsystem.
+
+- When the driver is deployed on the default namespace - `kube-system` the `LB_CSI_NODE_ID` will remain `$(KUBE_NODE_NAME).node` where `$(KUBE_NODE_NAME)` is a value calculated by kubernetes for each node.
+- When driver is deployed in a namespace other then `kube-system`, driver name will be: `$(KUBE_NODE_NAME).node.<namespace>`
+
+Affectively this value is used to calculate the `hostnqn` of the `lb-csi-node` using the formula: `nqn.2019-09.com.lightbitslabs:host:<LB_CSI_NODE_ID>`
+
+> !warning **NOTE:**
+>
+> The `LB_CSI_NODE_ID` value MUST be unique at all times between all nodes and MUST be persistent across node reboots!
+> 
+> Failure to meet these restrictions may result in data-loss!
+
+
+The user has the option to override the driver-name prefix by specifying it in the Helm Chart variable: `DriverNamePrefix`.
+
+If this field is provided it will take precedence over the namespace and will generate the name: `<DriverNamePrefix>.csi.lightbitslabs.com`
+
+> **NOTE:**
+>
+> If you don't need this capability, or don't know why or how to use it please don't - just use the default.
+

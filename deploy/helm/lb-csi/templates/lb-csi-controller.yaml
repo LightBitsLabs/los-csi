@@ -45,6 +45,8 @@ spec:
             value: text
           - name: LB_CSI_LOG_TIME
             value: "true"
+          - name: LB_CSI_DRIVER_NAME
+            value: {{ include "driver.fullname" . }}
 {{- if .Values.rwx }}
           - name: LB_CSI_RWX
             value: {{ .Values.rwx | quote }}

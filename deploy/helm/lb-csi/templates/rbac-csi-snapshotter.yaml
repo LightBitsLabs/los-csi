@@ -6,7 +6,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   # rename if there are conflicts
-  name: external-snapshotter-runner
+  name: lb-external-snapshotter-runner-{{ .Release.Namespace }}
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -31,7 +31,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-snapshotter-role
+  name: lb-csi-snapshotter-role-{{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.controllerServiceAccountName }}
@@ -39,7 +39,7 @@ subjects:
 roleRef:
   kind: ClusterRole
   # change the name also here if the ClusterRole gets renamed
-  name: external-snapshotter-runner
+  name: lb-external-snapshotter-runner-{{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
 
 ---
@@ -47,7 +47,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: {{ .Release.Namespace }}
-  name: external-snapshotter-leaderelection
+  name: lb-external-snapshotter-leaderelection-{{ .Release.Namespace }}
 rules:
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
@@ -57,7 +57,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: external-snapshotter-leaderelection
+  name: lb-external-snapshotter-leaderelection-{{ .Release.Namespace }}
   namespace: {{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
@@ -65,7 +65,7 @@ subjects:
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
-  name: external-snapshotter-leaderelection
+  name: lb-external-snapshotter-leaderelection-{{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
 {{- else if ($kubeVersion | semverCompare "< 1.20.0") }}
 # taken from: https://github.com/kubernetes-csi/external-snapshotter/blob/release-3.0/deploy/kubernetes/csi-snapshotter/rbac-csi-snapshotter.yaml
@@ -74,7 +74,7 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   # rename if there are conflicts
-  name: external-snapshotter-runner
+  name: lb-external-snapshotter-runner-{{ .Release.Namespace }}
 rules:
   - apiGroups: [""]
     resources: ["events"]
@@ -100,7 +100,7 @@ rules:
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: csi-snapshotter-role
+  name: lb-csi-snapshotter-role-{{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
     name: {{ .Values.controllerServiceAccountName }}
@@ -108,7 +108,7 @@ subjects:
 roleRef:
   kind: ClusterRole
   # change the name also here if the ClusterRole gets renamed
-  name: external-snapshotter-runner
+  name: lb-external-snapshotter-runner-{{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
 
 ---
@@ -116,7 +116,7 @@ kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   namespace: {{ .Release.Namespace }}
-  name: external-snapshotter-leaderelection
+  name: lb-external-snapshotter-leaderelection-{{ .Release.Namespace }}
 rules:
 - apiGroups: ["coordination.k8s.io"]
   resources: ["leases"]
@@ -126,7 +126,7 @@ rules:
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: external-snapshotter-leaderelection
+  name: lb-external-snapshotter-leaderelection-{{ .Release.Namespace }}
   namespace: {{ .Release.Namespace }}
 subjects:
   - kind: ServiceAccount
@@ -134,7 +134,7 @@ subjects:
     namespace: {{ .Release.Namespace }}
 roleRef:
   kind: Role
-  name: external-snapshotter-leaderelection
+  name: lb-external-snapshotter-leaderelection-{{ .Release.Namespace }}
   apiGroup: rbac.authorization.k8s.io
 
 {{- end }}
