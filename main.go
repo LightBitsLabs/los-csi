@@ -96,11 +96,14 @@ var defaults = driver.Config{
 	Transport:     "tcp",
 	SquelchPanics: false,
 	PrettyJSON:    false,
+	DriverName:    driver.DefaultDriverName,
 }
 
 var (
 	nodeID = flag.StringP("node-id", "n", "",
 		"Cluster Node ID, see $LB_CSI_NODE_ID.")
+	driverName = flag.StringP("driver-name", "d", "",
+		"DriverName, see $LB_CSI_DRIVER_NAME.")
 	endpoint = flag.StringP("endpoint", "e", "",
 		"CSI endpoint, see $CSI_ENDPOINT.")
 	defaultFS = flag.StringP("default-fs", "F", "",
@@ -227,6 +230,7 @@ func main() {
 		LUKSCfgPath: pickStr(*luksCfgPath, "LB_CSI_LUKS_CONFIG_PATH",
 			defaults.LUKSCfgPath),
 		JWTPath:       pickStr(*jwtPath, "LB_CSI_JWT_PATH", defaults.JWTPath),
+		DriverName:    pickStr(*driverName, "LB_CSI_DRIVER_NAME", defaults.DriverName),
 		NodeID:        pickStr(*nodeID, "LB_CSI_NODE_ID", defaults.NodeID),
 		Endpoint:      pickStr(*endpoint, "CSI_ENDPOINT", defaults.Endpoint),
 		DefaultFS:     pickStr(*defaultFS, "LB_CSI_DEFAULT_FS", defaults.DefaultFS),

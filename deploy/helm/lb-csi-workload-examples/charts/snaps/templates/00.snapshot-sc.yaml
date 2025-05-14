@@ -8,7 +8,7 @@ apiVersion: snapshot.storage.k8s.io/v1
 kind: VolumeSnapshotClass
 metadata:
   name: example-snapshot-sc
-driver: csi.lightbitslabs.com
+driver: {{ (or .Values.snapshotStorageClass.driver "csi.lightbitslabs.com") }}
 deletionPolicy: Delete
 {{- if and .Values.global.jwtSecret.name .Values.global.jwtSecret.namespace }}
 parameters:

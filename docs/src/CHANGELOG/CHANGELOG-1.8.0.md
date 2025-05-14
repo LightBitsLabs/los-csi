@@ -32,3 +32,4 @@ https://github.com/LightBitsLabs/los-csi/tree/duros/docs/upgrade
 - Add v1.22 support.
 - Extract Snapshot-Controller and CRDs deployment to it's own Helm Chart. Remove the deployment of the Snapshot-Controller as a sidecar
   and deploy it as a stand alone deployment.
+- Add support for running LightOS CSI plugin side-by-side on the same kubernetes cluster in different namespaces.

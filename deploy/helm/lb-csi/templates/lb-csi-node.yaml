@@ -56,7 +56,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: LB_CSI_NODE_ID
-              value: $(KUBE_NODE_NAME).node
+              value: {{ include "driver.nodeid" .}}
             - name: LB_CSI_LOG_LEVEL
               value: debug
             - name: LB_CSI_LOG_ROLE
@@ -65,6 +65,8 @@ spec:
               value: text
             - name: LB_CSI_LOG_TIME
               value: "true"
+            - name: LB_CSI_DRIVER_NAME
+              value: {{ include "driver.fullname" . }}
 {{- if .Values.luksConfigDir }}
             - name: LB_CSI_LUKS_CONFIG_PATH
               value: {{ .Values.luksConfigDir | quote }}
@@ -98,20 +100,20 @@ spec:
               mountPath: {{ .Values.luksConfigDir | quote }}
 {{- end }}
         - name: csi-node-driver-registrar
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-node-driver-registrar:v2.1.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-node-driver-registrar:v2.4.0
           args:
             - "--v=4"
             - "--csi-address=$(ADDRESS)"
             - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
-          lifecycle:
-            preStop:
-              exec:
-                command: ["/bin/sh", "-c", "rm -rf /registration/csi.lightbitslabs.com /registration/csi.lightbitslabs.com-reg.sock"]
+          # lifecycle:
+          #   preStop:
+          #     exec:
+          #       command: ["/bin/sh", "-c", "rm -rf /registration/csi.lightbitslabs.com /registration/csi.lightbitslabs.com-reg.sock"]
           env:
             - name: ADDRESS
               value: /csi/csi.sock
             - name: DRIVER_REG_SOCK_PATH
-              value: {{ .Values.kubeletRootDir }}/plugins/csi.lightbitslabs.com/csi.sock
+              value: {{ .Values.kubeletRootDir }}/plugins/{{- include "driver.fullname" . }}/csi.sock
             - name: KUBE_NODE_NAME
               valueFrom:
                 fieldRef:
@@ -152,7 +154,7 @@ spec:
           type: DirectoryOrCreate
       - name: plugin-dir
         hostPath:
-          path: {{ .Values.kubeletRootDir }}/plugins/csi.lightbitslabs.com
+          path: {{ .Values.kubeletRootDir }}/plugins/{{- include "driver.fullname" . }}
           type: DirectoryOrCreate
       - name: pods-mount-dir
         hostPath:
