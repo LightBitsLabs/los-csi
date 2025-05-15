@@ -14,6 +14,8 @@ Q := $(if $(V), ,@)
 # $PLUGIN_NAME/$PLUGIN_VER for that instead:
 override BIN_NAME := lb-csi-plugin
 
+override HELM_VERSION := v3.18.0
+
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
 
@@ -554,6 +556,7 @@ image-builder: ## Build image for building the plugin and the bundle.
 		--build-arg UID=$(shell id -u) \
 		--build-arg GID=$(shell id -g) \
 		--build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) \
+		--build-arg HELM_VERSION=$(HELM_VERSION) \
 		-t ${IMG_BUILDER} -f Dockerfile.builder .
 
 docker-cmd := docker run --rm --privileged $(TTY) \
