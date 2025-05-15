@@ -557,6 +557,7 @@ image-builder: ## Build image for building the plugin and the bundle.
 		-t ${IMG_BUILDER} -f Dockerfile.builder .
 
 docker-cmd := docker run --rm --privileged $(TTY) \
+		--network host 				\
 		-e DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
 		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
 		-e BUILD_HASH=$(BUILD_HASH) \
@@ -569,9 +570,9 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-e HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD) \
 		-e DISCOVERY_CLIENT_VERSION=$(DISCOVERY_CLIENT_VERSION) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v /etc/timezone:/etc/timezone:ro \
 		-v `pwd`:/go/src/$(PKG_PREFIX) \
 		-w /go/src/$(PKG_PREFIX) \
-		-h $(BUILD_HOST) \
 		${IMG_BUILDER}
 
 docker-run: image-builder ## Enter image-builder shell.
