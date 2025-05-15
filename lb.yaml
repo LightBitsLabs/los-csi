@@ -14,7 +14,7 @@ los-csi:
       - file://deploy/helm
       - file://deploy/licenses
       - file://deploy/Dockerfile
-      - file://Dockerfile.builder
+      - file://env/build/Dockerfile.builder
       - file://deploy/licenses
       - file://go.mod
       - file://go.sum
@@ -35,7 +35,7 @@ los-csi:
       - file://deploy/helm
       - file://deploy/licenses
       - file://deploy/Dockerfile.ubi9
-      - file://Dockerfile.builder
+      - file://env/build/Dockerfile.builder
       - file://deploy/licenses
       - file://go.mod
       - file://go.sum
