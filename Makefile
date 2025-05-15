@@ -40,9 +40,12 @@ override DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(DISCOVERY_CLI
 TAG := $(if $(BUILD_HASH),$(BUILD_HASH),$(PLUGIN_VER))
 DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
 IMG := $(DOCKER_REGISTRY)/$(DOCKER_TAG)
-IMG_BUILDER := image-builder:v0.0.1
+
 UBI_IMG_TAG := $(PLUGIN_NAME)-ubi9:$(TAG)
 UBI_IMG := $(DOCKER_REGISTRY)/$(UBI_IMG_TAG)
+
+BUILD_IMG_VERSION=$(shell cat env/build/* | md5sum | awk '{print $$1}')
+BUILD_IMG_TAG:=los-csi-builder-image:$(BUILD_IMG_VERSION)
 
 
 LDFLAGS ?= \
@@ -557,7 +560,7 @@ image-builder: ## Build image for building the plugin and the bundle.
 		--build-arg GID=$(shell id -g) \
 		--build-arg DOCKER_GID=$(shell getent group docker | cut -d: -f3) \
 		--build-arg HELM_VERSION=$(HELM_VERSION) \
-		-t ${IMG_BUILDER} -f Dockerfile.builder .
+		-t ${BUILD_IMG_TAG} -f ./env/build/Dockerfile.builder .
 
 docker-cmd := docker run --rm --privileged $(TTY) \
 		--network host 				\
@@ -576,7 +579,7 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-v /etc/timezone:/etc/timezone:ro \
 		-v `pwd`:/go/src/$(PKG_PREFIX) \
 		-w /go/src/$(PKG_PREFIX) \
-		${IMG_BUILDER}
+		${BUILD_IMG_TAG}
 
 docker-run: image-builder ## Enter image-builder shell.
 	$(Q)${docker-cmd} sh
