@@ -4,6 +4,8 @@ FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5-1745855087 AS driver
 ARG APP_USER=appuser
 ARG APP_UID=1001
 ARG APP_GID=1001
+ARG VERSION
+ARG GIT_VER
 
 ADD AlmaLinux-Base.repo /etc/yum.repos.d/
 
@@ -27,12 +29,13 @@ RUN microdnf install -y kmod e2fsprogs xfsprogs cryptsetup sudo && \
 #RUN rm -rf /etc/yum.repos.d/AlmaLinux-Base.repo
 
 # Required Atomic/OpenShift Labels - https://github.com/projectatomic/ContainerApplicationGenericLabels
-LABEL name="ubi9-lb-csi-plugin" \
+LABEL name="lb-csi-plugin-ubi9" \
       vendor="Lightbits Labs" \
-      version="1.19.0" \
+      version="${VERSION}" \
+      gitVersion="${GIT_VER}" \
       release="1" \
-      summary="LightOS CSI Plugin Based on UBI-9" \
-      description="LightOS CSI Plugin Based on UBI-9" \
+      summary="Lightbits CSI Plugin Based on UBI-9" \
+      description="Lightbits CSI Plugin Based on UBI-9" \
       maintainer="dev@lightbitslabs.com"
 
 # Always include a software license in the default location

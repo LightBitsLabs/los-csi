@@ -504,6 +504,8 @@ push-image: verify_image_registry ## Push it to registry specified by DOCKER_REG
 build-image-ubi9: verify_image_registry build
 	$(Q)docker build $(LABELS) \
                 -t $(UBI_IMG) \
+		--build-arg VERSION=$(TAG) \
+		--build-arg GIT_VER=$(GIT_VER) \
                 -f deploy/Dockerfile.ubi9 deploy
 
 push-image-ubi9: verify_image_registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
