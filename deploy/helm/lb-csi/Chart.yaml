@@ -2,7 +2,7 @@ apiVersion: v2
 name: lb-csi-plugin
 version: 0.18.0
 description: Helm Chart for Lightbits CSI Plugin.
-appVersion: 1.20.0
+appVersion: v1.20.0
 home: https://github.com/lightbitslabs/los-csi
 icon: https://www.lightbitslabs.com/wp-content/uploads/2018/08/cropped-header-logo-32x32.png
 maintainers:
