@@ -138,6 +138,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.17 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -146,7 +147,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.17 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -156,6 +156,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -164,7 +165,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -174,6 +174,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.19 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -182,7 +183,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.19 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -192,6 +192,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.20 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -200,7 +201,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.20 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -210,6 +210,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.21 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -218,7 +219,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.21 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -228,6 +228,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.22 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -236,7 +237,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.22 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -246,6 +246,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.23 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -254,7 +255,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.23 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -264,6 +264,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.24 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -272,7 +273,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.24 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -282,6 +282,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.25 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -290,7 +291,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.25 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -300,6 +300,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.26 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -308,7 +309,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.26 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -318,6 +318,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.27 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -326,7 +327,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.27 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -336,6 +336,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.28 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -344,7 +345,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.28 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -354,6 +354,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.29 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -362,7 +363,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.29 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -372,6 +372,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.30 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -380,7 +381,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.30 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -390,6 +390,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.31 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -398,7 +399,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.31 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -408,6 +408,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.32 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -416,7 +417,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.32 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -426,6 +426,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.33 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
@@ -434,7 +435,6 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
-		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.33 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
