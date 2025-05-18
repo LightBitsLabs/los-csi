@@ -23,13 +23,93 @@ override BUILD_HOST := $(or $(BUILD_HOST),$(shell hostname))
 override BUILD_TIME := $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 override GIT_VER := $(or $(GIT_VER), $(or \
 	$(shell git describe --tags --abbrev=8 --always --long --dirty),UNKNOWN))
-override GIT_TAG := $(or $(GIT_TAG), $(or \
-	$(shell git tag --points-at HEAD 2>/dev/null),UNKNOWN))
+
+# If GIT_TAG is passed externally (e.g., make GIT_TAG=v1.2.3), that value is used.
+# Otherwise, it attempts to get the tag pointing at the current HEAD.
+# If no tag points at HEAD, the result of the shell command will be empty.
+# The outer `or` handles the case where GIT_TAG might be passed as an argument to make.
+override GIT_TAG := $(or $(GIT_TAG), $(shell git tag --points-at HEAD 2>/dev/null))
 
 # for local testing you can override those and $DOCKER_REGISTRY:
-override FULL_REPO_NAME := lightos-csi/lb-csi-plugin
-override FULL_REPO_NAME_UBI := lightos-csi/lb-csi-plugin-ubi9
-override PLUGIN_VER := $(or $(GIT_TAG),$(GIT_VER))
+override TAG := $(or $(GIT_TAG),$(GIT_VER))
+
+# --- Configuration ---
+# The image name without any organization or registry prefix
+IMAGE_NAME_ONLY := lb-csi-plugin
+# The default organization to use if DOCKER_REGISTRY is just a hostname
+DEFAULT_ORGANIZATION := lightos-csi
+# The default full image path if DOCKER_REGISTRY is not set at all
+DEFAULT_FULL_IMAGE_PATH := $(DEFAULT_ORGANIZATION)/$(IMAGE_NAME_ONLY)
+DEFAULT_FULL_IMAGE_PATH_UBI := $(DEFAULT_ORGANIZATION)/$(IMAGE_NAME_ONLY)-ubi9
+
+
+# --- Logic to determine the final image name components ---
+
+# _EFFECTIVE_DOCKER_REGISTRY will be empty if DOCKER_REGISTRY was initially empty.
+# Otherwise, it will be the value of DOCKER_REGISTRY with a trailing slash
+# (e.g., "hostname/" or "hostname/given_org/").
+# This respects the user's `override DOCKER_REGISTRY := $(and $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)` line,
+# assuming that line is processed by Make before this block.
+_EFFECTIVE_DOCKER_REGISTRY := $(DOCKER_REGISTRY)
+
+# Determine the organization part to use
+_ORGANIZATION_TO_USE := $(DEFAULT_ORGANIZATION) # Default
+
+ifeq ($(strip $(_EFFECTIVE_DOCKER_REGISTRY)),)
+    # DOCKER_REGISTRY was not provided or was initially empty.
+    # _ORGANIZATION_TO_USE remains $(DEFAULT_ORGANIZATION)
+else
+    # DOCKER_REGISTRY is set. It will end with a '/' due to the user's override.
+    # Remove the trailing slash for cleaner logical processing.
+    _REGISTRY_PREFIX_NO_SLASH := $(patsubst %/,%,$(_EFFECTIVE_DOCKER_REGISTRY))
+
+    # Check if this _REGISTRY_PREFIX_NO_SLASH contains an organization part (i.e., a '/')
+    # If it does, the part after the first '/' is the organization.
+    _HOSTNAME_PART := $(firstword $(subst /, ,$(_REGISTRY_PREFIX_NO_SLASH)))
+    _POTENTIAL_ORG_PART := $(patsubst $(_HOSTNAME_PART)/%,%,$(_REGISTRY_PREFIX_NO_SLASH))
+
+    ifneq ($(_POTENTIAL_ORG_PART),$(_REGISTRY_PREFIX_NO_SLASH))
+        # An organization part was found after the hostname in DOCKER_REGISTRY
+        _ORGANIZATION_TO_USE := $(_POTENTIAL_ORG_PART)
+    endif
+    # If _POTENTIAL_ORG_PART is same as _REGISTRY_PREFIX_NO_SLASH, it means DOCKER_REGISTRY was just a hostname,
+    # so _ORGANIZATION_TO_USE remains $(DEFAULT_ORGANIZATION).
+endif
+
+# Define FULL_REPO_NAME as $ORG/$IMAGE_NAME_ONLY
+_CALCULATED_FULL_REPO_NAME := $(strip $(_ORGANIZATION_TO_USE))/$(IMAGE_NAME_ONLY)
+override FULL_REPO_NAME := $(_CALCULATED_FULL_REPO_NAME)
+override FULL_REPO_NAME_UBI := $(FULL_REPO_NAME)-ubi9
+
+# Define FULL_REPO_NAME_WITH_TAG as $FULL_REPO_NAME:$TAG
+_CALCULATED_FULL_REPO_NAME_WITH_TAG := $(FULL_REPO_NAME):$(TAG)
+override FULL_REPO_NAME_WITH_TAG := $(_CALCULATED_FULL_REPO_NAME_WITH_TAG)
+
+_CALCULATED_FULL_REPO_NAME_WITH_TAG_UBI := $(FULL_REPO_NAME_UBI):$(TAG)
+override FULL_REPO_NAME_WITH_TAG_UBI := $(_CALCULATED_FULL_REPO_NAME_WITH_TAG_UBI)
+
+# Define IMG as $DOCKER_REGISTRY/$FULL_REPO_NAME_WITH_TAG or just $FULL_REPO_NAME_WITH_TAG
+_CALCULATED_IMG :=
+_CALCULATED_IMG_UBI :=
+ifeq ($(strip $(_EFFECTIVE_DOCKER_REGISTRY)),)
+    # DOCKER_REGISTRY was not provided or was initially empty.
+    _CALCULATED_IMG := $(FULL_REPO_NAME_WITH_TAG)
+    _CALCULATED_IMG_UBI := $(FULL_REPO_NAME_WITH_TAG_UBI)
+else
+    # DOCKER_REGISTRY is set.
+    # _REGISTRY_PREFIX_NO_SLASH is already calculated above.
+    # We need the hostname part of the registry.
+    _REGISTRY_HOSTNAME_PART := $(firstword $(subst /, ,$(_REGISTRY_PREFIX_NO_SLASH)))
+    _CALCULATED_IMG := $(_REGISTRY_HOSTNAME_PART)/$(FULL_REPO_NAME_WITH_TAG)
+    _CALCULATED_IMG_UBI := $(_REGISTRY_HOSTNAME_PART)/$(FULL_REPO_NAME_WITH_TAG_UBI)
+endif
+override IMG := $(_CALCULATED_IMG)
+override IMG_UBI := $(_CALCULATED_IMG_UBI)
+
+
+
+BUILD_IMG_VERSION=$(shell cat env/build/* | md5sum | awk '{print $$1}')
+BUILD_IMG_TAG:=los-csi-builder-image:$(BUILD_IMG_VERSION)
 
 # will return only the version part, ex: - v1.1.1-0-g12345678
 override DISCOVERY_CLIENT_VERSION := $(or $(DISCOVERY_CLIENT_VERSION), $(or \
@@ -38,20 +118,11 @@ override DISCOVERY_CLIENT_FULL_REPO_NAME := $(or $(DISCOVERY_CLIENT_FULL_REPO_NA
 	$(shell make -C ../discovery-client --no-print-directory print-FULL_REPO_NAME),UNKNOWN))
 override DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG := $(DISCOVERY_CLIENT_FULL_REPO_NAME):$(DISCOVERY_CLIENT_VERSION)
 
-TAG := $(if $(BUILD_HASH),$(BUILD_HASH),$(PLUGIN_VER))
 
-FULL_REPO_NAME_WITH_TAG := $(FULL_REPO_NAME):$(TAG)
-IMG := $(DOCKER_REGISTRY)/$(FULL_REPO_NAME_WITH_TAG)
-
-FULL_REPO_NAME_WITH_TAG_UBI := $(FULL_REPO_NAME_UBI):$(TAG)
-UBI_IMG := $(DOCKER_REGISTRY)/$(FULL_REPO_NAME_WITH_TAG_UBI)
-
-BUILD_IMG_VERSION=$(shell cat env/build/* | md5sum | awk '{print $$1}')
-BUILD_IMG_TAG:=los-csi-builder-image:$(BUILD_IMG_VERSION)
 
 
 LDFLAGS ?= \
-    -X $(PKG_PREFIX)/pkg/driver.version=$(PLUGIN_VER) \
+    -X $(PKG_PREFIX)/pkg/driver.version=$(TAG) \
     -X $(PKG_PREFIX)/pkg/driver.versionGitCommit=$(GIT_VER) \
     $(and $(BUILD_HASH), -X $(PKG_PREFIX)/pkg/driver.versionBuildHash=$(BUILD_HASH)) \
     -extldflags "-static"
@@ -59,7 +130,7 @@ override GO_VARS := CGO_ENABLED=0
 
 override LABELS := \
 	--label org.opencontainers.image.title="Lightbits CSI Plugin" \
-	--label org.opencontainers.image.version="$(PLUGIN_VER)" \
+	--label org.opencontainers.image.version="$(TAG)" \
 	--label org.opencontainers.image.description="CSI plugin for Lightbits Cluster" \
 	--label org.opencontainers.image.authors="Lightbits Labs <support@lightbitslabs.com>" \
 	--label org.opencontainers.image.documentation="https://www.lightbitslabs.com/support/" \
@@ -503,13 +574,13 @@ push-image: verify_image_registry ## Push it to registry specified by DOCKER_REG
 
 build-image-ubi9: verify_image_registry build
 	$(Q)docker build $(LABELS) \
-                -t $(UBI_IMG) \
+                -t $(IMG_UBI) \
 		--build-arg VERSION=$(TAG) \
 		--build-arg GIT_VER=$(GIT_VER) \
                 -f deploy/Dockerfile.ubi9 deploy
 
 push-image-ubi9: verify_image_registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
-	$(Q)docker push $(UBI_IMG)
+	$(Q)docker push $(IMG_UBI)
 
 clean:
 	$(Q)$(GO_VARS) go clean $(GO_VERBOSE)
@@ -530,14 +601,14 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
 	$(Q)rm -rf build/lb-csi-bundle-*.tar.gz
-	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(PLUGIN_VER).tar.gz \
+	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(TAG).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 bundle-ubi9: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
 	$(Q)rm -rf build/lb-csi-bundle-ubi9*.tar.gz
-	$(Q)tar -C deploy -czvf build/lb-csi-bundle-ubi9-$(PLUGIN_VER).tar.gz \
+	$(Q)tar -C deploy -czvf build/lb-csi-bundle-ubi9-$(TAG).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
@@ -569,11 +640,9 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		--network host 				\
 		-e DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
 		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
-		-e BUILD_HASH=$(BUILD_HASH) \
 		-e GIT_VER=$(GIT_VER) \
 		-e GIT_TAG=$(GIT_TAG) \
 		-e BUILD_ID=$(BUILD_ID) \
-		-e PLUGIN_VER=$(PLUGIN_VER) \
 		-e HELM_CHART_REPOSITORY=$(HELM_CHART_REPOSITORY) \
 		-e HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
 		-e HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD) \
@@ -615,7 +684,7 @@ build/preflight: ## Create artifacts directory for preflight
 preflight-ubi-image: COMPONENT_PID=682215734517299ede0f0ad8
 preflight-ubi-image: verify_image_registry build/preflight bin/preflight-linux-amd64 ## Run preflight checks on the plugin image
 	$(Q)if [ -z "$(PYXIS_API_TOKEN)" ] ; then echo "PYXIS_API_TOKEN not set, it must be provided" ; exit 1 ; fi
-	$(Q)./bin/preflight-linux-amd64 check container $(UBI_IMG) \
+	$(Q)./bin/preflight-linux-amd64 check container $(IMG_UBI) \
 		--artifacts build/preflight \
 		--logfile build/preflight/preflight.log \
 		--submit \
