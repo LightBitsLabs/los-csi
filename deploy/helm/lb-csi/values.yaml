@@ -6,7 +6,7 @@ imageRegistry: docker.lightbitslabs.com/lightos-csi
 sidecarImageRegistry: registry.k8s.io
 imagePullPolicy: IfNotPresent
 imagePullSecrets: []
-discoveryClientInContainer: false
+discoveryClientInContainer: true
 maxIOQueues: 0
 discoveryClientImage: "lb-nvme-discovery-client:1.20.0"
 controllerServiceAccountName: lb-csi-ctrl-sa
