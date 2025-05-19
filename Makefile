@@ -10,11 +10,9 @@ endif
 TTY=$(if $(shell [ -t 0 ] && echo 1),-it, )
 
 # do NOT change or force these from the cmd-line for custom builds, use
-# $PLUGIN_NAME/$PLUGIN_VER for that instead:
-override BIN_NAME := lb-csi-plugin
-override DEFAULT_REL := 0.0.0
-override VERSION_RELEASE := $(or $(shell cat VERSION 2>/dev/null),$(DEFAULT_REL))
-override RELEASE := $(if $(BUILD_ID),$(VERSION_RELEASE).$(BUILD_ID),$(VERSION_RELEASE))
+override PLUGIN_NAME := lb-csi-plugin
+override VERSION := $(shell cat VERSION 2>/dev/null)
+override PLUGIN_VER := $(if $(BUILD_ID),$(VERSION).$(BUILD_ID),$(VERSION))
 
 # pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
@@ -39,7 +37,7 @@ override GIT_VER := $(or $(GIT_VER), $(or \
 
 # set BUILD_HASH to GIT_VER if not provided
 override BUILD_HASH := $(or $(BUILD_HASH),$(GIT_VER))
-TAG := $(if $(BUILD_ID),$(PLUGIN_VER),$(BUILD_HASH))
+TAG := $(if $(BUILD_ID),$(PLUGIN_VER),$(VERSION).$(BUILD_HASH))
 DOCKER_TAG := $(PLUGIN_NAME):$(TAG)
 
 
@@ -114,7 +112,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 build: ## Build plugin binary.
-	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
+	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(PLUGIN_NAME)
 
 deploy/k8s:
 	mkdir -p deploy/k8s
@@ -447,7 +445,7 @@ push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY 
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
-	@rm -rf deploy/$(BIN_NAME) $(YAML_PATH)/*.yaml \
+	@rm -rf deploy/$(PLUGIN_NAME) $(YAML_PATH)/*.yaml \
 		deploy/*.rpm *~ deploy/*~ build/* \
 		deploy/helm/charts/* deploy/k8s \
 		deploy/examples \
@@ -464,7 +462,7 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	@mkdir -p ./build
 	rm -rf build/lb-csi-bundle-*.tar.gz
 	@if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
-	@tar -C deploy -czvf build/lb-csi-bundle-$(RELEASE).tar.gz \
+	@tar -C deploy -czvf build/lb-csi-bundle-$(PLUGIN_VER).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
@@ -497,7 +495,7 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-e BUILD_HASH=$(BUILD_HASH) \
 		-e GIT_VER=$(GIT_VER) \
 		-e BUILD_ID=$(BUILD_ID) \
-		-e RELEASE=$(RELEASE) \
+		-e RELEASE=$(PLUGIN_VER) \
 		-e PLUGIN_VER=$(PLUGIN_VER) \
 		-e HELM_CHART_REPOSITORY=$(HELM_CHART_REPOSITORY) \
 		-e HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
