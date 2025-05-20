@@ -20,12 +20,18 @@ SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
 # these vars are sometimes passed in from the outside:
 #   $BUILD_HASH
 
-# for local testing you can override those and $DOCKER_REGISTRY:
-override PLUGIN_NAME := $(or $(PLUGIN_NAME),$(BIN_NAME))
-override PLUGIN_VER := $(or $(PLUGIN_VER),$(RELEASE))
 
-override DISCOVERY_CLIENT_BUILD_HASH := $(or $(DISCOVERY_CLIENT_BUILD_HASH),$(RELEASE))
-DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(if $(BUILD_ID),$(PLUGIN_VER),$(DISCOVERY_CLIENT_BUILD_HASH))
+#override DISCOVERY_CLIENT_BUILD_HASH := $(or $(DISCOVERY_CLIENT_BUILD_HASH),$(PLUGIN_VER))
+#override DISCOVERY_CLIENT_VERSION := $(shell cat $(WORKSPACE_TOP)/VERSION 2>/dev/null)
+#DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(if $(BUILD_ID),$(PLUGIN_VER),$(DISCOVERY_CLIENT_BUILD_HASH))
+
+
+
+
+override DISCOVERY_CLIENT_BUILD_HASH := $(or $(DISCOVERY_CLIENT_BUILD_HASH),$(PLUGIN_VER))
+override DISCOVERY_CLIENT_VERSION = $(shell cat $(WORKSPACE_TOP)/discovery-client/VERSION 2>/dev/null)
+override DISCOVERY_CLIENT_DOCKER_TAG := lb-nvme-discovery-client:$(if $(BUILD_ID),$(DISCOVERY_CLIENT_VERSION),$(DISCOVERY_CLIENT_BUILD_HASH))
+
 
 PKG_PREFIX := github.com/lightbitslabs/los-csi
 
