@@ -3,6 +3,7 @@
 global:
   storageClass:
     name: example-sc
+    provisioner: csi.lightbitslabs.com
     # Name of the LightOS project we want the plugin to target.
     projectName: default
     # LightOS cluster API endpoints
@@ -45,3 +46,4 @@ snaps:
   kubeVersion: ""
   snapshotStorageClass:
     name: example-snapshot-sc
+    driver: csi.lightbitslabs.com

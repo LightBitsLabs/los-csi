@@ -114,7 +114,7 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 build: ## Build plugin binary.
-	$(GO_VARS) go build $(GO_VERBOSE) -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
+	$(GO_VARS) go build $(GO_VERBOSE) -buildvcs=false -a -ldflags '$(LDFLAGS)' -o deploy/$(BIN_NAME)
 
 deploy/k8s:
 	mkdir -p deploy/k8s

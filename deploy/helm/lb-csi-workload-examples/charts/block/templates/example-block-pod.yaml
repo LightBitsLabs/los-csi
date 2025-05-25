@@ -2,7 +2,7 @@
 kind: Pod
 apiVersion: v1
 metadata:
-  name: example-block-pod
+  name: {{ .Values.podName | quote }}
 spec:
 {{- if .Values.nodeSelector }}
   nodeSelector: {{ .Values.nodeSelector | toYaml | nindent 4 }}
@@ -28,4 +28,4 @@ spec:
   volumes:
     - name: lb-csi-mount
       persistentVolumeClaim:
-        claimName: example-block-pvc
+        claimName: {{ .Values.pvcName | quote }}

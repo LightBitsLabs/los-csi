@@ -2,7 +2,7 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ .Values.global.storageClass.name }}
-provisioner: csi.lightbitslabs.com
+provisioner: {{ (or .Values.global.storageClass.provisioner "csi.lightbitslabs.com") }}
 allowVolumeExpansion: true
 parameters:
   mgmt-endpoint: {{ (required "mgmtEndpoints field is required" .Values.global.storageClass.mgmtEndpoints) }}

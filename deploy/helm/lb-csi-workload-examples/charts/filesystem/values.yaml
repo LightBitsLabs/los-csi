@@ -1,2 +1,5 @@
 nodeSelector: {} # Optional
 nodeName: ""
+pvcName: example-fs-pvc
+podName: example-fs-pod
+storage: 10Gi

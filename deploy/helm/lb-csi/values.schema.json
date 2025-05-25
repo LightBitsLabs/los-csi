@@ -64,6 +64,10 @@
       "description": "LightOS API JWT to mount as volume for controller and node pods.",
       "type": "array"
     },
+    "driverNamePrefix": {
+      "description": "Provide a custom prefix for the driver. for example if provided - `mydriver` driver will be named: `mydriver.csi.lightbitslabs.com`",
+      "type": "string"
+    },
     "luksConfigDir": {
       "description": "Path to host folder that will be mounted to plugin for reading luks_config.yaml",
       "type": "string"

@@ -55,5 +55,6 @@ helm/lb-csi
 | enableSnapshotVolume               | true                                    | Allow volume snapshot feature support         |
 | kubeletRootDir                     | /var/lib/kubelet                        | Kubelet root directory. (change only k8s deployment is different from default)      |
 | kubeVersion                        | ""                                      | Target K8s version for offline manifests rendering (overrides .Capabilities.Version)|
-| jwtSecret                          | []                                      | LightOS API JWT to mount as volume for controller and node pods.                    |
+| jwtSecret                          | []                                      | LightOS API JWT to mount as volume for controller and node pods.
+| driverNamePrefix                   | []                                      | Provide a custom prefix for the driver. for example if provided - `mydriver` driver will be named: `mydriver.csi.lightbitslabs.com`                    |                    |
 
