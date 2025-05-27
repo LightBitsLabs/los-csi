@@ -12,6 +12,8 @@ global:
     compression: disabled
     qosPolicyName: ""
     host-encryption: disabled
+    # The csi.storage.k8s.io/fstype parameter is optional. The values allowed are ext4 or xfs. The default value is ext4.
+    fsType: "ext4"
   jwtSecret:
     name: example-secret
     namespace: default
@@ -20,8 +22,6 @@ global:
 # subchart workloads:
 storageclass:
   enabled: false
-  # The csi.storage.k8s.io/fstype parameter is optional. The values allowed are ext4 or xfs. The default value is ext4.
-  fstype: ""
 block:
   enabled: false
   nodeSelector: {}
