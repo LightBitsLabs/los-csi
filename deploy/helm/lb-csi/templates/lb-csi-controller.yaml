@@ -50,6 +50,15 @@ spec:
             value: {{ .Values.rwx | quote }}
 {{- end }}
           imagePullPolicy: "Always"
+          securityContext:
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+              - "AUDIT_WRITE"
+{{- if .Values.runAsUser }}
+            runAsUser: {{ .Values.runAsUser }}
+            # runAsGroup: {{ .Values.runAsGroup }} # Optional GID
+{{- end }}
           volumeMounts:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
@@ -58,7 +67,7 @@ spec:
             mountPath: "/etc/lb-csi"
 {{- end }}
         - name: csi-provisioner
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-provisioner:v2.2.2
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-provisioner:v3.2.2
           args:
           - "--csi-address=$(ADDRESS)"
           - "--v=4"
@@ -69,7 +78,7 @@ spec:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-attacher
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-attacher:v3.3.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-attacher:v4.2.0
           args:
           - "--v=4"
           - "--csi-address=$(ADDRESS)"
@@ -80,7 +89,7 @@ spec:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-resizer
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-resizer:v1.2.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-resizer:v1.7.0
           args:
           - "--v=5"
           - "--csi-address=$(ADDRESS)"
@@ -96,7 +105,7 @@ spec:
 {{- if ($kubeVersion | semverCompare ">=1.17.0 < 1.20.0") }}
           image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:v3.0.3
 {{- else }}
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:v4.2.1
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:v6.2.1
 {{- end }}
           args:
           - "--v=5"
