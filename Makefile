@@ -134,7 +134,7 @@ snapshot-controller-manifests: verify_image_registry deploy/k8s
 lb-csi-manifests: verify_image_registry deploy/k8s
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.17 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -142,7 +142,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.17 \
@@ -152,7 +152,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.17-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.18 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -160,7 +160,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.18 \
@@ -170,7 +170,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.18-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.19 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -178,7 +178,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.19 \
@@ -188,7 +188,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.19-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.20 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -196,7 +196,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.20 \
@@ -206,7 +206,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.20-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.21 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -214,7 +214,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.21 \
@@ -224,7 +224,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.21-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.22 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -232,7 +232,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.22.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.22 \
@@ -242,7 +242,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.22-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.23 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -250,7 +250,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.23.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.23 \
@@ -260,7 +260,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.23-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.24 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -268,7 +268,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.24.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.24 \
@@ -278,7 +278,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.24-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.25 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -286,7 +286,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.25.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.25 \
@@ -296,7 +296,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.25-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.26 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -304,7 +304,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.26.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.26 \
@@ -314,7 +314,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.26-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.27 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -322,7 +322,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.27.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.27 \
@@ -332,7 +332,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.27-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.28 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -340,7 +340,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.28.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.28 \
@@ -350,7 +350,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.28-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.29 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -358,7 +358,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.29.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.29 \
@@ -368,7 +368,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.29-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.30 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -376,7 +376,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.30.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.30 \
@@ -386,7 +386,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.30-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.31 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -394,7 +394,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.31.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.31 \
@@ -404,7 +404,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.31-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.32 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -412,7 +412,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.32.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.32 \
@@ -422,7 +422,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set discoveryClientImage=$(DISCOVERY_CLIENT_DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.32-dc.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set kubeVersion=v1.33 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
@@ -430,7 +430,7 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set image=$(DOCKER_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.33.yaml
 	helm template deploy/helm/lb-csi/ \
 		--namespace=kube-system \
-		--set allowExpandVolume=true \
+		--set enableExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=true \
 		--set kubeVersion=v1.33 \
