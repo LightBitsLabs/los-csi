@@ -1,37 +1,39 @@
 ---
 enableExpandVolume: true
 enableSnapshot: true
-image: "lb-csi-plugin:1.19.0"
+image: "lb-csi-plugin:v1.20.0"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
 sidecarImageRegistry: registry.k8s.io
 imagePullPolicy: IfNotPresent
 imagePullSecrets: []
-discoveryClientInContainer: false
+discoveryClientInContainer: true
 maxIOQueues: 0
-discoveryClientImage: "lb-nvme-discovery-client:1.19.0"
+discoveryClientImage: "lb-nvme-discovery-client:v1.20.0"
 controllerServiceAccountName: lb-csi-ctrl-sa
 nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet
 #luksConfigDir: /etc/lb-csi-luks-config
 rwx: false
+# runAsUser: 1001
+# runAsGroup: 1001
 #registryUsername: ""
 # jwtSecret:
 # - name: cluster-admin-jwt
 #   jwt: |-
 #     ZXlKaGJHY2lPaUpTVXpJMU5pSXNJbXRwWkNJNkluTjVjM1JsYlRweWIyOTBJaXdpZEhsd0lqb2lTbGRVSW4wLmV5SmhkV1FpT2lKTWFXZG9kRTlUSWl3aVpYaHdJam94TmpRNU9UUXpNelkyTENKcFlYUWlPakUyTVRnME1EY3pOallzSW1semN5STZJbk41YzNSbGMzUnpJaXdpYW5ScElqb2lRMUJzTXpCdVNtVlFXV3hCU1dsRGJtMWpYMlJ2UVNJc0ltNWlaaUk2TVRZeE9EUXdOek0yTml3aWNtOXNaWE1pT2xzaWMzbHpkR1Z0T21Oc2RYTjBaWEl0WVdSdGFXNGlYU3dpYzNWaUlqb2liR2xuYUhSdmN5MWpiR2xsYm5RaWZRLm5PY2pTaTJlMUZ1RFhEMHRsYXFackZnQ2I2WFRqc19Lc2phUHRZbHBUMDZCNmQ5bmhfM1hIejNCRTZIUGJydVM3RERIT2xFOWZNUWpSbUl0LWZDZjJMQ0Jja1J6bm1fQnVGLU9wWGRQc2hDY1plX3VCeUFaTXNkMDJsR05fWHR2Sy03SXh3ZTZsSkd1S215dFdwWUhvcTczUVVfYUhITjItMHJJUFlWSEpfQmN4NDcxblQyRmQzbG5PSFNtNWVZWUhQTzJrcGdUSy0yMkVIX21FUWYxbldjQms3UU15T3RWbVloUmNwN0F3REhDLTllQkNnM0w2VDFFdlV1YWRMTXZpbXNGV2VWeXZya1ZVVzhrWjhZeDJTNlMzMG5FeFN2NHJ3aHVUX3Q4VnNyRFhnUWdWd0ZacGhiZ0dTZTBDQlR1dUNiMkt5TlRvVmxnQjBoQ05mUjBaZw==
 
-# CSI controller pod tolerations will enable controller-pod deployment to the desired node. 
-# Replace values with desired key-value pairs of tainted nodes.  
+# CSI controller pod tolerations will enable controller-pod deployment to the desired node.
+# Replace values with desired key-value pairs of tainted nodes.
 lbControllerTolerations:
   key: "lb-csi-controller"
   operator: "Equal"
   value: "lb-csi-controller-pod"
-  effect: "NoSchedule" 
+  effect: "NoSchedule"
 
-# CSI node pod tolerations will enable node-pod deployment to the desired node. 
-# Replace values with desired key-value pairs of tainted nodes.  
+# CSI node pod tolerations will enable node-pod deployment to the desired node.
+# Replace values with desired key-value pairs of tainted nodes.
 lbNodeTolerations:
   key: "lb-csi-controller"
   operator: "Equal"
   value: "lb-csi-controller-pod"
-  effect: "NoSchedule" 
+  effect: "NoSchedule"

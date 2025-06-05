@@ -1,0 +1,58 @@
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5-1745855087 AS driver
+
+# Define args for user/group IDs for flexibility
+ARG APP_USER=appuser
+ARG APP_UID=1001
+ARG APP_GID=1001
+ARG VERSION
+ARG GIT_VER
+
+ADD AlmaLinux-Base.repo /etc/yum.repos.d/
+
+# Install necessary packages including sudo
+# Combine RUN commands for layer efficiency
+RUN microdnf install -y kmod e2fsprogs xfsprogs cryptsetup sudo && \
+    # Clean up repo file immediately after use
+    rm -rf /etc/yum.repos.d/AlmaLinux-Base.repo && \
+    # Create the application group and user
+    groupadd -g ${APP_GID} ${APP_USER} && \
+    useradd -u ${APP_UID} -g ${APP_GID} -m -s /bin/bash ${APP_USER} && \
+    # Grant passwordless sudo rights to the app user
+    echo "${APP_USER} ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/${APP_USER}-sudo && \
+    # Ensure correct permissions for the sudoers file (read-only for root)
+    chmod 0440 /etc/sudoers.d/${APP_USER}-sudo && \
+    # Clean up microdnf cache
+    microdnf clean all
+
+
+#RUN microdnf install kmod e2fsprogs xfsprogs cryptsetup -y
+#RUN rm -rf /etc/yum.repos.d/AlmaLinux-Base.repo
+
+# Required Atomic/OpenShift Labels - https://github.com/projectatomic/ContainerApplicationGenericLabels
+LABEL name="lb-csi-plugin-ubi9" \
+      vendor="Lightbits Labs" \
+      version="${VERSION}" \
+      gitVersion="${GIT_VER}" \
+      release="1" \
+      summary="Lightbits CSI Plugin Based on UBI-9" \
+      description="Lightbits CSI Plugin Based on UBI-9" \
+      maintainer="dev@lightbitslabs.com"
+
+# Always include a software license in the default location
+# Required for Red Hat container certification
+# Copy licenses and set ownership to the app user
+COPY --chown=${APP_USER}:${APP_USER} licenses /licenses
+
+# Copy the plugin binary and set ownership and executable permission
+COPY --chown=${APP_USER}:${APP_USER} lb-csi-plugin /lb-csi-plugin
+RUN chmod u+x /lb-csi-plugin
+
+# Switch to the non-root user
+USER ${APP_USER}
+
+# Set the working directory (optional, but good practice)
+WORKDIR /home/${APP_USER}
+
+# Run the entrypoint using sudo
+# This assumes the plugin needs root privileges for some operations
+ENTRYPOINT ["sudo", "-E", "/lb-csi-plugin"]

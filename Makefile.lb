@@ -13,14 +13,10 @@ ifeq ($(INSTALL_PATH),"")
     $(error "lb-csi install path is not specified")
 endif
 
-override BUILD_HASH := $(shell component-tool version --repo $(REPO_NAME) --type=$(BUILD_TYPE) lb-csi-plugin)
-
-override DISCOVERY_CLIENT_BUILD_HASH := $(shell component-tool version --repo discovery-client lb-nvme-discovery-client)
+#override DISCOVERY_CLIENT_BUILD_HASH := $(shell component-tool version --repo discovery-client lb-nvme-discovery-client)
 
 BUILD_FLAGS := DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
-    SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
-	BUILD_HASH=$(BUILD_HASH) \
-    DISCOVERY_CLIENT_BUILD_HASH=$(DISCOVERY_CLIENT_BUILD_HASH) \
+	SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
 	HELM_CHART_REPOSITORY=$(HELM_CHART_REPOSITORY) \
 	HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
 	HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD)
@@ -39,12 +35,20 @@ install_dir:
 	$(Q)mkdir -p $(INSTALL_PATH)
 
 install: |install_dir
-	$(BUILD_FLAGS) $(MAKE) -f Makefile push
+	$(BUILD_FLAGS) $(MAKE) -f Makefile push-image
 	cp -r deploy $(INSTALL_PATH)/
 	$(call save_manifest,$(REPO_NAME):lb-csi-plugin,$(INSTALL_PATH))
 
+install-ubi9: |install_dir
+	$(BUILD_FLAGS) $(MAKE) -f Makefile push-image-ubi9
+	cp -r deploy $(INSTALL_PATH)/
+	$(call save_manifest,$(REPO_NAME):lb-csi-plugin-ubi9,$(INSTALL_PATH))
+
 checkin:
 	$(Q)component-tool checkin -v --repo=$(REPO_NAME) lb-csi-plugin
+
+checkin-ubi9:
+	$(Q)component-tool checkin -v --repo=$(REPO_NAME) lb-csi-plugin-ubi9
 
 .DEFAULT:  ## passthrough each command to the Makefile with predefined lightbits specific variables.
 	$(Q)$(BUILD_FLAGS) $(MAKE) --no-print-directory -f Makefile "$@"
