@@ -18,7 +18,6 @@ los-csi:
       - file://deploy/licenses
       - file://go.mod
       - file://go.sum
-      - file://VERSION
       - file://lb.yaml
   lb-csi-plugin-ubi9:
     build:
@@ -51,4 +50,3 @@ los-csi:
       - file://deploy
       - file://go.mod
       - file://go.sum
-      - file://VERSION
