@@ -7,7 +7,6 @@ import (
 	"context"
 
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -30,60 +29,6 @@ func RespDetailInterceptor(
 		}
 	}
 	return resp, err
-}
-
-func LBCodeToLogrusLevel(code codes.Code) logrus.Level {
-	switch code {
-	case codes.OK,
-		codes.Canceled,
-		codes.DeadlineExceeded,
-		codes.NotFound,
-		codes.Unavailable:
-		return logrus.InfoLevel
-	case codes.Aborted,
-		codes.AlreadyExists,
-		codes.FailedPrecondition,
-		codes.InvalidArgument,
-		codes.OutOfRange,
-		codes.PermissionDenied,
-		codes.ResourceExhausted,
-		codes.Unauthenticated:
-		return logrus.WarnLevel
-	case codes.DataLoss,
-		codes.Internal,
-		codes.Unimplemented,
-		codes.Unknown:
-		return logrus.ErrorLevel
-	default:
-		return logrus.ErrorLevel
-	}
-}
-
-func CodeToLogrusLevel(code codes.Code) logrus.Level {
-	switch code {
-	case codes.OK,
-		codes.Canceled:
-		return logrus.InfoLevel
-	case codes.Aborted,
-		codes.AlreadyExists,
-		codes.DeadlineExceeded,
-		codes.FailedPrecondition,
-		codes.InvalidArgument,
-		codes.NotFound,
-		codes.OutOfRange,
-		codes.PermissionDenied,
-		codes.ResourceExhausted,
-		codes.Unauthenticated,
-		codes.Unavailable,
-		codes.Unimplemented:
-		return logrus.WarnLevel
-	case codes.DataLoss,
-		codes.Internal,
-		codes.Unknown:
-		return logrus.ErrorLevel
-	default:
-		return logrus.ErrorLevel
-	}
 }
 
 func ErrFromCtxErr(err error) error {
