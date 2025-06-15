@@ -506,12 +506,12 @@ docker-helm-package-upload: image-builder ## Upload helm packages to Helm Repo i
 docker-build: image-builder ## Build plugin and package it in image-builder.
 	$(Q)${docker-cmd} sh -c "$(MAKE) build-image"
 
-docker-push: push
+docker-push: push-image
 
 docker-build-ubi9: image-builder ## Build plugin and package it in image-builder.
 	$(Q)${docker-cmd} sh -c "$(MAKE) build-image-ubi9"
 
-docker-push-ubi9: push-ubi9
+docker-push-ubi9: push-image-ubi9
 
 bin/preflight-linux-amd64: bin ## Install preflight under bin folder
 	$(Q)curl -SL https://github.com/redhat-openshift-ecosystem/openshift-preflight/releases/download/1.13.0/preflight-linux-amd64 \
