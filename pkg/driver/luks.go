@@ -5,13 +5,13 @@ package driver
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	guuid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
@@ -31,7 +31,7 @@ const (
 // encryptAndOpenDevice encrypts the volume with the given ID with the given passphrase and open it
 // If the device is already encrypted (LUKS header present), it will only open the device
 func (d *Driver) encryptAndOpenDevice(volUUID guuid.UUID, passphrase string) (string, error) {
-	d.log.Debugf("encryptAndOpenDevice volume uuid: %q", volUUID)
+	d.log.Debug("encryptAndOpenDevice volume", "uuid", volUUID)
 	encryptedDevicePath, err := d.getEncryptedDevicePath(volUUID)
 	if err != nil {
 		return "", err
@@ -39,7 +39,7 @@ func (d *Driver) encryptAndOpenDevice(volUUID guuid.UUID, passphrase string) (st
 
 	if encryptedDevicePath != "" {
 		// device is already encrypted and open
-		d.log.Debugf("encryptAndOpenDevice volume: %q is already encrypted", volUUID)
+		d.log.Debug("encryptAndOpenDevice volume is already encrypted", "uuid", volUUID)
 		return encryptedDevicePath, nil
 	}
 
@@ -139,7 +139,7 @@ type luksConfig struct {
 	PbkdfMemory int64 `yaml:"pbkdfMemory,omitempty"`
 }
 
-func loadLuksConfig(log *logrus.Entry, luksCfgFile string) (*luksConfig, error) {
+func loadLuksConfig(log *slog.Logger, luksCfgFile string) (*luksConfig, error) {
 	// setting default values that may be overridden by content of config file
 	luksCfg := &luksConfig{
 		// 64MB as sane default.
@@ -151,8 +151,7 @@ func loadLuksConfig(log *logrus.Entry, luksCfgFile string) (*luksConfig, error) 
 		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("failed to read luks config: %s", err)
 		}
-		log.Infof("missing luks config file '%s', falling back to default '%v'",
-			luksCfgFile, luksCfg)
+		log.Info("missing luks config file, falling back to default", "missing", luksCfgFile, "default", luksCfg)
 		return luksCfg, nil
 	}
 
@@ -192,7 +191,7 @@ func (d *Driver) luksFormat(devicePath string, passphrase string) error {
 		return mkExternal("your cpu does not support aes")
 	}
 
-	d.log.Debugf("luksFormat with args:%v", args)
+	d.log.Debug("luksFormat with", "args", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 	cmd.Stdin = strings.NewReader(passphrase)
 
@@ -219,7 +218,7 @@ func (d *Driver) luksOpen(devicePath string, mapperFile string, passphrase strin
 		return mkExternal("your cpu does not support aes")
 	}
 
-	d.log.Debugf("luksOpen with args:%v", args)
+	d.log.Debug("luksOpen with", "args", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 	cmd.Stdin = strings.NewReader(passphrase)
 	stdout, err := cmd.CombinedOutput()
@@ -239,11 +238,11 @@ func (d *Driver) luksResize(devicePath string) error {
 		return mkExternal("your cpu does not support aes")
 	}
 
-	d.log.Debugf("resize with args:%v", args)
+	d.log.Debug("resize with", "args", args)
 	out, err := exec.Command(cryptsetupCmd, args...).CombinedOutput()
 	if err != nil {
 		msg := mkEExec("unable to resize %s with output:%s error:%v", devicePath, string(out), err)
-		d.log.Error(msg)
+		d.log.Error("unable to resize", "error", msg)
 		return msg
 	}
 	return nil
@@ -255,7 +254,7 @@ func (d *Driver) luksClose(mapperFile string) error {
 		mapperFile,  // mapper file to close
 	}
 
-	d.log.Debugf("luksClose with args:%v", args)
+	d.log.Debug("luksClose with", "args", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 
 	return cmd.Run()
@@ -267,11 +266,11 @@ func (d *Driver) luksStatus(mapperFile string) bool {
 		"status",   // status
 		mapperFile, // mapper file to get status
 	}
-	d.log.Debugf("luksStatus with args:%v", args)
+	d.log.Debug("luksStatus with", "args", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 
 	stdout, _ := cmd.CombinedOutput()
-	d.log.Debugf("luksStatus output:%q ", string(stdout))
+	d.log.Debug("luksStatus", "output", string(stdout))
 
 	statusLines := strings.Split(string(stdout), "\n")
 
@@ -294,7 +293,7 @@ func (d *Driver) luksIsLuks(devicePath string) (bool, error) {
 		devicePath, // device path to check
 	}
 
-	d.log.Debugf("luksIsLuks with args:%v", args)
+	d.log.Debug("luksIsLuks with", "args", args)
 	cmd := exec.Command(cryptsetupCmd, args...)
 
 	err := cmd.Run()
