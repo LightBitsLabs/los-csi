@@ -26,6 +26,7 @@
   - [CHANGELOG-1.17.0](CHANGELOG/CHANGELOG-1.17.0.md)
   - [CHANGELOG-1.18.0](CHANGELOG/CHANGELOG-1.18.0.md)
   - [CHANGELOG-1.19.0](CHANGELOG/CHANGELOG-1.19.0.md)
+  - [CHANGELOG-v1.20.0](CHANGELOG/CHANGELOG-v1.20.0.md)
 - [Plugin Deployment](plugin_deployment/deployment.md)
   - [Static Manifests](plugin_deployment/plugin_deployment_static_manifests.md)
   - [Helm](plugin_deployment/plugin_deployment_using_helm.md)
