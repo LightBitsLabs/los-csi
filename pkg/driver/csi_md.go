@@ -94,22 +94,27 @@ func checkProjectName(field, proj string) error {
 //
 // `parameters` as passed to CreateVolume() is a string-to-string (!) KV map
 // that must include:
-//     mgmt-endpoint: <host>:<port>[,<host>:port>...]
-//     mgmt-scheme: "grpcs"
-//     project-name: <project-name>
-//     replica-count: <num-replicas>
+//
+//	mgmt-endpoint: <host>:<port>[,<host>:port>...]
+//	mgmt-scheme: "grpcs"
+//	project-name: <project-name>
+//	replica-count: <num-replicas>
+//
 // may optionally include (if omitted - the default is "disabled"):
-//     compression: <"enabled"|"disabled">
-//     qos-policy-name: <qos-policy-name>
-//     host-encryption: <"enabled"|"disabled">
+//
+//	compression: <"enabled"|"disabled">
+//	qos-policy-name: <qos-policy-name>
+//	host-encryption: <"enabled"|"disabled">
+//
 // e.g.:
-//     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
-//     mgmt-scheme: grpcs
-//     project-name: proj-3
-//     replica-count: 2
-//     compression: enabled
-//     qos-policy-name: "io-limited-policy"
-//     host-encryption: enabled
+//
+//	mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
+//	mgmt-scheme: grpcs
+//	project-name: proj-3
+//	replica-count: 2
+//	compression: enabled
+//	qos-policy-name: "io-limited-policy"
+//	host-encryption: enabled
 type lbCreateVolumeParams struct {
 	mgmtEPs       endpoint.Slice // LightOS mgmt API server endpoints.
 	replicaCount  uint32         // total number of volume replicas.
@@ -239,32 +244,37 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>][|hostcrypto:<format>]
+//
+//	mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>][|hostcrypto:<format>]
+//
 // where:
-//    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
-//            volume. can be a hostname or an IP address. more than one
-//            comma-separated <host>:<port> pair can be specified.
-//            TODO: IPv6 support will require amending parsing for bizarre
-//            extra allowed characters.
-//    <port>    - variable-length printable decimal representation of the
-//            uint16 port number, no leading zeroes.
-//    <nguid>   - volume NGUID (see NVMe spec, Identify NS Data Structure)
-//            in its "canonical", 36-character long, RFC-4122 compliant string
-//            representation.
-//    <proj>    - project/tenant name on the LB cluster. this field is
-//            temporarily optional in resource IDs for reverse compatibility,
-//            though modern LB clusters will refuse requests without it.
-//            see notes below in parseCSIResourceID().
-//    <scheme>  - transport scheme for communicating with the LB cluster.
-//            the only valid value is currently 'grpcs' (gRPC over TLS), and
-//            scheme is temporarily optional, in which case it defaults to...
-//            'grpcs'! modern LB clusters will refuse plain unencrypted gRPC
-//            requests anyway. see below in parseCSIResourceID().
-//    <hostcrypto>  - specifies the crypto format of the hostEncrypted volume, only luks2 is possible.
-//            this is optional and will only exist for host-encrypted volumes.
+//
+//	<host>    - mgmt API server endpoint of the LightOS cluster hosting the
+//	        volume. can be a hostname or an IP address. more than one
+//	        comma-separated <host>:<port> pair can be specified.
+//	        TODO: IPv6 support will require amending parsing for bizarre
+//	        extra allowed characters.
+//	<port>    - variable-length printable decimal representation of the
+//	        uint16 port number, no leading zeroes.
+//	<nguid>   - volume NGUID (see NVMe spec, Identify NS Data Structure)
+//	        in its "canonical", 36-character long, RFC-4122 compliant string
+//	        representation.
+//	<proj>    - project/tenant name on the LB cluster. this field is
+//	        temporarily optional in resource IDs for reverse compatibility,
+//	        though modern LB clusters will refuse requests without it.
+//	        see notes below in parseCSIResourceID().
+//	<scheme>  - transport scheme for communicating with the LB cluster.
+//	        the only valid value is currently 'grpcs' (gRPC over TLS), and
+//	        scheme is temporarily optional, in which case it defaults to...
+//	        'grpcs'! modern LB clusters will refuse plain unencrypted gRPC
+//	        requests anyway. see below in parseCSIResourceID().
+//	<hostcrypto>  - specifies the crypto format of the hostEncrypted volume, only luks2 is possible.
+//	        this is optional and will only exist for host-encrypted volumes.
+//
 // e.g.:
-//   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
-//   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs|hostcrypto:luks2
+//
+//	mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
+//	mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs|hostcrypto:luks2
 //
 // TODO: the CSI spec mandates that strings "SHALL NOT" exceed 128 bytes.
 // K8s is more lenient (at least 253 bytes, likely more). in any case, with
@@ -387,7 +397,7 @@ func (d *Driver) supportedAccessModes(isBlockVolumeMode bool) []csi.VolumeCapabi
 		supportedAccessModes = append(supportedAccessModes,
 			csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER)
 	}
-	d.log.Infof("RWX is %t returning access-modes: %+v", d.rwx, supportedAccessModes)
+	d.log.Info("returning access-modes", "requested", d.rwx, "supported", supportedAccessModes)
 	return supportedAccessModes
 }
 
