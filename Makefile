@@ -120,7 +120,7 @@ override DISCOVERY_CLIENT_FULL_REPO_NAME := $(or $(DISCOVERY_CLIENT_FULL_REPO_NA
 	$(shell make -C ../discovery-client --no-print-directory print-FULL_REPO_NAME),UNKNOWN))
 override DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG := $(DISCOVERY_CLIENT_FULL_REPO_NAME):$(DISCOVERY_CLIENT_VERSION)
 
-
+override BUNDLE_TAG := $(if $(BUILD_ID),$(TAG).$(BUILD_ID),$(TAG))
 
 
 LDFLAGS ?= \
@@ -441,14 +441,14 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
 	$(Q)rm -rf build/lb-csi-bundle-*.tar.gz
-	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(TAG).tar.gz \
+	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(BUNDLE_TAG).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 bundle-ubi9: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
 	$(Q)rm -rf build/lb-csi-bundle-ubi9*.tar.gz
-	$(Q)tar -C deploy -czvf build/lb-csi-bundle-ubi9-$(TAG).tar.gz \
+	$(Q)tar -C deploy -czvf build/lb-csi-bundle-ubi9-$(BUNDLE_TAG).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
 deploy/helm/charts:
