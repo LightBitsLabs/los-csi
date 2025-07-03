@@ -444,6 +444,7 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(TAG).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
+bundle-ubi9: FULL_REPO_NAME_WITH_TAG := $(DEFAULT_FULL_IMAGE_PATH_UBI)
 bundle-ubi9: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
@@ -534,6 +535,7 @@ preflight-ubi-image: verify_image_registry build/preflight bin/preflight-linux-a
 docker-bundle: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
 	$(Q)${docker-cmd} sh -c "$(MAKE) bundle"
 
+docker-bundle-ubi9: IMAGE_NAME_ONLY := $(DEFAULT_FULL_IMAGE_PATH_UBI)
 docker-bundle-ubi9: image-builder ## Generate manifests for plugin deployment and example manifests as well as helm packages in image-builder
 	$(Q)${docker-cmd} sh -c "$(MAKE) bundle-ubi9"
 
