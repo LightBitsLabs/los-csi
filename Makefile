@@ -444,6 +444,8 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 	$(Q)tar -C deploy -czvf build/lb-csi-bundle-$(TAG).tar.gz \
 		k8s examples helm/charts lightos-patcher
 
+# reset FULL_REPO_NAME_WITH_TAG to generate bundle for UBI9 image
+bundle-ubi9: FULL_REPO_NAME_WITH_TAG := $(DEFAULT_FULL_IMAGE_PATH_UBI)
 bundle-ubi9: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
