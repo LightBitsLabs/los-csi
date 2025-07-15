@@ -34,6 +34,7 @@ override GIT_TAG := $(or $(GIT_TAG), $(shell git tag --points-at HEAD 2>/dev/nul
 
 # for local testing you can override those and $DOCKER_REGISTRY:
 override TAG := $(or $(GIT_TAG),$(GIT_VER))
+override TAG_UBI := $(TAG)-ubi9
 
 # --- Configuration ---
 # The image name without any organization or registry prefix
@@ -81,13 +82,12 @@ endif
 # Define FULL_REPO_NAME as $ORG/$IMAGE_NAME_ONLY
 _CALCULATED_FULL_REPO_NAME := $(strip $(_ORGANIZATION_TO_USE))/$(IMAGE_NAME_ONLY)
 override FULL_REPO_NAME := $(_CALCULATED_FULL_REPO_NAME)
-override FULL_REPO_NAME_UBI := $(FULL_REPO_NAME)-ubi9
 
 # Define FULL_REPO_NAME_WITH_TAG as $FULL_REPO_NAME:$TAG
 _CALCULATED_FULL_REPO_NAME_WITH_TAG := $(FULL_REPO_NAME):$(TAG)
 override FULL_REPO_NAME_WITH_TAG := $(_CALCULATED_FULL_REPO_NAME_WITH_TAG)
 
-_CALCULATED_FULL_REPO_NAME_WITH_TAG_UBI := $(FULL_REPO_NAME_UBI):$(TAG)
+_CALCULATED_FULL_REPO_NAME_WITH_TAG_UBI := $(FULL_REPO_NAME):$(TAG_UBI)
 override FULL_REPO_NAME_WITH_TAG_UBI := $(_CALCULATED_FULL_REPO_NAME_WITH_TAG_UBI)
 
 # Define IMG as $DOCKER_REGISTRY/$FULL_REPO_NAME_WITH_TAG or just $FULL_REPO_NAME_WITH_TAG
@@ -115,10 +115,14 @@ BUILD_IMG_TAG:=los-csi-builder-image:$(BUILD_IMG_VERSION)
 
 # will return only the version part, ex: - v1.1.1-0-g12345678
 override DISCOVERY_CLIENT_VERSION := $(or $(DISCOVERY_CLIENT_VERSION), $(or \
-	$(shell make -C ../discovery-client --no-print-directory print-TAG),UNKNOWN))
+	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory print-TAG),UNKNOWN))
 override DISCOVERY_CLIENT_FULL_REPO_NAME := $(or $(DISCOVERY_CLIENT_FULL_REPO_NAME), $(or \
-	$(shell make -C ../discovery-client --no-print-directory print-FULL_REPO_NAME),UNKNOWN))
+	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory print-FULL_REPO_NAME),UNKNOWN))
 override DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG := $(DISCOVERY_CLIENT_FULL_REPO_NAME):$(DISCOVERY_CLIENT_VERSION)
+override DISCOVERY_CLIENT_VERSION_UBI := $(or $(DISCOVERY_CLIENT_VERSION_UBI), $(or \
+	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory print-TAG_UBI),UNKNOWN))
+override DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG_UBI := $(DISCOVERY_CLIENT_FULL_REPO_NAME):$(DISCOVERY_CLIENT_VERSION_UBI)
+
 
 override BUNDLE_TAG := $(if $(BUILD_ID),$(TAG).$(BUILD_ID),$(TAG))
 
@@ -447,6 +451,7 @@ bundle: verify_image_registry manifests examples_manifests helm_package
 
 # reset FULL_REPO_NAME_WITH_TAG to generate bundle for UBI9 image
 bundle-ubi9: FULL_REPO_NAME_WITH_TAG := $(FULL_REPO_NAME_WITH_TAG_UBI)
+bundle-ubi9: DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG := $(DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG_UBI)
 bundle-ubi9: verify_image_registry manifests examples_manifests helm_package
 	$(Q)if [ -z "$(DOCKER_REGISTRY)" ] ; then echo "DOCKER_REGISTRY not set, can't generate bundle" ; exit 1 ; fi
 	$(Q)mkdir -p ./build
@@ -490,6 +495,7 @@ docker-cmd := docker run --rm --privileged $(TTY) \
 		-e HELM_CHART_REPOSITORY_USERNAME=$(HELM_CHART_REPOSITORY_USERNAME) \
 		-e HELM_CHART_REPOSITORY_PASSWORD=$(HELM_CHART_REPOSITORY_PASSWORD) \
 		-e DISCOVERY_CLIENT_VERSION=$(DISCOVERY_CLIENT_VERSION) \
+		-e DISCOVERY_CLIENT_VERSION_UBI=$(DISCOVERY_CLIENT_VERSION_UBI) \
 		-e DISCOVERY_CLIENT_FULL_REPO_NAME=$(DISCOVERY_CLIENT_FULL_REPO_NAME) \
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /etc/timezone:/etc/timezone:ro \
