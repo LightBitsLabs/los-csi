@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -41,7 +41,7 @@ const (
 // all of this might change by the time we actually try to connect/mount, of
 // course, but usually only for the worse, not for the better.
 func (d *Driver) lbVolEligible(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, vid lbResourceID,
 ) error {
 	vol, err := clnt.GetVolume(ctx, vid.uuid, vid.projName)
 	if err != nil {
@@ -52,8 +52,7 @@ func (d *Driver) lbVolEligible(
 	}
 
 	if !vol.IsUsable() {
-		log.Warnf("volume is inaccessible, state: %s, protection: %s",
-			vol.State, vol.Protection)
+		log.Warn("volume is inaccessible", "state", vol.State, "protection", vol.Protection)
 		return mkEagain("volume '%s' is temporarily inaccessible", vid)
 	}
 
@@ -66,8 +65,7 @@ func (d *Driver) lbVolEligible(
 		}
 	}
 	if !accessible {
-		log.Warnf("volume is inaccessible from '%s', HostNQN: '%s', ACL: %#q",
-			d.nodeID, d.hostNQN, vol.ACL)
+		log.Warn("volume is inaccessible from ", "HostNQN", d.hostNQN, "nodeID", d.nodeID, "ACL", vol.ACL)
 		return mkPrecond("volume '%s' is inaccessible from node '%s'", vid, d.nodeID)
 	}
 
@@ -76,7 +74,7 @@ func (d *Driver) lbVolEligible(
 }
 
 func queryLBforTargetEnv(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, vid lbResourceID,
 ) (*backend.TargetEnv, error) {
 	ci, err := clnt.GetClusterInfo(ctx)
 	if err != nil {
@@ -105,7 +103,7 @@ func queryLBforTargetEnv(
 func (d *Driver) getDeviceUUID(device string) (string, error) {
 	devUUID, err := os.ReadFile(filepath.Join("/sys/block", device, "wwid"))
 	if err != nil {
-		d.log.Debugf("failed to read wwid from dev: %s err: %s", device, err)
+		d.log.Debug("failed to read wwid from", "device", device, "error", err)
 		return "", err
 	}
 
@@ -159,7 +157,7 @@ func (d *Driver) getDevPathByUUID(uuid guuid.UUID) (string, error) {
 			return dev, nil
 		}
 	}
-	d.log.Debugf("didn't find uuid: %s in effDevices: %s", uuid.String(), effDevices)
+	d.log.Debug("didn't find uuid in effDevices", "uuid", uuid.String(), "devices", effDevices)
 
 	// nothing showed up...
 	return "", nil
@@ -175,7 +173,7 @@ func (d *Driver) getDevicePath(uuid guuid.UUID) (string, error) {
 	if err != nil || devPath == "" {
 		return "", mkEExec("no local block device for volume %s", uuid)
 	}
-	d.log.Debugf("block device representing volume is: '%s'", devPath)
+	d.log.Debug("block device representing volume", "device", devPath)
 	return devPath, nil
 }
 
@@ -239,14 +237,14 @@ func (d *Driver) NodeStageVolume(
 		hostEncryption = vid.hostCrypto
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":              "NodeStageVolume",
-		"mgmt-ep":         vid.mgmtEPs,
-		"vol-uuid":        vid.uuid,
-		"project":         vid.projName,
-		"scheme":          vid.scheme,
-		"host-encryption": hostEncryption,
-	})
+	log := d.log.With(
+		"op", "NodeStageVolume",
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"project", vid.projName,
+		"scheme", vid.scheme,
+		"host-encryption", hostEncryption,
+	)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -283,9 +281,9 @@ func (d *Driver) NodeStageVolume(
 	if isMnt {
 		dev, _, err := mountutils.GetDeviceNameFromMount(d.mounter, tgtPath)
 		if err != nil {
-			log.Debugf("failed to find what's mounted at '%s': %s", tgtPath, err)
+			log.Debug("failed to find what's mounted at", "target", tgtPath, "error", err)
 		}
-		log.Debugf("'%s' is already mounted at '%s'", dev, tgtPath)
+		log.Debug("device is already mounted", "device", dev, "target", tgtPath)
 
 		// TODO: check that the FS didn't auto-remount as RO due to
 		// disconnect/error?
@@ -353,7 +351,7 @@ func (d *Driver) NodeStageVolume(
 	wantFSType := mntCap.FsType
 	fsType, err := d.mounter.GetDiskFormat(devPath)
 	if err != nil {
-		log.Errorf("blkid on block device '%s' failed: %s", devPath, err)
+		log.Error("blkid on block device failed", "device", devPath, "error", err)
 		return nil, mkEExec("failed to determine format of volume %s",
 			vid.uuid)
 	}
@@ -402,8 +400,7 @@ func (d *Driver) NodeStageVolume(
 		return nil, mkEExec("error when resizing device %s after mount: %v", vid.uuid, err)
 	}
 
-	log.Debugf("OK, volume '%s' mounted from '%s' to '%s' "+
-		"with '%s' FS", vid.uuid, devPath, tgtPath, wantFSType)
+	log.Debug("OK, volume mounted from", "volume", vid.uuid, "device", devPath, "target", tgtPath, "fs", wantFSType)
 	return &csi.NodeStageVolumeResponse{}, nil
 }
 
@@ -434,8 +431,7 @@ func (d *Driver) NodeUnstageVolume(
 	isMnt, err := d.mounter.IsMountPoint(tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		if strings.Contains(err.Error(), "input/output error") {
-			d.log.Warnf("check mount '%s' failed with IO error (isMnt: %t) - try to umount anyway: %s",
-				tgtPath, isMnt, err)
+			d.log.Warn("check mount failed with IO error, try to umount anyway", "target", tgtPath, "ismount", isMnt, "error", err)
 			ioErr = true
 		} else {
 			return nil, mkEExec("can't examine staging path: %s", err)
@@ -464,7 +460,7 @@ func (d *Driver) NodeUnstageVolume(
 }
 
 func (d *Driver) nodePublishVolumeForBlock(
-	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
+	vid lbResourceID, log *slog.Logger, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
 	target := req.GetTargetPath()
@@ -485,7 +481,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 	// TODO add idempotency support
 
 	// Create the mount point as a file since bind mount device node requires it to be a file
-	log.Debugf("Creating target file '%s'", target)
+	log.Debug("Creating target", "target", target)
 	err = MakeFile(target)
 	if err != nil {
 		// TODO: fix MakeFile() and error handling
@@ -498,7 +494,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 			status.Errorf(codes.Internal, "Could not create file '%s': %s", target, err)
 	}
 
-	log.Debugf("bind-mount '%s' at '%s'", source, target)
+	log.Debug("bind-mount", "source", source, "target", target)
 	if err := d.mounter.Mount(source, target, "", mountOptions); err != nil {
 		if removeErr := os.Remove(target); removeErr != nil {
 			// TODO: wrong logic, useless error message: that's not the problem!
@@ -543,7 +539,7 @@ func getDeviceNameFromMount(ctx context.Context, tgtPath string) (string, error)
 }
 
 func (d *Driver) nodePublishVolumeForFileSystem(
-	vid lbResourceID, log *logrus.Entry, req *csi.NodePublishVolumeRequest,
+	vid lbResourceID, log *slog.Logger, req *csi.NodePublishVolumeRequest,
 	mountOptions []string,
 ) (*csi.NodePublishVolumeResponse, error) {
 	stagingPath := req.StagingTargetPath
@@ -557,13 +553,7 @@ func (d *Driver) nodePublishVolumeForFileSystem(
 		hostEncryption = vid.hostCrypto
 	}
 
-	logFields := logrus.Fields{
-		"staging":         stagingPath,
-		"target":          tgtPath,
-		"mountoptions":    mountOptions,
-		"host-encryption": hostEncryption,
-	}
-	log.WithFields(logFields).Info("nodePublishVolumeForFilesystem")
+	log.Info("nodePublishVolumeForFilesystem", "staging", stagingPath, "target", tgtPath, "mountoptions", mountOptions, "host-encryption", hostEncryption)
 
 	err := d.mounter.Mount(stagingPath, tgtPath, "", mountOptions)
 	if err != nil {
@@ -583,25 +573,18 @@ func (d *Driver) NodePublishVolume(
 		return nil, err
 	}
 
-	logFields := logrus.Fields{
-		"op": "NodePublishVolume",
-	}
+	log := d.log.With("mgmt-ep", vid.mgmtEPs, "vol-uuid", vid.uuid, "project", vid.projName, "op", "NodePublishVolume")
 	if req.VolumeContext != nil {
 		if podName, ok := req.VolumeContext["csi.storage.k8s.io/pod.name"]; ok {
-			logFields["pod-name"] = podName
+			log = log.With("pod-name", podName)
 		}
 		if podNS, ok := req.VolumeContext["csi.storage.k8s.io/pod.namespace"]; ok {
-			logFields["pod-ns"] = podNS
+			log = log.With("pod-ns", podNS)
 		}
 		if podUID, ok := req.VolumeContext["csi.storage.k8s.io/pod.uid"]; ok {
-			logFields["pod-uid"] = podUID
+			log = log.With("pod-uid", podUID)
 		}
 	}
-
-	logFields["mgmt-ep"] = vid.mgmtEPs
-	logFields["vol-uuid"] = vid.uuid
-	logFields["project"] = vid.projName
-	log := d.log.WithFields(logFields)
 
 	if req.StagingTargetPath == "" {
 		return nil, mkEbadOp("ordering", "staging_target_path",
@@ -618,7 +601,7 @@ func (d *Driver) NodePublishVolume(
 
 	mountOptions := []string{"bind"}
 	if req.GetReadonly() {
-		log.Debugf("Publish as ReadOnly")
+		log.Debug("Publish as ReadOnly")
 		mountOptions = append(mountOptions, "ro")
 	}
 
@@ -634,8 +617,7 @@ func (d *Driver) NodePublishVolume(
 		if isMnt {
 			dev, err := getDeviceNameFromMount(ctx, req.TargetPath)
 			if err != nil {
-				log.Debugf("failed to find what's mounted at '%s': %s",
-					req.TargetPath, err)
+				log.Debug("failed to find what's mounted at", "target", req.TargetPath, "error", err)
 			}
 
 			// TODO: WARNING: if for some reason `nvme disconnect` (or its moral
@@ -647,7 +629,7 @@ func (d *Driver) NodePublishVolume(
 			// and return success instead, keeping the volume in a totally
 			// inaccessible state, and repeating the same silliness on retries! */
 
-			log.Debugf("'%s' is already mounted at '%s'", dev, req.TargetPath)
+			log.Debug("device is already mounted", "device", dev, "target", req.TargetPath)
 
 			return &csi.NodePublishVolumeResponse{}, nil
 		}
@@ -683,8 +665,7 @@ func (d *Driver) NodeUnpublishVolume(
 	isMnt, err := d.mounter.IsMountPoint(tgtPath)
 	if err != nil && !os.IsNotExist(err) {
 		if strings.Contains(err.Error(), "input/output error") {
-			d.log.Warnf("check mount '%s' failed with IO error (notMnt: %t) - try to umount anyway: %s",
-				tgtPath, isMnt, err)
+			d.log.Warn("check mount failed with IO error, try to umount anyway", "target", tgtPath, "ismount", isMnt, "error", err)
 			ioErr = true
 		} else {
 			return nil, mkEExec("can't examine mount path: %s", err)
@@ -882,14 +863,14 @@ func (d *Driver) NodeExpandVolume(
 		hostEncryption = vid.hostCrypto
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":              "NodeExpandVolume",
-		"mgmt-ep":         vid.mgmtEPs,
-		"vol-uuid":        vid.uuid,
-		"vol-path":        req.VolumePath,
-		"project":         vid.projName,
-		"host-encryption": hostEncryption,
-	})
+	log := d.log.With(
+		"op", "NodeExpandVolume",
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"vol-path", req.VolumePath,
+		"project", vid.projName,
+		"host-encryption", hostEncryption,
+	)
 
 	volumePath := req.GetVolumePath()
 	if volumePath == "" {
@@ -925,7 +906,6 @@ func (d *Driver) NodeExpandVolume(
 	if err != nil {
 		return nil, mkInternal("Could not resize volume %s (%s): %s", vid.uuid, devicePath, err)
 	}
-	log.Infof("resize occurred: %t. device: %q to size %v successfully",
-		resizedOccurred, devicePath, reqBytes)
+	log.Info("resize device successfully", "resize occurred", resizedOccurred, "device", devicePath, "bytes", reqBytes)
 	return &csi.NodeExpandVolumeResponse{CapacityBytes: int64(reqBytes)}, nil
 }
