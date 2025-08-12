@@ -13,11 +13,11 @@
 
 The Lightbits™ CSI plugin is a software module that implements the management of persistent storage volumes exported by Lightbits™ software, for Container Orchestrator (CO) systems such as Kubernetes and Mesos. In conjunction with the Lightbits™ disaggregated storage solution, the CSI plugin provides a building block for the easy deployment of stateful containerized applications on CO clusters.
 
-The version of the plugin covered by this document implements version 1.2 of the [Container Storage Interface (CSI) Specification](https://github.com/container-storage-interface/spec/blob/v1.2.0/spec.md), and is compatible with Lightbits™ version 3.16.1.
+The version of the plugin covered by this document implements version 1.2 of the [Container Storage Interface (CSI) Specification](https://github.com/container-storage-interface/spec/blob/v1.2.0/spec.md), and is compatible with Lightbits™ version 3.17.1.
 
 > **NOTE:**
 >
-> If you upgrade the Lightbits cluster to version 3.16.1 it is recommended to upgrade the CSI plugin to version v1.20.0 as well.
+> If you upgrade the Lightbits cluster to version 3.17.1 it is recommended to upgrade the CSI plugin to version v1.21.0 as well.
 
 The document summarizes the basic CSI plugin deployment and usage guidelines. For the compatibility notes, list of new features, changes, and known limitations of the Lightbits™ CSI plugin software, see the version-specific Release Notes supplied with the CSI plugin.
 
