@@ -2,12 +2,11 @@ package backend
 
 import (
 	"fmt"
+	"log/slog"
 	"regexp"
-
-	"github.com/sirupsen/logrus"
 )
 
-type MakerFn func(log *logrus.Entry, hostNQN string, rawCfg []byte) (Backend, error)
+type MakerFn func(log *slog.Logger, hostNQN string, rawCfg []byte) (Backend, error)
 
 type regEntry struct {
 	beType string
@@ -45,7 +44,7 @@ func RegisterBackend(beType string, maker MakerFn) {
 	beRegistry[beType] = regEntry{beType, maker}
 }
 
-func Make(beType string, log *logrus.Entry, hostNQN string, rawCfg []byte) (Backend, error) {
+func Make(beType string, log *slog.Logger, hostNQN string, rawCfg []byte) (Backend, error) {
 	if re, ok := beRegistry[beType]; ok {
 		return NewWrapper(beType, re.maker, log, hostNQN, rawCfg)
 	}
