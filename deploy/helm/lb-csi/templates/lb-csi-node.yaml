@@ -212,6 +212,11 @@ spec:
       #- name: my-docker-registry-credentials-secret
 {{- end }}
 
+{{- with .Values.lbNodeAffinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+{{- end }}
+
 {{- if .Values.lbNodeTolerations }}
       tolerations:
        - key: {{ .Values.lbNodeTolerations.key}}
