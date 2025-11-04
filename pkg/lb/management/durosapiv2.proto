@@ -243,6 +243,9 @@ service DurosAPI {
     }
 
     rpc GetHost(GetHostRequest) returns (ConnectedHost) {
+        // Deprecated REST path /api/v2/connectedHosts/{hostNQN} due to grpc-gateway parsing
+        // issues with colons in NQN. Use ListHosts with hostNQN query filter.
+        option deprecated = true;
         option (google.api.http) = {
             get: "/api/v2/connectedHosts/{hostNQN}"
         };
@@ -3272,6 +3275,7 @@ message AddNvmeDeviceRequest {
 }
 
 message GetHostRequest {
+    // Deprecated REST path was removed. Prefer ListHostsRequest.hostNQN filter.
     string hostNQN = 1;
 }
 
