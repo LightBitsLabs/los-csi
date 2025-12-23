@@ -2,9 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 include $(WORKSPACE_TOP)/common/Makefile.env
-
-DOCKER_REGISTRY := $(or $(DOCKER_REGISTRY),lbdocker:5000)
-SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),lbdocker:5000)
+DEFAULT_DOCKER_REGISTRY := pulp-registry.lab.lightbitslabs.com
+DOCKER_REGISTRY := $(or $(DOCKER_REGISTRY),$(DEFAULT_DOCKER_REGISTRY))
+SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),$(DEFAULT_DOCKER_REGISTRY))
 
 REPO_NAME = los-csi
 INSTALL_PATH ?= $(shell component-tool localpath --repo=$(REPO_NAME) --type=$(BUILD_TYPE) lb-csi-plugin)

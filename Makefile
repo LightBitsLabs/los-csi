@@ -414,7 +414,10 @@ verify_image_registry:
 build-image: verify_image_registry build  ## Builds the image, but does not push.
 	$(Q)docker build $(LABELS) -t $(IMG) deploy
 
-push-image: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
+login-to-pulp-registry:
+	@echo ${PULP_REGISTRY_PASS} | docker login -u ${PULP_REGISTRY_USER} --password-stdin ${PULP_REGISTRY}
+
+push-image: verify_image_registry login-to-pulp-registry ## Push it to registry specified by DOCKER_REGISTRY variable
 	$(Q)docker push $(IMG)
 
 build-image-ubi9: verify_image_registry build
@@ -424,7 +427,7 @@ build-image-ubi9: verify_image_registry build
 		--build-arg GIT_VER=$(GIT_VER) \
                 -f deploy/Dockerfile.ubi9 deploy
 
-push-image-ubi9: verify_image_registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
+push-image-ubi9: verify_image_registry login-to-pulp-registry ## Push ubi image to registry specified by DOCKER_REGISTRY variable
 	$(Q)docker push $(IMG_UBI)
 
 clean:
