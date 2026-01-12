@@ -37,3 +37,5 @@ lbNodeTolerations:
   operator: "Equal"
   value: "lb-csi-controller-pod"
   effect: "NoSchedule"
+
+lbNodeAffinity: {}
