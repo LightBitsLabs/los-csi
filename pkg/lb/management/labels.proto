@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package lightbits.api.duros.v2;
+
+option go_package = "./durosv2;durospb";
+
+// label-key and label-value length must be between 1 and 253 characters and
+// can contain any of: alphanumeric characters (a-z, A-Z, 0-9), hyphen (-),
+// underscore (_) and dot (.).
+message Label {
+    string key = 1;
+    string value = 2;
+}

@@ -16,9 +16,9 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/sys v0.23.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20240506185236-b8a5c65736ae
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240506185236-b8a5c65736ae
-	google.golang.org/grpc v1.63.2
+	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240604185151-ef581f913117
+	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/mount-utils v0.30.3
@@ -37,6 +37,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
+	google.golang.org/genproto v0.0.0-20240227224415-6ceb2ff114de // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
