@@ -7,6 +7,7 @@ ARG APP_GID=1001
 ARG VERSION
 ARG GIT_VER
 
+RUN microdnf update -y
 ADD AlmaLinux-Base.repo /etc/yum.repos.d/
 
 # Install necessary packages including sudo
