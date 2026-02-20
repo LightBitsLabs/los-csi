@@ -6,11 +6,11 @@ package driver
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -195,16 +195,17 @@ func chkContentSourceCompat(
 
 // chkSourceSnapCompat() checks whether the source snapshot specified by UUID
 // in the `req` volume description:
-// * exists on the LightOS cluster,
-// * is in a usable state for creating a volume from it,
-// * has parameters compatible with those of the volume to be created from it,
-//   except for the capacity, which is taken directly from the CSI request
-//   `reqCapacity` param piped through to here.
+//   - exists on the LightOS cluster,
+//   - is in a usable state for creating a volume from it,
+//   - has parameters compatible with those of the volume to be created from it,
+//     except for the capacity, which is taken directly from the CSI request
+//     `reqCapacity` param piped through to here.
+//
 // if so - it UPDATES the `req` volume capacity in-situ to match that of the
 // source snapshot and returns nil, otherwise returns a gRPC Status error
 // suitable for direct return to the callers of CreateVolume().
 func chkSourceSnapCompat(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, req *lb.Volume,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, req *lb.Volume,
 	reqCapacity csi.CapacityRange, srcSid lbResourceID,
 ) error {
 	snap, err := clnt.GetSnapshot(ctx, srcSid.uuid, srcSid.projName)
@@ -247,7 +248,7 @@ func chkSourceSnapCompat(
 // match that of the source volume and returns nil, otherwise returns a gRPC
 // Status error suitable for direct return to the callers of CreateVolume().
 func chkSourceVolCompat(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, req *lb.Volume,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, req *lb.Volume,
 	reqCapacity csi.CapacityRange, srcVid lbResourceID,
 ) error {
 	vol, err := clnt.GetVolume(ctx, srcVid.uuid, srcVid.projName)
@@ -293,7 +294,7 @@ func chkSourceVolCompat(
 // which is NOT considered an error. all errors returned are gRPC-compatible and
 // should probably be returned verbatim by the caller CreateVolume().
 func findExistingVolume(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, req lb.Volume,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, req lb.Volume,
 	reqCapacity csi.CapacityRange, srcVid, srcSid *lbResourceID,
 ) (*lb.Volume, error) {
 	vol, err := clnt.GetVolumeByName(ctx, req.Name, req.ProjectName)
@@ -304,7 +305,7 @@ func findExistingVolume(
 		return nil, mungeLBErr(log, err,
 			"failed to check if volume '%s' already exists on LB", req.Name)
 	}
-	log = log.WithField("vol-uuid", vol.UUID)
+	log = log.With("vol-uuid", vol.UUID)
 
 	switch vol.State {
 	case lb.VolumeAvailable,
@@ -317,8 +318,7 @@ func findExistingVolume(
 		// volume deletion in LB is a background operation that might take
 		// some time. this shouldn't prevent a new volume from being created,
 		// but it's handy to know this happened. just in case... ;)
-		log.Infof("spotted appropriately named volume in the process of being deleted, " +
-			"ignoring it")
+		log.Info("spotted appropriately named volume in the process of being deleted, ignoring it")
 		return nil, nil
 	default:
 		return nil, mkInternal("volume '%s' exists but is in unexpected "+
@@ -339,7 +339,7 @@ func findExistingVolume(
 	} else if srcVid != nil {
 		if vol.SnapshotUUID == guuid.Nil {
 			return nil, mkEExist("%s: it was required to be based on volume %s, but has "+
-				"no requisite intermedite snapshot listed as base", prefix, srcVid.uuid)
+				"no requisite intermediate snapshot listed as base", prefix, srcVid.uuid)
 		}
 		snap, err := clnt.GetSnapshot(ctx, vol.SnapshotUUID, vol.ProjectName)
 		if err != nil {
@@ -363,8 +363,7 @@ func findExistingVolume(
 		// the ACL should be properly adjusted afterwards, on
 		// ControllerPublishVolume()/ControllerUnpublishVolume()
 		// (which the other instance may have already reached).
-		log.Warnf("found matching existing volume with "+
-			"unexpected ACL %#q instead of %#q", vol.ACL, req.ACL)
+		log.Warn("found matching existing volume with unexpected ACL", "existing ACL", vol.ACL, "expected ACL", req.ACL)
 	}
 
 	if srcSid != nil || srcVid != nil {
@@ -395,8 +394,7 @@ func findExistingVolume(
 
 	// if reached here - a matching volume already exists...
 	if !vol.IsWritable() {
-		log.Warnf("volume already exists, but is not currently usable: "+
-			"its protection state is '%s'", vol.Protection)
+		log.Warn("volume already exists, but is not currently usable", "volume", vol.Name, "protection state", vol.Protection)
 	} else {
 		log.Info("volume already exists")
 	}
@@ -420,7 +418,7 @@ func findExistingVolume(
 // similar to the `srcSid` case, the resultant volume capacity will be based on
 // that of the source.
 func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, req lb.Volume,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, req lb.Volume,
 	reqCapacity csi.CapacityRange, srcVid, srcSid *lbResourceID,
 ) (*lb.Volume, error) {
 	// see if it's a "clone" request (creating a volume from another volume or
@@ -453,7 +451,7 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 		// identically named clone volumes in the future due to snapshot name
 		// collisions (see note below on cleanup).
 		snapName := "snapshot-" + req.Name
-		log.Infof("auto-creating intermediate snapshot '%s' to clone from a volume", snapName)
+		log.Info("auto-creating intermediate snapshot to clone from a volume", "snapname", snapName)
 		snap, err := doCreateSnapshot(ctx, log, clnt, snapName, *srcVid,
 			"auto-snap for clone, by: LB CSI")
 		if err != nil {
@@ -485,7 +483,7 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 		// intermediate snapshot naming scheme, the second clone operation
 		// will just find the OLD snapshot in the 'Deleting' state...
 		defer func() {
-			log.Infof("requesting auto-deletion of intermediate snapshot '%s'", snapName)
+			log.Info("requesting auto-deletion of intermediate snapshot", "name", snapName)
 
 			// yes, this is definitely not atomic with respect to creation above...
 			err = doDeleteSnapshot(ctx, log, clnt, tmpSid)
@@ -499,8 +497,7 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 				// background tasks won't pile up on K8s retries, etc.
 
 				// doesn't justify failing CreateVolume(), caller got vol.
-				log.Errorf("auto-deletion of intermediate snapshot '%s' failed: %s",
-					snapName, err)
+				log.Error("auto-deletion of intermediate snapshot failed", "name", snapName, "error", err)
 			}
 		}()
 
@@ -520,7 +517,7 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 		return nil, mungeLBErr(log, err, "failed to create volume '%s'", req.Name)
 	}
 
-	log.WithField("vol-uuid", vol.UUID).Info("volume created successfully")
+	log.Info("volume created successfully", "vol-uuid", vol.UUID)
 	return vol, nil
 }
 
@@ -572,13 +569,13 @@ func (d *Driver) CreateVolume(
 		hostEncryption = params.hostCrypto
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":              "CreateVolume",
-		"mgmt-ep":         params.mgmtEPs,
-		"vol-name":        req.Name,
-		"project":         params.projectName,
-		"host-encryption": hostEncryption,
-	})
+	log := d.log.With(
+		"op", "CreateVolume",
+		"mgmt-ep", params.mgmtEPs,
+		"vol-name", req.Name,
+		"project", params.projectName,
+		"host-encryption", hostEncryption,
+	)
 
 	volSrc := req.VolumeContentSource
 	var srcVid, srcSid *lbResourceID
@@ -598,7 +595,7 @@ func (d *Driver) CreateVolume(
 				hostEncryption, vid.hostCrypto)
 		}
 		srcVid = &vid
-		log = log.WithField("src-vol-uuid", vid.uuid)
+		log = log.With("src-vol-uuid", vid.uuid)
 	} else if snap := volSrc.GetSnapshot(); snap != nil {
 		sid, err := parseCSIResourceIDEnoent(volContSrcSnapField, snap.SnapshotId)
 		if err != nil {
@@ -615,7 +612,7 @@ func (d *Driver) CreateVolume(
 				hostEncryption, sid.hostCrypto)
 		}
 		srcSid = &sid
-		log = log.WithField("src-snap-uuid", sid.uuid)
+		log = log.With("src-snap-uuid", sid.uuid)
 	} else if volSrc != nil {
 		if volSrc.Type != nil {
 			return nil, mkEinvalf(volContSrcField, "unsupported content source type '%T'",
@@ -666,11 +663,11 @@ func (d *Driver) ControllerGetVolume( //revive:disable-line:unused-receiver
 func (d *Driver) DeleteVolume(
 	ctx context.Context, req *csi.DeleteVolumeRequest,
 ) (*csi.DeleteVolumeResponse, error) {
-	log := d.log.WithField("op", "DeleteVolume")
+	log := d.log.With("op", "DeleteVolume")
 	vid, err := parseCSIResourceIDEnoent(volIDField, req.VolumeId)
 	if err != nil {
 		if isStatusNotFound(err) {
-			log.Errorf("bad value of '%s': %s", volIDField, err)
+			log.Error("bad value of", "field", volIDField, "error", err)
 			// returning success instead of error to pacify some of the more
 			// simple-minded external tests:
 			return &csi.DeleteVolumeResponse{}, nil
@@ -678,11 +675,11 @@ func (d *Driver) DeleteVolume(
 		return nil, err
 	}
 
-	log = d.log.WithFields(logrus.Fields{
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-	})
+	log = d.log.With(
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"project", vid.projName,
+	)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -766,18 +763,18 @@ func (d *Driver) ControllerPublishVolume(
 	// arguments at once.
 	vid, vidErr := parseCSIResourceID(req.VolumeId)
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "ControllerPublishVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-	})
+	log := d.log.With(
+		"op", "ControllerPublishVolume",
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"project", vid.projName,
+	)
 
 	if err := checkNodeID(req.NodeId); err != nil {
 		// NodeId should have been previously validated by the node
 		// instance of the driver upon start-up and returned from
 		// NodeGetInfo(), so this is odd...
-		d.log.Errorf("unexpected node_id: '%s'", req.NodeId)
+		d.log.Error("unexpected node_id", "nodeid", req.NodeId)
 		return nil, mkEinval(nodeIDField, err.Error())
 	}
 	// TODO: this one is tricky, because the CSI plugin is supposed to be
@@ -796,7 +793,7 @@ func (d *Driver) ControllerPublishVolume(
 		return nil, mkEinval("readonly", "read-only volumes are not supported")
 	}
 
-	log = log.WithField("node-id", req.NodeId)
+	log = log.With("node-id", req.NodeId)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -901,17 +898,17 @@ func (d *Driver) ControllerPublishVolume(
 func (d *Driver) doPublishVolumeRWX(
 	ctx context.Context,
 	clnt lb.Client,
-	log *logrus.Entry,
+	log *slog.Logger,
 	vid lbResourceID,
 	nodeId string,
 ) (*csi.ControllerPublishVolumeResponse, error) {
 	ace := nodeIDToHostNQN(nodeId)
 
 	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
-		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+		log = log.With("acl-curr", fmt.Sprintf("%#q", vol.ACL))
 		numACEs := len(vol.ACL)
 		if strlist.Contains(vol.ACL, ace) {
-			log.Infof("volume is already published to node: %v", vol.ACL)
+			log.Info("volume is already published to node", "acl", vol.ACL)
 			return nil, nil
 		}
 		if numACEs == 0 ||
@@ -935,10 +932,10 @@ func (d *Driver) doPublishVolumeRWX(
 		// either some race involving network partitions, or, an
 		// external intervention. a retry will either sort it out, or
 		// report the condition more accurately:
-		log.WithFields(logrus.Fields{
-			"acl-exp": fmt.Sprintf("%#q", []string{ace}),
-			"acl-got": fmt.Sprintf("%#q", vol.ACL),
-		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
+		log.With(
+			"acl-exp", fmt.Sprintf("%#q", []string{ace}),
+			"acl-got", fmt.Sprintf("%#q", vol.ACL),
+		).Error("UpdateVolume() succeeded, but resultant volume ACL is wrong")
 		return nil, mkEagain("failed to publish volume to node '%s'", nodeId)
 	}
 	return &csi.ControllerPublishVolumeResponse{}, nil
@@ -947,14 +944,14 @@ func (d *Driver) doPublishVolumeRWX(
 func (d *Driver) doPublishVolumeRWO(
 	ctx context.Context,
 	clnt lb.Client,
-	log *logrus.Entry,
+	log *slog.Logger,
 	vid lbResourceID,
 	nodeId string,
 ) (*csi.ControllerPublishVolumeResponse, error) {
 	ace := nodeIDToHostNQN(nodeId)
 
 	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
-		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+		log = log.With("acl-curr", fmt.Sprintf("%#q", vol.ACL))
 		// currently we support only SINGLE_NODE_WRITER/RWO, so it's
 		// pretty simple:
 		numACEs := len(vol.ACL)
@@ -992,10 +989,10 @@ func (d *Driver) doPublishVolumeRWO(
 		// either some race involving network partitions, or, an
 		// external intervention. a retry will either sort it out, or
 		// report the condition more accurately:
-		log.WithFields(logrus.Fields{
-			"acl-exp": fmt.Sprintf("%#q", []string{ace}),
-			"acl-got": fmt.Sprintf("%#q", vol.ACL),
-		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
+		log.With(
+			"acl-exp", fmt.Sprintf("%#q", []string{ace}),
+			"acl-got", fmt.Sprintf("%#q", vol.ACL),
+		).Error("UpdateVolume() succeeded, but resultant volume ACL is wrong")
 		return nil, mkEagain("failed to publish volume to node '%s'", nodeId)
 	}
 	return &csi.ControllerPublishVolumeResponse{}, nil
@@ -1009,22 +1006,22 @@ func (d *Driver) ControllerUnpublishVolume(
 		return nil, err
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "ControllerUnpublishVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-	})
+	log := d.log.With(
+		"op", "ControllerUnpublishVolume",
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"project", vid.projName,
+	)
 
 	if err := checkNodeID(req.NodeId); err != nil {
 		// NodeId should have been previously validated by the node
 		// instance of the driver upon start-up and returned from
 		// NodeGetInfo(), so this is odd...
-		d.log.Errorf("unexpected node_id: '%s'", req.NodeId)
+		d.log.Error("unexpected node_id", "nodeid", req.NodeId)
 		return nil, mkEinval("node_id", err.Error())
 	}
 
-	log = log.WithField("node-id", req.NodeId)
+	log = log.With("node-id", req.NodeId)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -1043,14 +1040,14 @@ func (d *Driver) ControllerUnpublishVolume(
 func (d *Driver) doUnpublishVolumeRWO(
 	ctx context.Context,
 	clnt lb.Client,
-	log *logrus.Entry,
+	log *slog.Logger,
 	vid lbResourceID,
 	nodeId string,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
 	ace := nodeIDToHostNQN(nodeId)
 
 	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
-		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+		log = log.With("acl-curr", fmt.Sprintf("%#q", vol.ACL))
 		// currently we support only SINGLE_NODE_WRITER/RWO, so it's
 		// pretty simple:
 		numACEs := len(vol.ACL)
@@ -1086,10 +1083,10 @@ func (d *Driver) doUnpublishVolumeRWO(
 		// either some race involving network partitions, or, an
 		// external intervention. a retry will either sort it out, or
 		// report the condition more accurately:
-		log.WithFields(logrus.Fields{
-			"acl-exp": fmt.Sprintf("%#q", allowNoneACL),
-			"acl-got": fmt.Sprintf("%#q", vol.ACL),
-		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong")
+		log.With(
+			"acl-exp", fmt.Sprintf("%#q", allowNoneACL),
+			"acl-got", fmt.Sprintf("%#q", vol.ACL),
+		).Error("UpdateVolume() succeeded, but resultant volume ACL is wrong")
 		return nil, mkEagain("failed to unpublish volume from node '%s'", nodeId)
 	}
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
@@ -1098,14 +1095,14 @@ func (d *Driver) doUnpublishVolumeRWO(
 func (d *Driver) doUnpublishVolumeRWX(
 	ctx context.Context,
 	clnt lb.Client,
-	log *logrus.Entry,
+	log *slog.Logger,
 	vid lbResourceID,
 	nodeId string,
 ) (*csi.ControllerUnpublishVolumeResponse, error) {
 	ace := nodeIDToHostNQN(nodeId)
 
 	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
-		log = log.WithField("acl-curr", fmt.Sprintf("%#q", vol.ACL))
+		log = log.With("acl-curr", fmt.Sprintf("%#q", vol.ACL))
 		// currently we support only SINGLE_NODE_WRITER/RWO, so it's
 		// pretty simple:
 		numACEs := len(vol.ACL)
@@ -1142,10 +1139,9 @@ func (d *Driver) doUnpublishVolumeRWX(
 		return nil, err
 	}
 	if strlist.Contains(vol.ACL, ace) {
-		log.WithFields(logrus.Fields{
-			"acl-got": fmt.Sprintf("%#q", vol.ACL),
-		}).Errorf("UpdateVolume() succeeded, but resultant volume ACL is wrong. "+
-			"didn't expect '%s' in ACL", ace)
+		log.With(
+			"acl-got", fmt.Sprintf("%#q", vol.ACL),
+		).Error("UpdateVolume() succeeded, but resultant volume ACL is wrong.didn't expect in ACL", "acl", ace)
 		return nil, mkEagain("failed to unpublish volume from node '%s'", nodeId)
 	}
 	return &csi.ControllerUnpublishVolumeResponse{}, nil
@@ -1162,12 +1158,12 @@ func (d *Driver) ValidateVolumeCapabilities(
 		return nil, mkEinvalMissing("volume_capabilities")
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "ValidateVolumeCapabilities",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-	})
+	log := d.log.With(
+		"op", "ValidateVolumeCapabilities",
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"project", vid.projName,
+	)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -1275,13 +1271,13 @@ func (d *Driver) ControllerExpandVolume(
 		return nil, err
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":       "ControllerExpandVolume",
-		"mgmt-ep":  vid.mgmtEPs,
-		"vol-uuid": vid.uuid,
-		"project":  vid.projName,
-		"cap-req":  requestedCapacity,
-	})
+	log := d.log.With(
+		"op", "ControllerExpandVolume",
+		"mgmt-ep", vid.mgmtEPs,
+		"vol-uuid", vid.uuid,
+		"project", vid.projName,
+		"cap-req", requestedCapacity,
+	)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, vid.mgmtEPs, vid.scheme)
@@ -1301,7 +1297,7 @@ func (d *Driver) ControllerExpandVolume(
 		// defined as "Volume MUST not be bigger than this". either i'm missing
 		// or misinterpreting some clause or this is a hole in the spec.
 		if requestedCapacity <= vol.Capacity {
-			log.WithField("cap-curr", vol.Capacity).Infof("volume is already large enough")
+			log.With("cap-curr", vol.Capacity).Info("volume is already large enough")
 			return nil, nil
 		}
 		return &lb.VolumeUpdate{Capacity: requestedCapacity}, nil
@@ -1312,10 +1308,10 @@ func (d *Driver) ControllerExpandVolume(
 		return nil, err
 	}
 	if vol.Capacity < requestedCapacity {
-		log.WithFields(logrus.Fields{
-			"cap-exp": requestedCapacity,
-			"cap-got": vol.Capacity,
-		}).Errorf("clnt.UpdateVolume() succeeded, " +
+		log.With(
+			"cap-exp", requestedCapacity,
+			"cap-got", vol.Capacity,
+		).Error("clnt.UpdateVolume() succeeded, " +
 			"but resultant volume capacity is smaller then requested")
 		return nil, mkEagain("failed to expand volume")
 	}
@@ -1333,7 +1329,7 @@ func (d *Driver) ControllerExpandVolume(
 	// recently added features (block, clones).
 	nodeExpansionRequired := d.nodeExpansionRequired(req.VolumeCapability)
 	if nodeExpansionRequired {
-		log.Infof("requesting FS to be resized by Node plugin instance before volume use")
+		log.Info("requesting FS to be resized by Node plugin instance before volume use")
 	}
 	return &csi.ControllerExpandVolumeResponse{
 		CapacityBytes:         int64(vol.Capacity),
@@ -1342,7 +1338,7 @@ func (d *Driver) ControllerExpandVolume(
 }
 
 func doCreateSnapshot(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, name string, srcVid lbResourceID,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, name string, srcVid lbResourceID,
 	descr string,
 ) (*lb.Snapshot, error) {
 	// check if a matching snapshot already exists (likely a result of retry from CO):
@@ -1353,7 +1349,7 @@ func doCreateSnapshot(
 	}
 
 	if snap != nil {
-		log = log.WithField("snap-uuid", snap.UUID)
+		log = log.With("snap-uuid", snap.UUID)
 
 		if snap.SrcVolUUID != srcVid.uuid {
 			return nil, mkEExist("snapshot '%s' already exists but is incompatible: "+
@@ -1412,7 +1408,7 @@ func doCreateSnapshot(
 		return nil, mungeLBErr(log, err, "failed to create snapshot '%s'", name)
 	}
 
-	log.WithField("snap-uuid", snap.UUID).Info("snapshot created successfully")
+	log.With("snap-uuid", snap.UUID).Info("snapshot created successfully")
 	return snap, nil
 }
 
@@ -1429,14 +1425,14 @@ func (d *Driver) CreateSnapshot(
 		hostEncryption = srcVid.hostCrypto
 	}
 
-	log := d.log.WithFields(logrus.Fields{
-		"op":              "CreateSnapshot",
-		"mgmt-ep":         srcVid.mgmtEPs,
-		"snap-name":       req.Name,
-		"src-vol-uuid":    srcVid.uuid,
-		"project":         srcVid.projName,
-		"host-encryption": hostEncryption,
-	})
+	log := d.log.With(
+		"op", "CreateSnapshot",
+		"mgmt-ep", srcVid.mgmtEPs,
+		"snap-name", req.Name,
+		"src-vol-uuid", srcVid.uuid,
+		"project", srcVid.projName,
+		"host-encryption", hostEncryption,
+	)
 
 	// TODO: initially the LB CSI plugin supports no custom `req.parameters`
 	// entries. if it becomes necessary, their parsing should be added HERE.
@@ -1472,7 +1468,7 @@ func (d *Driver) CreateSnapshot(
 }
 
 func doDeleteSnapshot(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, sid lbResourceID,
+	ctx context.Context, log *slog.Logger, clnt lb.Client, sid lbResourceID,
 ) error {
 	snap, err := clnt.GetSnapshot(ctx, sid.uuid, sid.projName)
 	if err != nil {
@@ -1509,11 +1505,11 @@ func doDeleteSnapshot(
 func (d *Driver) DeleteSnapshot(
 	ctx context.Context, req *csi.DeleteSnapshotRequest,
 ) (*csi.DeleteSnapshotResponse, error) {
-	log := d.log.WithField("op", "DeleteSnapshot")
+	log := d.log.With("op", "DeleteSnapshot")
 	sid, err := parseCSIResourceIDEnoent(snapIDField, req.SnapshotId)
 	if err != nil {
 		if isStatusNotFound(err) {
-			log.Errorf("bad value of '%s': %s", snapIDField, err)
+			log.Error("bad value of", "snapidfield", snapIDField, "error", err)
 			// returning success instead of error to pacify some of the more
 			// simple-minded external tests:
 			return &csi.DeleteSnapshotResponse{}, nil
@@ -1526,12 +1522,12 @@ func (d *Driver) DeleteSnapshot(
 		hostEncryption = sid.hostCrypto
 	}
 
-	log = d.log.WithFields(logrus.Fields{
-		"mgmt-ep":         sid.mgmtEPs,
-		"snap-uuid":       sid.uuid,
-		"project":         sid.projName,
-		"host-encryption": hostEncryption,
-	})
+	log = d.log.With(
+		"mgmt-ep", sid.mgmtEPs,
+		"snap-uuid", sid.uuid,
+		"project", sid.projName,
+		"host-encryption", hostEncryption,
+	)
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, sid.mgmtEPs, sid.scheme)

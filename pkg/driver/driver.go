@@ -6,6 +6,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	neturl "net/url"
 	"os"
@@ -18,10 +19,8 @@ import (
 	"github.com/container-storage-interface/spec/lib/go/csi"
 	"github.com/fsnotify/fsnotify"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -40,8 +39,6 @@ import (
 const (
 	// q.v. https://github.com/container-storage-interface/spec/blob/v1.0.0/spec.md#getplugininfo
 	driverName = "csi.lightbitslabs.com"
-
-	logTimestampFmt = "2006-01-02T15:04:05.000000-07:00"
 )
 
 var (
@@ -87,7 +84,6 @@ type Config struct {
 	LogLevel      string // one of: debug/info/warn/error
 	LogRole       string
 	LogTimestamps bool
-	LogFormat     string
 
 	// hidden, dev-only options:
 	BinaryName    string
@@ -106,7 +102,7 @@ type Driver struct {
 	defaultFS   string
 
 	srv *grpc.Server
-	log *logrus.Entry
+	log *slog.Logger
 
 	lbclients *lb.ClientPool
 
@@ -198,7 +194,7 @@ func hostNQNToNodeID(hostNQN string) string {
 }
 
 func createBackend(
-	log *logrus.Entry, hostNQN, cfgPath, defaultBackend string,
+	log *slog.Logger, hostNQN, cfgPath, defaultBackend string,
 ) (backend.Backend, error) {
 	beType := defaultBackend
 	rawCfg, err := os.ReadFile(cfgPath)
@@ -211,8 +207,7 @@ func createBackend(
 		if !os.IsNotExist(err) {
 			return nil, fmt.Errorf("failed to read backend config: %s", err)
 		}
-		log.Infof("missing backend config file '%s', falling back to default backend '%s'",
-			cfgPath, defaultBackend)
+		log.Info("missing backend config file falling back to default backend", "config", cfgPath, "default", defaultBackend)
 	}
 
 	be, err := backend.Make(beType, log, hostNQN, rawCfg)
@@ -259,44 +254,29 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		return nil, fmt.Errorf("unsupported transport type: '%s'", cfg.Transport)
 	}
 
-	level, err := logrus.ParseLevel(cfg.LogLevel)
-	if err != nil || level < logrus.ErrorLevel || level > logrus.DebugLevel {
+	var level slog.Level
+	err = level.UnmarshalText([]byte(cfg.LogLevel))
+	if err != nil {
 		return nil, fmt.Errorf("unsupported log level: '%s'", cfg.LogLevel)
 	}
-	logger := logrus.New()
-	logger.SetLevel(level)
-	var logFmt logrus.Formatter
-	switch cfg.LogFormat {
-	case "json":
-		logFmt = &logrus.JSONFormatter{
-			DisableTimestamp:  !cfg.LogTimestamps,
-			PrettyPrint:       cfg.PrettyJSON,
-			TimestampFormat:   logTimestampFmt,
-			DisableHTMLEscape: true,
-		}
-	case "text":
-		logFmt = &logrus.TextFormatter{
-			FullTimestamp:   cfg.LogTimestamps,
-			TimestampFormat: logTimestampFmt,
-		}
-	default:
-		return nil, fmt.Errorf("unsupported log format: '%s'", cfg.LogFormat)
-	}
-	logger.SetFormatter(logFmt)
-	extraFields := logrus.Fields{"node": cfg.NodeID}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+
+	logger.With("node", cfg.NodeID)
 	if cfg.LogRole != "" {
-		extraFields["role"] = cfg.LogRole
+		logger.With("role", cfg.LogRole)
 	}
-	d.log = logger.WithFields(extraFields)
-	d.log.WithFields(logrus.Fields{
-		"driver-name":      driverName,
-		"config":           fmt.Sprintf("%+v", cfg),
-		"backends":         strings.Join(backend.ListBackends(), ", "),
-		"version-rel":      version,
-		"version-git":      versionGitCommit,
-		"version-hash":     versionBuildHash,
-		"version-build-id": versionBuildID,
-	}).Info("starting...")
+	d.log = logger
+
+	logger.Info("starting...",
+		"driver-name", driverName,
+		"config", fmt.Sprintf("%+v", cfg),
+		"backends", strings.Join(backend.ListBackends(), ", "),
+		"version-rel", version,
+		"version-git", versionGitCommit,
+		"version-hash", versionBuildHash,
+		"version-build-id", versionBuildID,
+	)
 
 	d.be, err = createBackend(d.log, d.hostNQN, cfg.BackendCfgPath, cfg.DefaultBackend)
 	if err != nil {
@@ -341,17 +321,11 @@ func (d *Driver) Run() error {
 		// just for the stuff of interest:
 		grpc_ctxtags.WithFieldExtractor(grpc_ctxtags.CodeGenRequestFieldExtractor),
 	}
-	logrusOpts := []grpc_logrus.Option{
-		grpc_logrus.WithLevels(grpcutil.CodeToLogrusLevel),
-	}
 
 	interceptors := []grpc.UnaryServerInterceptor{
 		grpc_ctxtags.UnaryServerInterceptor(ctxTagOpts...),
-		grpc_logrus.UnaryServerInterceptor(d.log, logrusOpts...),
+		// TODO add slog interceptor
 		grpcutil.RespDetailInterceptor,
-		grpc_logrus.PayloadUnaryServerInterceptor(d.log,
-			func(context.Context, string, interface{}) bool { return true },
-		),
 	}
 	if d.squelchPanics {
 		interceptors = append(interceptors, grpc_recovery.UnaryServerInterceptor())
@@ -371,26 +345,25 @@ func (d *Driver) Run() error {
 		// K8s secrets or host JWT file deployment becomes racy.
 		// the watcher should watch the parent dir of the path, instead,
 		// and trigger JWT reload on creations of the specified file.
-		d.log.WithError(err).Errorf("failed to watch path '%s', "+
-			"global JWT file monitoring disabled", d.jwtPath)
+		d.log.Error("failed to watch path, global JWT file monitoring disabled", "path", d.jwtPath, "error", err)
 	}
 
-	d.log.WithField("addr", d.sockPath).Info("server started")
+	d.log.With("addr", d.sockPath).Info("server started")
 	return d.srv.Serve(listener)
 }
 
 func (d *Driver) setJWT(jwtPath string) {
-	log := d.log.WithField("jwt-path", jwtPath)
+	log := d.log.With("jwt-path", jwtPath)
 	b, err := os.ReadFile(jwtPath)
 	if err != nil {
-		log.WithError(err).Warn("failed to load global JWT, clearing it")
+		log.Warn("failed to load global JWT, clearing it", "error", err)
 		d.jwt = ""
 		return
 	}
 
 	jwt := strings.TrimSpace(string(b))
 	d.jwt = jwt
-	log.Infof("loaded global JWT, size: %d bytes", len(jwt))
+	log.Info("loaded global JWT", "bytes", len(jwt))
 }
 
 func (d *Driver) monitorJWTVariable(ctx context.Context, jwtPath string) error {
@@ -424,7 +397,7 @@ func (d *Driver) monitorJWTVariable(ctx context.Context, jwtPath string) error {
 				if !ok {
 					return
 				}
-				d.log.WithError(err).Error("watcher error")
+				d.log.Error("watcher error", "error", err)
 			case <-ctx.Done():
 				return
 			}

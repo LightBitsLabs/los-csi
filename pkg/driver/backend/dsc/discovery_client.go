@@ -6,13 +6,13 @@ package dsc
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"strings"
 	"time"
 
 	guuid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -34,10 +34,10 @@ type Backend struct {
 	dscCfgPath      string
 	lastDSCWarnTime time.Time
 
-	log *logrus.Entry
+	log *slog.Logger
 }
 
-func New(log *logrus.Entry, hostNQN string) (*Backend, error) { //nolint:unparam
+func New(log *slog.Logger, hostNQN string) (*Backend, error) { //nolint:unparam
 	be := Backend{
 		hostNQN:    hostNQN,
 		dscCfgPath: defaultDSCConfigPath,
@@ -55,7 +55,7 @@ func New(log *logrus.Entry, hostNQN string) (*Backend, error) { //nolint:unparam
 
 func init() {
 	backend.RegisterBackend(beType,
-		func(log *logrus.Entry, hostNQN string, rawCfg []byte) (backend.Backend, error) {
+		func(log *slog.Logger, hostNQN string, rawCfg []byte) (backend.Backend, error) {
 			return New(log, hostNQN)
 		})
 }
@@ -75,9 +75,7 @@ func (be *Backend) checkDSCCfgPath() error {
 	if err != nil || fi == nil || !fi.IsDir() {
 		now := time.Now()
 		if now.After(be.lastDSCWarnTime.Add(dscWarnPeriod)) {
-			be.log.Errorf("can't communicate with the DSC through config dir '%s', "+
-				"make sure the Discovery Service Client is properly configured "+
-				"and running on this node", be.dscCfgPath)
+			be.log.Error("can't communicate with the DSC through config dir make sure the Discovery Service Client is properly configured and running on this node", "config", be.dscCfgPath)
 			be.lastDSCWarnTime = now
 		}
 	}
@@ -136,7 +134,7 @@ func (be *Backend) Attach(
 	}
 
 	p := path.Join(be.dscCfgPath, nguid.String())
-	be.log.Debugf("creating DSC config file '%s'...", p)
+	be.log.Debug("creating DSC config file", "config", p)
 	if err := be.writeDSCCfgFile(p, tgtEnv); err != nil {
 		return status.Newf(codes.Unknown, "failed to create DSC config entries file: %s",
 			err)
@@ -169,10 +167,10 @@ func (be *Backend) Detach(_ context.Context, nguid guuid.UUID) *status.Status {
 	//    mounted - with a corresponding data loss (tried it, works).
 	//  so i foresee some GetDeviceNameFromMount() under lock (that func
 	//  and its ilk in k8s.io-land have odd notion of TOCTTOU) around here...
-	be.log.Debugf("NOT disconnecting from from the target to avoid races!")
+	be.log.Debug("NOT disconnecting from from the target to avoid races!")
 
 	p := path.Join(be.dscCfgPath, nguid.String())
-	be.log.Debugf("deleting DSC config file '%s'...", p)
+	be.log.Debug("deleting DSC config file", "config", p)
 	err := os.Remove(p)
 	if err != nil && !os.IsNotExist(err) {
 		return status.Newf(codes.Unknown,
