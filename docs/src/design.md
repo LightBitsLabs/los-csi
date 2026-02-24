@@ -122,7 +122,7 @@ spec:
     storage: 2Gi
   accessModes:
     - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Delete
+  persistentVolumeReclaimPolicy: Retain
   csi:
     driver: csi.lightbitslabs.com
     volumeHandle: mgmt:10.10.10.31:80,10.10.10.32:80,10.10.10.33:80|nguid:d02aba47-f2dc-4264-b11c-5c832e5db6d7

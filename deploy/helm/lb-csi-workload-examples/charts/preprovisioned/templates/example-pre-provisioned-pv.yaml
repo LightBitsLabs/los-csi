@@ -27,6 +27,6 @@ spec:
       name: {{ .Values.global.jwtSecret.name }}
       namespace: {{ .Values.global.jwtSecret.namespace }}
     volumeHandle: mgmt:{{ (required "mgmtEndpoints field is required" .Values.global.storageClass.mgmtEndpoints) }}|nguid:{{ (required "lightosVolNguid field is required" .Values.lightosVolNguid) }}|proj:{{ .Values.global.storageClass.projectName }}|scheme:grpcs
-  persistentVolumeReclaimPolicy: Delete
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: {{ .Values.global.storageClass.name | quote }}
   volumeMode: {{ (required "volumeMode field is required" .Values.volumeMode) }}

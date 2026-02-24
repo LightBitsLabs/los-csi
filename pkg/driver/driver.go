@@ -154,6 +154,10 @@ type Driver struct {
 	// to shared storage volumes to avoid possible data corruption.
 	// If unsure, select false.
 	rwx bool
+
+	csi.UnimplementedIdentityServer
+	csi.UnimplementedControllerServer
+	csi.UnimplementedNodeServer
 }
 
 const (
