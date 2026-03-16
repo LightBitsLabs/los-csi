@@ -442,8 +442,11 @@ verify_image_registry:
 build-image: verify_image_registry build  ## Builds the image, but does not push.
 	@docker build $(LABELS) -t $(IMG) deploy
 
-push: verify_image_registry ## Push it to registry specified by DOCKER_REGISTRY variable
-	@docker push $(IMG)
+login-to-pulp-registry:
+	@echo ${PULP_REGISTRY_PASS} | docker login -u ${PULP_REGISTRY_USER} --password-stdin ${PULP_REGISTRY}
+
+push: verify_image_registry login-to-pulp-registry ## Push it to registry specified by DOCKER_REGISTRY variable
+	$(Q)docker push $(IMG)
 
 clean:
 	@$(GO_VARS) go clean $(GO_VERBOSE)
