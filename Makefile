@@ -361,6 +361,24 @@ lb-csi-manifests: verify_image_registry deploy/k8s
 		--set allowExpandVolume=true \
 		--set enableSnapshot=true \
 		--set discoveryClientInContainer=false \
+		--set kubeVersion=v1.34 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+		--set image=$(FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.34.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set kubeVersion=v1.34 \
+		--set imageRegistry=$(DOCKER_REGISTRY) \
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+		--set image=$(FULL_REPO_NAME_WITH_TAG) \
+		--set discoveryClientImage=$(DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-v1.34-dc.yaml
+	helm template deploy/helm/lb-csi/ \
+		--namespace=kube-system \
+		--set allowExpandVolume=true \
+		--set enableSnapshot=true \
+		--set discoveryClientInContainer=false \
 		--set kubeVersion=v1.35 \
 		--set imageRegistry=$(DOCKER_REGISTRY) \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
