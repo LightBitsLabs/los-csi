@@ -39,8 +39,7 @@ For convenience we provide a static manifests file that helps deployment of the 
 
 ```bash
 k8s/
-├── snapshot-controller-3.yaml # for kubernetes version < v1.20
-└── snapshot-controller-4.yaml # for kubernetes version >= v1.20
+└── snapshot-controller.yaml # for kubernetes version >= v1.20
 ```
 
 Deploy these resources once before installing `lb-csi-plugin`.

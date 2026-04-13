@@ -202,14 +202,10 @@ deploy/k8s:
 manifests: lb-csi-manifests snapshot-controller-manifests
 
 snapshot-controller-manifests: verify_image_registry deploy/k8s
-	helm template deploy/helm/snapshot-controller-3/ \
+	helm template deploy/helm/snapshot-controller/ \
 	    --include-crds \
 		--namespace=kube-system \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) > deploy/k8s/snapshot-controller-3.yaml
-	helm template deploy/helm/snapshot-controller-4/ \
-	    --include-crds \
-		--namespace=kube-system \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) > deploy/k8s/snapshot-controller-4.yaml
+		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) > deploy/k8s/snapshot-controller.yaml
 
 lb-csi-manifests: verify_image_registry deploy/k8s
 	helm template deploy/helm/lb-csi/ \
@@ -507,10 +503,8 @@ helm_package: deploy/helm/charts
 	helm lint ./deploy/helm/charts/lb-csi-plugin-*.tgz
 	helm package -d ./deploy/helm/charts deploy/helm/lb-csi-workload-examples
 	helm lint ./deploy/helm/charts/lb-csi-workload-examples-*.tgz
-	helm package -d ./deploy/helm/charts deploy/helm/snapshot-controller-3
-	helm lint ./deploy/helm/charts/snapshot-controller-3-*.tgz
-	helm package -d ./deploy/helm/charts deploy/helm/snapshot-controller-4
-	helm lint ./deploy/helm/charts/snapshot-controller-4-*.tgz
+	helm package -d ./deploy/helm/charts deploy/helm/snapshot-controller
+	helm lint ./deploy/helm/charts/snapshot-controller-*.tgz
 
 helm_package_upload: helm_package
 	$(Q)$(BUILD_FLAGS) ./scripts/upload-helm-packages.sh
