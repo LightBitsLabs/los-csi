@@ -79,6 +79,9 @@ else
     # so _ORGANIZATION_TO_USE remains $(DEFAULT_ORGANIZATION).
 endif
 
+# If ORGANIZATION is explicitly provided, it takes highest priority over everything above.
+_ORGANIZATION_TO_USE := $(or $(ORGANIZATION),$(_ORGANIZATION_TO_USE))
+
 # Define FULL_REPO_NAME as $ORG/$IMAGE_NAME_ONLY
 _CALCULATED_FULL_REPO_NAME := $(strip $(_ORGANIZATION_TO_USE))/$(IMAGE_NAME_ONLY)
 override FULL_REPO_NAME := $(_CALCULATED_FULL_REPO_NAME)
@@ -117,7 +120,7 @@ BUILD_IMG_TAG:=los-csi-builder-image:$(BUILD_IMG_VERSION)
 override DISCOVERY_CLIENT_VERSION := $(or $(DISCOVERY_CLIENT_VERSION), $(or \
 	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory print-TAG),UNKNOWN))
 override DISCOVERY_CLIENT_FULL_REPO_NAME := $(or $(DISCOVERY_CLIENT_FULL_REPO_NAME), $(or \
-	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory print-FULL_REPO_NAME),UNKNOWN))
+	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory DEFAULT_ORGANIZATION=$(_ORGANIZATION_TO_USE) print-FULL_REPO_NAME),UNKNOWN))
 override DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG := $(DISCOVERY_CLIENT_FULL_REPO_NAME):$(DISCOVERY_CLIENT_VERSION)
 override DISCOVERY_CLIENT_VERSION_UBI := $(or $(DISCOVERY_CLIENT_VERSION_UBI), $(or \
 	$(shell make -C $(WORKSPACE_TOP)/discovery-client --no-print-directory print-TAG_UBI),UNKNOWN))
@@ -526,6 +529,7 @@ image-builder: ## Build image for building the plugin and the bundle.
 docker-cmd := docker run --rm --privileged $(TTY) \
 		--network host 				\
 		-e DOCKER_REGISTRY=$(DOCKER_REGISTRY) \
+		-e ORGANIZATION=$(_ORGANIZATION_TO_USE) \
 		-e SIDECAR_DOCKER_REGISTRY=$(SIDECAR_DOCKER_REGISTRY) \
 		-e GIT_VER=$(GIT_VER) \
 		-e GIT_TAG=$(GIT_TAG) \
