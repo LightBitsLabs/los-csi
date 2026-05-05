@@ -166,5 +166,4 @@ sed -i "s/\(.*\)[[:space:]]v[0-9]\+\.[0-9]\+\.[0-9]\+$/\1 ${csi_plugin_version}/
 
 sed -i -E "s/(lightbits-helm-repo\/lb-csi-plugin\s+)[0-9]+\.[0-9]+\.[0-9]+(\s+)v[0-9]+\.[0-9]+\.[0-9]+/\1${helm_chart_version}\2${csi_plugin_version}/" $repo_path/docs/src/plugin_deployment/plugin_deployment_using_lightbits_helm_repository.md
 sed -i -E "s/(lightbits-helm-repo\/lb-csi-workload-examples\s+)[0-9]+\.[0-9]+\.[0-9]+(\s+)v[0-9]+\.[0-9]+\.[0-9]+/\1${helm_chart_version}\2${csi_plugin_version}/" $repo_path/docs/src/plugin_deployment/plugin_deployment_using_lightbits_helm_repository.md
-#sed -i -E "s/(lightbits-helm-repo\/snapshot-controller-3\s+)[0-9]+\.[0-9]+\.[0-9]+/\/" $repo_path/docs/src/plugin_deployment/plugin_deployment_using_lightbits_helm_repository.md
-#sed -i -E "s/(lightbits-helm-repo\/snapshot-controller-4\s+)[0-9]+\.[0-9]+\.[0-9]+/\1${helm_chart_version}/" $repo_path/docs/src/plugin_deployment/plugin_deployment_using_lightbits_helm_repository.md
+#sed -i -E "s/(lightbits-helm-repo\/snapshot-controller\s+)[0-9]+\.[0-9]+\.[0-9]+/\1${helm_chart_version}/" $repo_path/docs/src/plugin_deployment/plugin_deployment_using_lightbits_helm_repository.md
