@@ -29,3 +29,4 @@ https://github.com/LightBitsLabs/los-csi/tree/v1.23.0/docs/src/upgrade
 
 - Renamed the `snapshot-controller-4` chart to `snapshot-controller` and removed the deprecated `snapshot-controller-3` chart.
 - Updated the snapshot-controller.
+- Fixed a discovery-client issue that could cause the manual `connect-all` NVMe connection command to fail unexpectedly.
