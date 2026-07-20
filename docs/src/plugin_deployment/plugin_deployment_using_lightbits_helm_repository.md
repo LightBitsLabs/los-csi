@@ -24,7 +24,7 @@ helm search repo lightbits-helm-repo
 NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
 lightbits-helm-repo/lb-csi-plugin                 0.21.0          v1.23.0          Helm Chart for Lightbits CSI Plugin.
 lightbits-helm-repo/lb-csi-workload-examples      0.21.0          v1.23.0          Helm Chart for Lightbits CSI Workload Examples.
-lightbits-helm-repo/snapshot-controller           0.18.0          4.2.1           Deploy snapshot-controller for K8s version >= v1.20
+lightbits-helm-repo/snapshot-controller           0.13.0          8.2.0           Deploy snapshot-controller for K8s version >= v1.20
 ```
 
 
@@ -38,11 +38,14 @@ Kubernetes admins should bundle and deploy the controller and CRDs as part of th
 
 If your cluster does not come pre-installed with the correct components, you may manually install these components by executing these [steps](https://kubernetes-csi.github.io/docs/snapshot-controller.html#deployment)
 
-For convenience we provide Helm Charts to deploy snapshot-controller, CRDs and RBAC rules:
+For convenience we provide a Helm Chart that deploys the snapshot-controller, its CRDs and RBAC rules. Verify the published version, then install it (into the `kube-system` namespace):
 
 ```bash
-k8s/
-lightbits-helm-repo/snapshot-controller           0.18.0          4.2.1           Deploy snapshot-controller for K8s version >= v1.20
+helm search repo lightbits-helm-repo/snapshot-controller
+NAME                                      CHART VERSION   APP VERSION   DESCRIPTION
+lightbits-helm-repo/snapshot-controller   0.13.0          8.2.0         Deploy snapshot-controller for K8s version >= v1.20
+
+helm install -n kube-system snapshot-controller lightbits-helm-repo/snapshot-controller
 ```
 
 Deploy these resources once before installing `lb-csi-plugin`.
