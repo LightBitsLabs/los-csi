@@ -1263,12 +1263,22 @@ func (c *Client) CreateSnapshot(
 			return nil, status.Errorf(codes.Internal,
 				"failed to create snapshot '%s' on LB: %s", name, st.Message())
 		case codes.FailedPrecondition:
-			// most likely source volume is being updated, tell
+			// most likely old snapshot still creating (older Lightbits releases), tell
 			// upper layers to retry the whole thing and
 			// hope the logic above will weed out the bad states so
 			// we don't end up in an infinite loop:
 			c.log.Debugf("create snapshot refused by LB on failed "+
 				"precondition: %s", st.Message())
+			return nil, status.Errorf(codes.Unavailable,
+				"create snapshot (%s) transiently failed", name)
+		case codes.Unavailable:
+			// most likely old snapshot still creating (newer Lightbits releases),
+			// volume in updating state, tell
+			// upper layers to retry the whole thing and
+			// hope the logic above will weed out the bad states so
+			// we don't end up in an infinite loop:
+			c.log.Debugf("create snapshot refused by LB on failed "+
+				"unavailable: %s", st.Message())
 			return nil, status.Errorf(codes.Unavailable,
 				"create snapshot (%s) transiently failed", name)
 		}
