@@ -33,10 +33,18 @@ spec:
           - >-
             [ -e /sys/module/nvme_tcp ] &&
             modinfo nvme_tcp ||
-            { modinfo nvme_tcp && modprobe nvme_tcp ; } ||
+            { modinfo nvme_tcp && sudo modprobe nvme_tcp ; } ||
             { echo "FAILED to load nvme-tcp kernel driver" && exit 1 ; }
           securityContext:
+            allowPrivilegeEscalation: true
             privileged: true
+            capabilities:
+              add:
+              - "SYS_ADMIN"
+{{- if .Values.runAsUser }}
+            runAsUser: {{ .Values.runAsUser }}
+            # runAsGroup: {{ .Values.runAsGroup }} # Optional GID
+{{- end }}
           volumeMounts:
             - name: modules-dir
               mountPath: /lib/modules
