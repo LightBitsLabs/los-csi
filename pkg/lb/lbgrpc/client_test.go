@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
+	"log/slog"
 	"math"
 	"math/rand"
 	"os"
@@ -23,7 +23,6 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -72,7 +71,7 @@ var (
 	logPath         string // path to file to store the log, '-' for stderr.
 	jwtPath         string // path to JWT token to use for authN to LightOS API.
 
-	log     = logrus.New()
+	log     = slog.Default()
 	cluster *clusterInfo   // if nil - no cluster info JSON specified
 	targets endpoint.Slice // filled in from `addrs` or `cluster`
 	jwt     string         // contents of file at `jwtPath`
@@ -133,27 +132,6 @@ func TestMain(m *testing.M) {
 	} else {
 		flagDie("path to valid 'system:cluster-admin' role JWT for authentication " +
 			"to the cluster mgmt endpoint must be specified")
-	}
-	if logPath == "" {
-		log.SetOutput(io.Discard)
-		log.SetLevel(logrus.PanicLevel)
-	} else {
-		log.SetFormatter(&logrus.TextFormatter{
-			FullTimestamp:   true,
-			TimestampFormat: "2006-01-02T15:04:05.000000-07:00",
-		})
-		log.SetLevel(logrus.DebugLevel)
-		if logPath != "-" {
-			f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
-			if err != nil {
-				flagDie("failed to create log file '%s': %s", logPath, err)
-			}
-			defer func() {
-				f.Sync()
-				f.Close()
-			}()
-			log.SetOutput(f)
-		}
 	}
 
 	os.Exit(m.Run())

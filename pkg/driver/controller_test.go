@@ -161,7 +161,6 @@ func getDriver(
 		LogLevel:      "info",
 		LogRole:       "node",
 		LogTimestamps: false,
-		LogFormat:     "json",
 
 		// hidden, dev-only options:
 		BinaryName:    "lb-csi-plugin",

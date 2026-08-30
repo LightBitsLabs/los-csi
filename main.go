@@ -89,7 +89,6 @@ var defaults = driver.Config{
 	LogLevel:      "info",
 	LogRole:       "node",
 	LogTimestamps: false,
-	LogFormat:     "json",
 
 	// hidden, dev-only options:
 	BinaryName:    "lb-csi-plugin",
@@ -113,8 +112,6 @@ var (
 		"Add timestamps to log entries, see $LB_CSI_LOG_TIME.")
 	rwx = flag.BoolP("rwx", "X", false,
 		"Should we expose volumes as ReadWriteMany, see $LB_CSI_RWX.")
-	logFormat = flag.StringP("log-fmt", "f", "",
-		"Log entry format, see $LB_CSI_LOG_FMT.")
 	jwtPath = flag.StringP("jwt-path", "j", "",
 		"Path to global LightOS API auth JWT, see $LB_CSI_JWT_PATH.")
 	backendCfgPath = flag.StringP("be-cfg-path", "b", "",
@@ -232,7 +229,6 @@ func main() {
 		DefaultFS:     pickStr(*defaultFS, "LB_CSI_DEFAULT_FS", defaults.DefaultFS),
 		LogLevel:      pickStr(*logLevel, "LB_CSI_LOG_LEVEL", defaults.LogLevel),
 		LogRole:       pickStr(*logRole, "LB_CSI_LOG_ROLE", defaults.LogRole),
-		LogFormat:     pickStr(*logFormat, "LB_CSI_LOG_FMT", defaults.LogFormat),
 		LogTimestamps: *logTimestamps,
 		Transport:     *transport,
 		SquelchPanics: *squelchPanics,

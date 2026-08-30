@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -14,9 +15,8 @@ import (
 	"time"
 
 	guuid "github.com/google/uuid"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_logrus "github.com/grpc-ecosystem/go-grpc-middleware/logging/logrus"
-	"github.com/sirupsen/logrus"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
@@ -100,7 +100,7 @@ type lbResolver struct {
 	// (or, equivalently, per-LightOS cluster) thing, an artefact of how
 	// the dialling gRPC machinery be looking up the resolver later.
 	scheme string
-	log    *logrus.Entry
+	log    *slog.Logger
 
 	cc resolver.ClientConn
 
@@ -112,17 +112,14 @@ type lbResolver struct {
 
 }
 
-func newLbResolver(log *logrus.Entry, scheme string, targets endpoint.Slice) *lbResolver {
-	log = log.WithField("lb-resolver", scheme)
+func newLbResolver(log *slog.Logger, scheme string, targets endpoint.Slice) *lbResolver {
 	r := &lbResolver{
 		scheme: scheme,
 		eps:    targets.Clone(),
-		log:    log,
+		log:    log.With("lb-resolver", scheme),
 		tgts:   targets.String(),
 	}
-	log.WithFields(logrus.Fields{
-		"targets": r.tgts,
-	}).Info("initialising...")
+	log.Info("initialising...", "targets", r.tgts)
 	return r
 }
 
@@ -150,9 +147,7 @@ func (r *lbResolver) Build(
 	_ resolver.Target, cc resolver.ClientConn, _ resolver.BuildOptions,
 ) (resolver.Resolver, error) {
 	r.cc = cc
-	r.log.WithFields(logrus.Fields{
-		"targets": r.tgts,
-	}).Info("building...")
+	r.log.Info("building...", "targets", r.tgts)
 	r.updateCCState()
 	return r, nil
 }
@@ -174,9 +169,7 @@ func (r *lbResolver) ResolveNow(_ resolver.ResolveNowOptions) {
 	}
 	r.tgts = r.eps.String()
 	r.mu.Unlock()
-	r.log.WithFields(logrus.Fields{
-		"targets": r.tgts,
-	}).Info("resolving...")
+	r.log.Info("resolving...", "targets", r.tgts)
 	r.updateCCState()
 }
 
@@ -193,7 +186,7 @@ type Client struct {
 
 	id   string
 	tgts string // cached string repr of `eps`
-	log  *logrus.Entry
+	log  *slog.Logger
 
 	// peerMu protects all peer-related fields:
 	peerMu   sync.Mutex
@@ -215,14 +208,14 @@ type Client struct {
 // passed here) - `DeadlineExceeded` will be returned as usual, and the caller
 // can retry the operation.
 func Dial(
-	ctx context.Context, log *logrus.Entry, targets endpoint.Slice, mgmtScheme string,
+	ctx context.Context, log *slog.Logger, targets endpoint.Slice, mgmtScheme string,
 ) (*Client, error) {
 	if !targets.IsValid() {
 		return nil, status.Errorf(codes.InvalidArgument,
 			"invalid target endpoints specified: [%s]", targets)
 	}
 	id := fmt.Sprintf("%07s", strconv.FormatUint(uint64(prng.Uint32()), 36))
-	log = log.WithField("clnt-id", id)
+	log = log.With("clnt-id", id)
 
 	res := &Client{
 		eps:  targets.Clone(),
@@ -231,21 +224,14 @@ func Dial(
 		log:  log,
 	}
 
-	logger := log.WithFields(logrus.Fields{
-		"clnt-type": "lbgrpc",
-		"targets":   res.tgts,
-	})
-	logger.Info("connecting...")
-
-	logrusOpts := []grpc_logrus.Option{
-		grpc_logrus.WithLevels(grpcutil.LBCodeToLogrusLevel),
+	log.Info("connecting...", "targets", res.tgts, "clnt-type", "lbgrpc")
+	logginopts := []logging.Option{
+		logging.WithLogOnEvents(logging.StartCall, logging.FinishCall),
+		// Add any other option (check functions starting with logging.With).
 	}
 	interceptors := []grpc.UnaryClientInterceptor{
 		mkUnaryClientInterceptor(res),
-		grpc_logrus.UnaryClientInterceptor(log, logrusOpts...),
-		grpc_logrus.PayloadUnaryClientInterceptor(log,
-			func(context.Context, string) bool { return true },
-		),
+		logging.UnaryClientInterceptor(InterceptorLogger(log), logginopts...),
 	}
 
 	// these are broadly in line with the expected server SLOs:
@@ -281,17 +267,17 @@ func Dial(
 		grpc.WithDisableRetry(),
 		grpc.WithUserAgent("lb-csi-plugin"), // TODO: take from config (?) + add version!
 		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
-		grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(interceptors...)),
+		grpc.WithChainUnaryInterceptor(interceptors...),
 		grpc.WithKeepaliveParams(kal),
 		grpc.WithConnectParams(cp),
 		grpc.WithResolvers(lbr),
 	}
 
 	if mgmtScheme == "grpc" {
-		logger.Infof("connecting insecurely")
+		log.Info("connecting insecurely")
 		opts = append(opts, grpc.WithInsecure())
 	} else if mgmtScheme == "grpcs" {
-		logger.Infof("connecting securely")
+		log.Info("connecting securely")
 		opts = append(opts, grpc.WithTransportCredentials(
 			// TODO: one of those days, we'll add the ability to specify
 			// certs to trust on a given deployment. until then:
@@ -306,14 +292,22 @@ func Dial(
 		opts...,
 	)
 	if err != nil {
-		logger.WithField("error", err.Error()).Warn("failed to connect")
+		log.With("error", err.Error()).Warn("failed to connect")
 		return nil, err
 	}
 
 	res.clnt = mgmt.NewDurosAPIClient(res.conn)
 
-	logger.Info("connected!")
+	log.Info("connected!")
 	return res, nil
+}
+
+// InterceptorLogger adapts slog logger to interceptor logger.
+// This code is simple enough to be copied and not imported.
+func InterceptorLogger(l *slog.Logger) logging.Logger {
+	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		l.Log(ctx, slog.Level(lvl), msg, fields...)
+	})
 }
 
 // TODO: add stream interceptor *IF* LB API adds streaming entrypoints...
@@ -350,10 +344,10 @@ func (c *Client) peerReviewUnaryInterceptor( // sic!
 		}
 		// don't want to warn on healthy flow...
 		if c.switched {
-			c.log.Warnf("switched target: %s -> %s", last, curr)
+			c.log.Warn("switched target", "last", last, "current", curr)
 		} else {
 			c.switched = true
-			c.log.Infof("switched target: %s -> %s", last, curr)
+			c.log.Info("switched target", "last", last, "current", curr)
 		}
 	} else {
 		c.peerMu.Unlock()
@@ -363,7 +357,7 @@ func (c *Client) peerReviewUnaryInterceptor( // sic!
 
 func (c *Client) Close() {
 	c.conn.Close() //revive:disable-line:unhandled-error // nothing to do about it.
-	c.log.WithField("targets", c.Targets()).Info("disconnected!")
+	c.log.With("targets", c.Targets()).Info("disconnected!")
 }
 
 func (c *Client) Targets() string {
@@ -484,10 +478,10 @@ func (c *Client) lbNodeFromGRPC(node *mgmt.DurosNodeInfo) (*lb.Node, error) {
 			"got bad node from LB: '%s' has invalid UUID '%s'", node.Name, node.UUID)
 	}
 
-	log := c.log.WithFields(logrus.Fields{
-		"node-name": node.Name,
-		"node-uuid": uuid,
-	})
+	log := c.log.With(
+		"node-name", node.Name,
+		"node-uuid", uuid,
+	)
 
 	dataEP, err := endpoint.Parse(node.NvmeEndpoint)
 	if err != nil {
@@ -498,7 +492,7 @@ func (c *Client) lbNodeFromGRPC(node *mgmt.DurosNodeInfo) (*lb.Node, error) {
 
 	// TODO: make this a full-blown mandatory check?
 	if strings.TrimSpace(node.Hostname) == "" {
-		log.Warnf("LB returned node with empty hostname '%s'", node.Hostname)
+		log.Warn("LB returned node with empty hostname", "hostname", node.Hostname)
 	}
 
 	switch node.State {
@@ -509,7 +503,7 @@ func (c *Client) lbNodeFromGRPC(node *mgmt.DurosNodeInfo) (*lb.Node, error) {
 		mgmt.DurosNodeInfo_Unattached,
 		mgmt.DurosNodeInfo_Attaching,
 		mgmt.DurosNodeInfo_Detaching:
-		log.Warnf("LB returned node in degraded state '%s' (%d)", node.State, node.State)
+		log.Warn("LB returned node in degraded state", "node", node.Name, "state", node.State)
 	default:
 		return nil, status.Errorf(codes.Internal,
 			"got bad node from LB: '%s' has unexpected state '%s' (%d)",
@@ -614,20 +608,14 @@ func (c *Client) lbVolumeFromGRPC(
 		// the only valid states nowadays
 	case mgmt.Volume_Rollback:
 		// TODO: Better handle Rollback state
-		c.log.WithFields(logrus.Fields{
-			"vol-name": vol.Name,
-			"vol-uuid": vol.UUID,
-		}).Warnf("LB returned volume in unsupported state '%s' (%d)", vol.State, vol.State)
+		c.log.Warn("LB returned volume in unsupported state", "vol-name", vol.Name, "vol-uuid", vol.UUID, "state", vol.State)
 		return nil, status.Errorf(codes.Internal,
 			"got bad volume from LB: '%s' has unexpected state '%s' (%d)",
 			vol.Name, vol.State, vol.State)
 	case mgmt.Volume_Deleted:
 		// TODO: remove this case once the LightOS API drops the
 		// deprecated volume states...
-		c.log.WithFields(logrus.Fields{
-			"vol-name": vol.Name,
-			"vol-uuid": vol.UUID,
-		}).Warnf("LB returned volume in deprecated state '%s' (%d)", vol.State, vol.State)
+		c.log.Warn("LB returned volume in deprecated state", "vol-name", vol.Name, "vol-uuid", vol.UUID, "state", vol.State)
 		fallthrough
 	default:
 		return nil, status.Errorf(codes.Internal,
@@ -747,8 +735,7 @@ func (c *Client) CreateVolume(
 	}
 	if snapshotID != guuid.Nil {
 		req.SourceSnapshotUUID = snapshotID.String()
-		c.log.Debugf("creating volume '%s' from source snapshot uuid: %s",
-			req.Name, req.SourceSnapshotUUID)
+		c.log.Debug("creating volume from source snapshot uuid", "volume", req.Name, "uuid", req.SourceSnapshotUUID)
 	}
 	vol, err := c.clnt.CreateVolume(ctx, &req)
 	if err != nil {
@@ -761,10 +748,10 @@ func (c *Client) CreateVolume(
 	}
 	uuid := lbVol.UUID
 
-	log := c.log.WithFields(logrus.Fields{
-		"vol-name": lbVol.Name,
-		"vol-uuid": lbVol.UUID,
-	})
+	log := c.log.With(
+		"vol-name", lbVol.Name,
+		"vol-uuid", lbVol.UUID,
+	)
 
 	if !strlist.AreEqual(lbVol.ACL, acl) {
 		// both ACLs were normalised, so these are no order-related discrepancies:
@@ -776,8 +763,7 @@ func (c *Client) CreateVolume(
 		// currently we don't support target-side-RO volumes, so this is
 		// unexpected. on the other hand - let the caller handle it.
 		if !lbVol.IsWritable() {
-			log.Warnf("LB created volume that is not currently usable: "+
-				"its protection state is '%s'", lbVol.Protection)
+			log.Warn("LB created volume that is not currently usable", "its protection state", lbVol.Protection)
 		}
 	}
 
@@ -787,8 +773,7 @@ func (c *Client) CreateVolume(
 	case lb.VolumeDeleting,
 		lb.VolumeUpdating,
 		lb.VolumeFailed:
-		log.Warnf("LB volume creation returned volume in unexpected state '%s' (%d)",
-			lbVol.State, lbVol.State)
+		log.Warn("LB volume creation returned volume in unexpected state", "state", lbVol.State)
 		return nil, status.Errorf(codes.Internal,
 			"LB created volume '%s' in inappropriate state '%s' (%d)",
 			name, lbVol.State, lbVol.State)
@@ -833,8 +818,7 @@ func (c *Client) CreateVolume(
 
 		if !strlist.AreEqual(orgLbVol.ACL, lbVol.ACL) {
 			// this is likely just a race with some other instance...
-			log.Warnf("got volume with unexpected ACL %#q instead of %#q while "+
-				"waiting for volume to be created", lbVol.ACL, orgLbVol.ACL)
+			log.Warn("got volume with unexpected ACL while waiting for volume to be created", "acl", lbVol.ACL, "expected", orgLbVol.ACL)
 		}
 
 		switch lbVol.State {
@@ -848,8 +832,7 @@ func (c *Client) CreateVolume(
 			return false, status.Errorf(codes.Aborted,
 				"volume appears to have been deleted in parallel")
 		case lb.VolumeFailed:
-			log.Warnf("got bad volume from LB after create: '%s' is in state %s (%d)",
-				name, lbVol.State, lbVol.State)
+			log.Warn("got bad volume from LB after create", "name", name, "state", lbVol.State)
 			// LB failed to create a volume (e.g. too many nodes are
 			// down). try to cause the CO to retry the whole shebang
 			// anew.
@@ -920,10 +903,10 @@ func (c *Client) DeleteVolume(
 			return false, err
 		}
 
-		log := c.log.WithFields(logrus.Fields{
-			"vol-name": lbVol.Name,
-			"vol-uuid": lbVol.UUID,
-		})
+		log := c.log.With(
+			"vol-name", lbVol.Name,
+			"vol-uuid", lbVol.UUID,
+		)
 
 		switch lbVol.State {
 		case lb.VolumeAvailable,
@@ -934,8 +917,7 @@ func (c *Client) DeleteVolume(
 			lb.VolumeUpdating:
 			// this is somewhat unlikely, as the original DeleteVolume()
 			// API call should have failed...
-			log.Warnf("got volume in unexpected state from LB after delete: %s (%d)",
-				lbVol.State, lbVol.State)
+			log.Warn("got volume in unexpected state from LB after delete", "state", lbVol.State)
 			// moreover, this volume is unlikely to transition from
 			// 'Creating' to 'Deleted' on its own. let admins or K8s
 			// sort this out (the latter is likely to retry deleting).
@@ -945,8 +927,7 @@ func (c *Client) DeleteVolume(
 			// also highly unlikely, if it was already 'Failed', the
 			// original DeleteVolume() would have failed too, and a
 			// volume can't just hop into 'Failed' state afterwards.
-			log.Warnf("got volume in unexpected state from LB after delete: %s (%d)",
-				lbVol.State, lbVol.State)
+			log.Warn("got volume in unexpected state from LB after delete", "state", lbVol.State)
 			// still, it's gone, so...
 			fallthrough
 		case lb.VolumeDeleting:
@@ -1008,13 +989,10 @@ func (c *Client) doUpdateVolume(
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
 
-	log := c.log.WithField("vol-uuid", uuid)
+	log := c.log.With("vol-uuid", uuid)
 
 	badError := func(op, prep string, err error) (*lb.Volume, error) {
-		log.WithFields(logrus.Fields{
-			"err-type": fmt.Sprintf("%T", err),
-			"err-msg":  err.Error(),
-		}).Errorf("unexpected error on volume update: failed to %s volume", op)
+		log.Error("unexpected error on volume update", "op", op, "error", err)
 		return nil, status.Errorf(codes.Unknown,
 			"failed to %s volume %s %s LB: %s", op, uuid, prep, err)
 	}
@@ -1037,7 +1015,7 @@ func (c *Client) doUpdateVolume(
 			return badError("get", "from", err)
 		}
 	}
-	log = log.WithField("vol-name", lbVol.Name)
+	log = log.With("vol-name", lbVol.Name)
 
 	switch lbVol.State {
 	case lb.VolumeCreating:
@@ -1069,7 +1047,7 @@ func (c *Client) doUpdateVolume(
 
 	update, err := hook(lbVol)
 	if err != nil {
-		log.Debugf("volume update aborted by hook: %s", err)
+		log.Debug("volume update aborted by hook", "error", err)
 		// propagate the hook error to the caller verbatim so they can
 		// recognise it, if necessary:
 		return nil, err
@@ -1095,14 +1073,14 @@ func (c *Client) doUpdateVolume(
 		required = true
 		acl := strlist.CopyUniqueSorted(update.ACL)
 		req.Acl = &mgmt.StringList{Values: acl}
-		log = log.WithField("acl-src", fmt.Sprintf("%#q", lbVol.ACL))
-		log = log.WithField("acl-tgt", fmt.Sprintf("%#q", acl))
+		log = log.With("acl-src", fmt.Sprintf("%#q", lbVol.ACL))
+		log = log.With("acl-tgt", fmt.Sprintf("%#q", acl))
 	}
 	if update.Capacity != 0 {
 		required = true
 		req.Size = fmt.Sprintf("%d", update.Capacity)
-		log = log.WithField("capacity-src", fmt.Sprintf("%d", lbVol.Capacity))
-		log = log.WithField("capacity-tgt", fmt.Sprintf("%d", update.Capacity))
+		log = log.With("capacity-src", fmt.Sprintf("%d", lbVol.Capacity))
+		log = log.With("capacity-tgt", fmt.Sprintf("%d", update.Capacity))
 	}
 	if !required {
 		// bug, code not updated to match some newly added lb.VolumeUpdate
@@ -1110,7 +1088,7 @@ func (c *Client) doUpdateVolume(
 		log.Warn("volume update requested by hook, but no updates recognised")
 		return lbVol, nil
 	}
-	log = log.WithField("etag", lbVol.ETag)
+	log = log.With("etag", lbVol.ETag)
 	log.Debug("volume update requested by hook")
 
 	// currently UpdateVolume() response is empty...
@@ -1132,7 +1110,7 @@ func (c *Client) doUpdateVolume(
 			// expired for the CO to [presumably] retry.
 			return nil, nil
 		case codes.InvalidArgument:
-			log.Errorf("volume update refused by LB on bad arg: %s", st.Message())
+			log.Error("volume update refused by LB on bad arg", "error", st.Message())
 			return nil, status.Errorf(codes.Internal,
 				"failed to update volume %s on LB: %s", uuid, st.Message())
 		case codes.FailedPrecondition:
@@ -1144,8 +1122,7 @@ func (c *Client) doUpdateVolume(
 			// UpdateVolume() response - retry the whole thing and
 			// hope the logic above will weed out the bad states so
 			// we don't end up in an infinite loop:
-			log.Debugf("will retry volume update refused by LB on failed "+
-				"precondition: %s", st.Message())
+			log.Debug("will retry volume update refused by LB on failed precondition", "messsage", st.Message())
 		default:
 			return badError("update", "on", err)
 		}
@@ -1219,17 +1196,17 @@ func (c *Client) GetSnapshotByName(
 }
 
 func statusFromErr(
-	log *logrus.Entry, err error, format string, args ...interface{},
+	log *slog.Logger, err error, format string, args ...interface{},
 ) error {
 	st, ok := status.FromError(err)
 	if ok {
 		return status.Errorf(st.Code(), format+": "+st.Message(), args...)
 	}
-	log.WithFields(logrus.Fields{
-		"err-type": fmt.Sprintf("%T", err),
-		"err-msg":  err.Error(),
-		"err-ctx":  fmt.Sprintf(format, args...),
-	}).Errorf("LB API call failed with unexpected error type")
+	log.With(
+		"err-type", fmt.Sprintf("%T", err),
+		"err-msg", err.Error(),
+		"err-ctx", fmt.Sprintf(format, args...),
+	).Error("LB API call failed with unexpected error type")
 	return status.Errorf(codes.Unknown, format+": "+err.Error(), args...)
 }
 
@@ -1259,7 +1236,7 @@ func (c *Client) CreateSnapshot(
 		code := st.Code()
 		switch code { //nolint:exhaustive
 		case codes.InvalidArgument:
-			c.log.Errorf("create snapshot refused by LB on bad arg: %s", st.Message())
+			c.log.Error("create snapshot refused by LB on bad arg", "message", st.Message())
 			return nil, status.Errorf(codes.Internal,
 				"failed to create snapshot '%s' on LB: %s", name, st.Message())
 		case codes.FailedPrecondition:
@@ -1267,8 +1244,7 @@ func (c *Client) CreateSnapshot(
 			// upper layers to retry the whole thing and
 			// hope the logic above will weed out the bad states so
 			// we don't end up in an infinite loop:
-			c.log.Debugf("create snapshot refused by LB on failed "+
-				"precondition: %s", st.Message())
+			c.log.Debug("create snapshot refused by LB on failed precondition", "message", st.Message())
 			return nil, status.Errorf(codes.Unavailable,
 				"create snapshot (%s) transiently failed", name)
 		}
@@ -1281,16 +1257,15 @@ func (c *Client) CreateSnapshot(
 	}
 	uuid := lbSnap.UUID
 
-	log = c.log.WithFields(logrus.Fields{
-		"snap-name": lbSnap.Name,
-		"snap-uuid": lbSnap.UUID,
-	})
+	log = c.log.With(
+		"snap-name", lbSnap.Name,
+		"snap-uuid", lbSnap.UUID,
+	)
 
 	switch lbSnap.State {
 	case lb.SnapshotDeleting,
 		lb.SnapshotFailed:
-		log.Warnf("LB snapshot creation returned volume in unexpected state '%s' (%d)",
-			lbSnap.State, lbSnap.State)
+		log.Warn("LB snapshot creation returned volume in unexpected state", "state", lbSnap.State)
 		return nil, status.Errorf(codes.Internal,
 			"LB created snapshot '%s' in inappropriate state '%s' (%d)",
 			name, lbSnap.State, lbSnap.State)
@@ -1333,8 +1308,7 @@ func (c *Client) CreateSnapshot(
 			return false, status.Errorf(codes.Aborted,
 				"snapshot appears to have been deleted in parallel")
 		case lb.SnapshotFailed:
-			log.Warnf("got bad snapshot from LB after create: '%s' is in state %s (%d)",
-				name, lbSnap.State, lbSnap.State)
+			log.Warn("got bad snapshot from LB after create in state", "name", name, "state", lbSnap.State)
 			return false, status.Errorf(codes.Unavailable,
 				"LB failed to create volume '%s', try again later", name)
 		case lb.SnapshotAvailable:
@@ -1373,7 +1347,7 @@ func (c *Client) DeleteSnapshot(
 		code := st.Code()
 		switch code { //nolint:exhaustive
 		case codes.InvalidArgument:
-			c.log.Errorf("delete snapshot refused by LB on bad arg: %s", st.Message())
+			c.log.Error("delete snapshot refused by LB on bad arg", "error", st.Message())
 			return status.Errorf(codes.Internal,
 				"failed to delete snapshot %s on LB: %s", uuid, st.Message())
 		case codes.FailedPrecondition:
@@ -1381,8 +1355,7 @@ func (c *Client) DeleteSnapshot(
 			// upper layers to retry the whole thing and
 			// hope the logic above will weed out the bad states so
 			// we don't end up in an infinite loop:
-			c.log.Debugf("delete snapshot refused by LB on failed "+
-				"precondition: %s", st.Message())
+			c.log.Debug("delete snapshot refused by LB on failed precondition", "message", st.Message())
 			return status.Errorf(codes.Unavailable,
 				"delete snapshot (%s) transiently failed", uuid.String())
 		}
@@ -1402,22 +1375,20 @@ func (c *Client) DeleteSnapshot(
 			return false, err
 		}
 
-		log := c.log.WithFields(logrus.Fields{
-			"snap-name": lbSnap.Name,
-			"snap-uuid": lbSnap.UUID,
-		})
+		log := c.log.With(
+			"snap-name", lbSnap.Name,
+			"snap-uuid", lbSnap.UUID,
+		)
 
 		switch lbSnap.State {
 		case lb.SnapshotAvailable:
 			return false, nil
 		case lb.SnapshotCreating:
-			log.Warnf("got snapshot in unexpected state from LB after delete: %s (%d)",
-				lbSnap.State, lbSnap.State)
+			log.Warn("got snapshot in unexpected state from LB after delete", "state", lbSnap.State)
 			return false, status.Errorf(codes.Unavailable,
 				"LB failed to delete snapshot '%s', try again later", lbSnap.Name)
 		case lb.SnapshotFailed:
-			log.Warnf("got snapshot in unexpected state from LB after delete: %s (%d)",
-				lbSnap.State, lbSnap.State)
+			log.Warn("got snapshot in unexpected state from LB after delete", "state", lbSnap.State)
 			fallthrough
 		case lb.SnapshotDeleting:
 			return true, nil
@@ -1493,8 +1464,7 @@ func (c *Client) lbSnapshotFromGRPC(
 			mgmt.Snapshot_Unknown,
 			mgmt.Snapshot_Failed:
 		default:
-			c.log.Warnf("got odd snapshot from LB: '%s' was successfully created, "+
-				"but lacks creation timestamp", snap.Name)
+			c.log.Warn("got odd snapshot from LB: '%s' was successfully created, but lacks creation timestamp", "name", snap.Name)
 		}
 	}
 
