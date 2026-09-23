@@ -89,11 +89,11 @@ func (m *ClientMock) ListNodes(ctx context.Context) ([]*lb.Node, error) {
 }
 
 func (m *ClientMock) CreateVolume(ctx context.Context, name string, capacity uint64,
-	replicaCount uint32, compress bool, acl []string, projectName string,
+	replicaCount uint32, compress bool, acl []string, ipAcl []string, projectName string,
 	snapshotID guuid.UUID, qosPolicyName string, blocking bool,
 ) (*lb.Volume, error) {
 	args := m.Called(ctx, name, capacity,
-		replicaCount, compress, acl, projectName,
+		replicaCount, compress, acl, ipAcl, projectName,
 		snapshotID, qosPolicyName, blocking)
 	return args.Get(0).(*lb.Volume), args.Error(1)
 }

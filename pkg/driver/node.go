@@ -262,6 +262,13 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	if vid.ipACL {
+		err = d.enrollNodeIPAcl(ctx, log, clnt, vid)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 
