@@ -97,7 +97,8 @@ type Volume struct {
 	SnapshotUUID       guuid.UUID
 	QosPolicyName      string
 
-	ACL []string
+	ACL   []string
+	IPAcl []string
 
 	State      VolumeState
 	Protection VolumeProtection
@@ -271,6 +272,9 @@ type VolumeUpdate struct {
 	// to clear ACL.
 	ACL []string
 
+	// full desired target IP-ACL, same nil/empty semantics as ACL.
+	IPAcl []string
+
 	Capacity uint64
 }
 
@@ -344,8 +348,8 @@ type Client interface {
 	ListNodes(ctx context.Context) ([]*Node, error)
 
 	CreateVolume(ctx context.Context, name string, capacity uint64,
-		replicaCount uint32, compress bool, acl []string, projectName string,
-		snapshotID guuid.UUID, qosPolicyName string, blocking bool,
+		replicaCount uint32, compress bool, acl []string, ipAcl []string,
+		projectName string, snapshotID guuid.UUID, qosPolicyName string, blocking bool,
 	) (*Volume, error)
 	DeleteVolume(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetVolume(ctx context.Context, uuid guuid.UUID, projectName string) (*Volume, error)

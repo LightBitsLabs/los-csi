@@ -20,6 +20,7 @@ type testCase struct {
 	pr string
 	sc string
 	cr string
+	ip bool
 }
 
 //nolint:lll
@@ -48,6 +49,9 @@ var goodIDs = []testCase{
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs", sc: "grpcs"},
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpc", sc: "grpc"},
 	{id: "mgmt:10.19.151.24:443,10.19.151.6:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs|hostcrypto:luks2", sc: "grpcs", cr: "luks2"},
+
+	{id: "mgmt:10.19.151.24:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs|ipacl:enabled", pr: "a", sc: "grpcs", ip: true},
+	{id: "mgmt:10.19.151.24:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|scheme:grpcs|hostcrypto:luks2|ipacl:enabled", sc: "grpcs", cr: "luks2", ip: true},
 }
 
 //nolint:lll
@@ -212,6 +216,10 @@ var badIDs = []string{
 	"mgmt:1.2.3.4.:443|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:-a.|scheme:grpc",
 
 	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66'); DROP TABLE Students;--",
+
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|ipacl:disabled",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|ipacl:",
+	"mgmt:1.2.3.4:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|ipacl:enabled|scheme:grpcs",
 }
 
 func TestParseCSIResourceID(t *testing.T) {
@@ -236,6 +244,9 @@ func TestParseCSIResourceID(t *testing.T) {
 		} else if tc.cr != "" && vol.hostCrypto != tc.cr {
 			t.Errorf("BUG: botched parsing hostcrypto in '%s':\ngot '%s' instead of '%s'",
 				tc.id, vol.hostCrypto, tc.cr)
+		} else if vol.ipACL != tc.ip {
+			t.Errorf("BUG: botched parsing ipacl in '%s':\ngot '%v' instead of '%v'",
+				tc.id, vol.ipACL, tc.ip)
 		} else if testing.Verbose() {
 			t.Logf("OK: parsed '%s':\nmgmt EPs: '%s', NGUID: '%s'",
 				tc.id, vol.mgmtEPs, vol.uuid)

@@ -55,6 +55,9 @@ const (
 	volParMgmtSchemeKey = "mgmt-scheme"
 	volParQosNameKey    = "qos-policy-name"
 
+	// volParIPACLKey parameter in the storageclass parameters, can be either enabled|disabled
+	volParIPACLKey = "ip-acl"
+
 	// volHostEncryptionKey parameter in the storageclass parameter, can be either enabled|disabled
 	volHostEncryptionKey = "host-encryption"
 	// volHostEncryptionPassphraseKey name of the secret for the encryption passphrase
@@ -102,6 +105,7 @@ func checkProjectName(field, proj string) error {
 //     compression: <"enabled"|"disabled">
 //     qos-policy-name: <qos-policy-name>
 //     host-encryption: <"enabled"|"disabled">
+//     ip-acl: <"enabled"|"disabled">
 // e.g.:
 //     mgmt-endpoint: 10.0.0.100:80,10.0.0.101:80
 //     mgmt-scheme: grpcs
@@ -118,6 +122,7 @@ type lbCreateVolumeParams struct {
 	mgmtScheme    string         // currently must be 'grpcs'
 	qosPolicyName string         // qos policy name should exist in the lightos
 	hostCrypto    string         // host-encryption format, currently either empty or luks2
+	ipACL         bool           // whether per-node IP-ACL enforcement is enabled.
 }
 
 func volParKey(key string) string {
@@ -211,6 +216,15 @@ func parseCSICreateVolumeParams(params map[string]string) (lbCreateVolumeParams,
 			"host-encryption and compression are both enabled")
 	}
 
+	key = volParKey(volParIPACLKey)
+	switch params[volParIPACLKey] {
+	case "", "disabled":
+	case "enabled":
+		res.ipACL = true
+	default:
+		return res, mkEinval(key, params[volParIPACLKey])
+	}
+
 	return res, nil
 }
 
@@ -228,7 +242,8 @@ func init() {
 			`nguid:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})` +
 			`(\|proj:([^[:cntrl:]| ]+))?` + // proj name syntax checked separately
 			`(\|scheme:(grpc|grpcs))?` +
-			`(\|hostcrypto:(luks2))?$`)
+			`(\|hostcrypto:(luks2))?` +
+			`(\|ipacl:(enabled))?$`)
 }
 
 // lbResourceID uniquely identifies a lightbits resource such as a volume / snapshot / etc.
@@ -239,7 +254,7 @@ func init() {
 //
 // for transmission on the wire, it's serialised into a string with the
 // following fixed format:
-//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>][|hostcrypto:<format>]
+//   mgmt:<host>:<port>[,<host>:<port>...]|nguid:<nguid>[|proj:<proj>][|scheme:<scheme>][|hostcrypto:<format>][|ipacl:enabled]
 // where:
 //    <host>    - mgmt API server endpoint of the LightOS cluster hosting the
 //            volume. can be a hostname or an IP address. more than one
@@ -262,6 +277,9 @@ func init() {
 //            requests anyway. see below in parseCSIResourceID().
 //    <hostcrypto>  - specifies the crypto format of the hostEncrypted volume, only luks2 is possible.
 //            this is optional and will only exist for host-encrypted volumes.
+//    <ipacl>   - present only for volumes created with per-node IP-ACL
+//            enforcement enabled, in which case the node plugin maintains
+//            the volume's IP-ACL entries at stage time.
 // e.g.:
 //   mgmt:10.0.0.1:80,10.0.0.2:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:a|scheme:grpcs
 //   mgmt:lb01.net:80|nguid:6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66|proj:b|scheme:grpcs|hostcrypto:luks2
@@ -277,6 +295,7 @@ type lbResourceID struct {
 	projName   string
 	scheme     string // currently must be 'grpcs'
 	hostCrypto string
+	ipACL      bool
 }
 
 // String generates the string representation of lbResourceID that will be
@@ -291,6 +310,9 @@ func (vid lbResourceID) String() string {
 	}
 	if len(vid.hostCrypto) > 0 {
 		res += fmt.Sprintf("|hostcrypto:%s", vid.hostCrypto)
+	}
+	if vid.ipACL {
+		res += "|ipacl:enabled"
 	}
 	return res
 }
@@ -351,6 +373,8 @@ func parseCSIResourceID(id string) (lbResourceID, error) {
 	if vid.hostCrypto != "" {
 		vid.hostCrypto = match[7][12:]
 	}
+
+	vid.ipACL = match[9] != ""
 
 	return vid, nil
 }
