@@ -58,6 +58,7 @@ parameters:
   replica-count: "<num-replicas>"
   compression: <enabled|disabled>
   qos-policy-name: <qos-policy name>
+  ip-acl: <enabled|disabled>
   csi.storage.k8s.io/controller-publish-secret-name: <secret-name>
   csi.storage.k8s.io/controller-publish-secret-namespace: <secret-namespace>
   csi.storage.k8s.io/node-stage-secret-name: <secret-name>
@@ -102,6 +103,7 @@ parameters:
   replica-count: "3"
   compression: enabled
   qos-policy-name: "example-pol"
+  # ip-acl: enabled
   csi.storage.k8s.io/controller-publish-secret-name: example-secret
   csi.storage.k8s.io/controller-publish-secret-namespace: default
   csi.storage.k8s.io/node-stage-secret-name: example-secret

@@ -17,6 +17,10 @@ helm install \
   lightbits-helm-repo/lb-csi-workload-examples
 ```
 
+On clusters that enforce IP-ACLs, also pass
+`--set global.storageClass.ipAcl=enabled` so each volume is restricted to the
+data-path addresses of the nodes it is attached to.
+
 Will output:
 
 ```bash

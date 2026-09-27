@@ -21,6 +21,10 @@ parameters:
 {{- end }}
 {{- if .Values.global.storageClass.ipAcl }}
   ip-acl: {{.Values.global.storageClass.ipAcl}}
+{{- else }}
+  # restricts each volume to the data-path addresses of the nodes it is
+  # attached to; required on clusters that enforce IP-ACLs.
+  # ip-acl: enabled
 {{- end }}
 {{- if and .Values.global.jwtSecret.name .Values.global.jwtSecret.namespace }}
   csi.storage.k8s.io/controller-publish-secret-name: {{ .Values.global.jwtSecret.name }}
