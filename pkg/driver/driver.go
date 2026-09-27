@@ -78,6 +78,7 @@ type Config struct {
 	BackendCfgPath string // if valid - contents override DefaultBackend.
 	JWTPath        string
 	LUKSCfgPath    string
+	InBandAuth     bool // maintain the discovery-client in-band auth secrets.
 
 	NodeID   string
 	Endpoint string // must be a Unix Domain Socket URI
@@ -98,12 +99,13 @@ type Config struct {
 }
 
 type Driver struct {
-	sockPath    string // control UDS path.
-	jwtPath     string // LightOS API authN/authZ JWT.
-	luksCfgFile string // path to luks configuration yaml file.
-	nodeID      string
-	hostNQN     string
-	defaultFS   string
+	sockPath     string // control UDS path.
+	jwtPath      string // LightOS API authN/authZ JWT.
+	luksCfgFile  string // path to luks configuration yaml file.
+	dcConfigPath string // discovery-client config maintained for in-band auth.
+	nodeID       string
+	hostNQN      string
+	defaultFS    string
 
 	srv *grpc.Server
 	log *logrus.Entry
@@ -229,11 +231,13 @@ func createBackend(
 func New(cfg Config) (*Driver, error) { //nolint:gocritic
 	d := &Driver{
 		jwtPath:       cfg.JWTPath,
+		dcConfigPath:  dcConfigPathFor(cfg.InBandAuth),
 		nodeID:        cfg.NodeID,
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
-		rwx:           cfg.RWX,
+
+		rwx: cfg.RWX,
 	}
 
 	if err := checkNodeID(cfg.NodeID); err != nil {

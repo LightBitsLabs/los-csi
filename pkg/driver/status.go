@@ -20,6 +20,14 @@ func isStatusNotFound(err error) bool {
 	return false
 }
 
+func isStatusAlreadyExists(err error) bool {
+	st, ok := status.FromError(err)
+	if ok && st.Code() == codes.AlreadyExists {
+		return true
+	}
+	return false
+}
+
 func shouldRetryOn(err error) bool {
 	st, ok := status.FromError(err)
 	if !ok {

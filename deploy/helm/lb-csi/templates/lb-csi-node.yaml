@@ -73,6 +73,10 @@ spec:
             - name: LB_CSI_RWX
               value: {{ .Values.rwx | quote }}
 {{- end }}
+{{- if .Values.inBandAuth }}
+            - name: LB_CSI_INBAND_AUTH
+              value: "true"
+{{- end }}
           imagePullPolicy: "Always"
           securityContext:
             allowPrivilegeEscalation: true
@@ -94,6 +98,10 @@ spec:
               mountPath: /dev
             - name: discovery-client-dir
               mountPath: /etc/discovery-client/discovery.d
+{{- if .Values.inBandAuth }}
+            - name: dc-config-dir
+              mountPath: /etc/discovery-client
+{{- end }}
 {{- range .Values.jwtSecret }}
             - name: {{ .name }}
               mountPath: "/etc/lb-csi"
@@ -133,6 +141,16 @@ spec:
 {{- else }}
           image: {{ .Values.imageRegistry }}/lb-nvme-discovery-client:{{ .Chart.AppVersion }}
 {{- end }}
+{{- if .Values.inBandAuth }}
+          # the DC reads its config once, at startup: hold it until the plugin
+          # has written the node secret pair on the first volume stage. a
+          # pre-existing config without the secrets does not count.
+          command: ["/bin/sh", "-c"]
+          args:
+            - until grep -q dhChapSecret /etc/discovery-client/discovery-client.yaml 2>/dev/null;
+              do sleep 1; done;
+              exec /discovery-client serve
+{{- end }}
           imagePullPolicy: "Always"
           securityContext:
             allowPrivilegeEscalation: true
@@ -154,8 +172,18 @@ spec:
               mountPath: /dev
             - name: discovery-client-dir
               mountPath: /etc/discovery-client/discovery.d
+{{- if .Values.inBandAuth }}
+            - name: dc-config-dir
+              mountPath: /etc/discovery-client
+{{- end }}
 {{- end }}
       volumes:
+{{- if .Values.inBandAuth }}
+      - name: dc-config-dir
+        hostPath:
+          path: /etc/discovery-client
+          type: DirectoryOrCreate
+{{- end }}
       - name: registration-dir
         hostPath:
           path: {{ .Values.kubeletRootDir }}/plugins_registry/
