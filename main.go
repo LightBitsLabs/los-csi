@@ -121,6 +121,9 @@ var (
 		"Backend config path, see $LB_CSI_BE_CONFIG_PATH.")
 	luksCfgPath = flag.StringP("luks-cfg-path", "L", "",
 		"LUKS config path, see $LB_CSI_LUKS_CONFIG_PATH.")
+	inbandAuth = flag.Bool("inband-auth", false,
+		"Maintain the discovery-client NVMe in-band auth secrets, "+
+			"see $LB_CSI_INBAND_AUTH.")
 	version = flag.Bool("version", false, "Print the version and exit.")
 	help    = flag.BoolP("help", "h", false, "Print help and exit.")
 
@@ -206,6 +209,18 @@ func main() {
 		}
 	}
 
+	if !*inbandAuth {
+		val := os.Getenv("LB_CSI_INBAND_AUTH")
+		switch strings.ToLower(strings.TrimSpace(val)) {
+		case "true":
+			*inbandAuth = true
+		case "false", "":
+			*inbandAuth = false
+		default:
+			errorAndDie("invalid LB_CSI_INBAND_AUTH value: '%s'", val)
+		}
+	}
+
 	if !*rwx {
 		val := os.Getenv("LB_CSI_RWX")
 		switch strings.ToLower(strings.TrimSpace(val)) {
@@ -227,6 +242,7 @@ func main() {
 		LUKSCfgPath: pickStr(*luksCfgPath, "LB_CSI_LUKS_CONFIG_PATH",
 			defaults.LUKSCfgPath),
 		JWTPath:       pickStr(*jwtPath, "LB_CSI_JWT_PATH", defaults.JWTPath),
+		InBandAuth:    *inbandAuth,
 		NodeID:        pickStr(*nodeID, "LB_CSI_NODE_ID", defaults.NodeID),
 		Endpoint:      pickStr(*endpoint, "CSI_ENDPOINT", defaults.Endpoint),
 		DefaultFS:     pickStr(*defaultFS, "LB_CSI_DEFAULT_FS", defaults.DefaultFS),
