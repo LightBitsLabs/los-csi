@@ -240,26 +240,13 @@ The `lb-csi-bundle` includes the following content:
 │       ├── lb-csi-workload-examples-v1.20.0.tgz
 │       └── snapshot-controller-0.12.0.tgz
 ├── k8s
-│   ├── lb-csi-plugin-k8s-v1.17-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.17.yaml
-│   ├── lb-csi-plugin-k8s-v1.18-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.18.yaml
-│   ├── lb-csi-plugin-k8s-v1.19-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.19.yaml
-│   ├── lb-csi-plugin-k8s-v1.20-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.20.yaml
-│   ├── lb-csi-plugin-k8s-v1.21-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.21.yaml
-│   ├── lb-csi-plugin-k8s-v1.22-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.22.yaml
-│   ├── lb-csi-plugin-k8s-v1.23-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.23.yaml
-│   ├── lb-csi-plugin-k8s-v1.24-dc.yaml
-│   ├── lb-csi-plugin-k8s-v1.24.yaml
+│   ├── lb-csi-plugin-k8s.yaml
+│   ├── lb-csi-plugin-k8s-dc.yaml
+│   ├── lb-csi-plugin-k8s-dc-iba.yaml
 │   └── snapshot-controller.yaml
 ```
 
-- **k8s:** Contains static manifests to deploy `lb-csi-plugin` on various Kubernetes versions.
+- **k8s:** Contains static manifests to deploy `lb-csi-plugin`, one per deployment variant (host discovery-client, discovery-client in a container, and discovery-client in a container with NVMe in-band authentication); each works on every supported Kubernetes version.
 - **examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using static manifests.
 - **helm/charts:** Contain two Helm Charts:
   - **lb-csi-plugin-<CHART_VERSION>.tgz:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
@@ -300,7 +287,7 @@ It is possible to use a local private Docker registry if you deploy the Lightbit
 
 > Note
 >
-> Consult the Lightbits CSI plugin deployment spec file (e.g., lb-csi-plugin-k8s-v1.17.yaml for deployment on Kubernetes v1.17) for the specific version numbers of the sidecar container images that are required for deployment.
+> Consult the Lightbits CSI plugin deployment spec file (e.g., lb-csi-plugin-k8s-dc.yaml) for the specific version numbers of the sidecar container images that are required for deployment.
 
 Deployment using sidecar container images of versions other than those specified, or images with the tag latest, is not supported.
 
