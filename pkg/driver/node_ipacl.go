@@ -45,13 +45,8 @@ func dataPathAddrs(eps endpoint.Slice) ([]string, error) {
 // admitted by the target. it is idempotent, and it leaves an ALLOW_ANY set
 // externally on the volume untouched.
 func (d *Driver) enrollNodeIPAcl(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, ci *lb.ClusterInfo, vid lbResourceID,
 ) error {
-	ci, err := clnt.GetClusterInfo(ctx)
-	if err != nil {
-		return mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
-			vid.mgmtEPs[0])
-	}
 	eps, err := endpoint.ParseSliceIP(ci.DiscoveryEndpoints)
 	if err != nil {
 		return mkEExec("got unusable discovery endpoints from LB cluster at '%s': %s",

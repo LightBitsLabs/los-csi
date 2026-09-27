@@ -284,6 +284,30 @@ func (c *fakeClient) GetSnapshotByName(
 	return nil, nil
 }
 
+func (c *fakeClient) CreateTrustedHost(
+	ctx context.Context, name string, projectName string, hostNQN string,
+) (*lb.TrustedHost, error) {
+	return nil, nil
+}
+
+func (c *fakeClient) GetTrustedHost(
+	ctx context.Context, name string, projectName string,
+) (*lb.TrustedHost, error) {
+	return nil, nil
+}
+
+func (c *fakeClient) SetTrustedHostSecrets(
+	ctx context.Context, name string, projectName string, secrets lb.TrustedHostSecrets,
+) error {
+	return nil
+}
+
+func (c *fakeClient) GetTrustedHostSecrets(
+	ctx context.Context, name string, projectName string,
+) (*lb.TrustedHostSecrets, error) {
+	return nil, nil
+}
+
 //revive:enable:unused-parameter,unused-receiver
 
 // Test env: -----------------------------------------------------------------

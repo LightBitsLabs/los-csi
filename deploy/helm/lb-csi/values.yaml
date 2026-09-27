@@ -14,6 +14,10 @@ nodeServiceAccountName: lb-csi-node-sa
 kubeletRootDir: /var/lib/kubelet
 #luksConfigDir: /etc/lb-csi-luks-config
 rwx: false
+# Enable when the LightOS cluster runs with NVMe in-band authentication: the
+# node plugin registers each node as a trusted host and maintains the
+# discovery-client secret config. Requires discoveryClientInContainer: true.
+inBandAuth: false
 # runAsUser: 1001
 # runAsGroup: 1001
 #registryUsername: ""

@@ -262,11 +262,22 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	ci, err := clnt.GetClusterInfo(ctx)
+	if err != nil {
+		return nil, mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
+			vid.mgmtEPs[0])
+	}
+
 	if vid.ipACL {
-		err = d.enrollNodeIPAcl(ctx, log, clnt, vid)
+		err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	err = d.ensureInBandAuth(ctx, log, clnt, ci, vid)
+	if err != nil {
+		return nil, err
 	}
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!

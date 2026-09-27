@@ -427,7 +427,86 @@ func (c *Client) GetClusterInfo(ctx context.Context) (*lb.ClusterInfo, error) {
 		DiscoveryEndpoints: cluster.DiscoveryEndpoints,
 		ApiEndpoints:       cluster.ApiEndpoints,
 		NvmeEndpoints:      cluster.NvmeEndpoints,
+		InBandAuthEnabled:  cluster.InBandAuthMode == mgmt.ClusterInfo_Enabled,
 	}, nil
+}
+
+// trusted host handling: ----------------------------------------------------
+
+func (c *Client) CreateTrustedHost(
+	ctx context.Context, name string, projectName string, hostNQN string,
+) (*lb.TrustedHost, error) {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+	th, err := c.clnt.CreateTrustedHost(ctx, &mgmt.CreateTrustedHostRequest{
+		Name:        name,
+		ProjectName: projectName,
+		HostNqn:     hostNQN,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return lbTrustedHostFromGRPC(th), nil
+}
+
+func (c *Client) GetTrustedHost(
+	ctx context.Context, name string, projectName string,
+) (*lb.TrustedHost, error) {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+	th, err := c.clnt.GetTrustedHost(ctx, &mgmt.GetTrustedHostRequest{
+		Name:        name,
+		ProjectName: projectName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return lbTrustedHostFromGRPC(th), nil
+}
+
+func (c *Client) SetTrustedHostSecrets(
+	ctx context.Context, name string, projectName string, secrets lb.TrustedHostSecrets,
+) error {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+	targetSecretType := mgmt.TargetSecretType_Enabled
+	if secrets.TargetSecret == "" {
+		targetSecretType = mgmt.TargetSecretType_AutoGenSecret
+	}
+	_, err := c.clnt.SetTrustedHostSecret(ctx, &mgmt.SetTrustedHostSecretsRequest{
+		Name:             name,
+		ProjectName:      projectName,
+		HostSecret:       secrets.HostSecret,
+		TargetSecret:     secrets.TargetSecret,
+		TargetSecretType: targetSecretType,
+	})
+	return err
+}
+
+func (c *Client) GetTrustedHostSecrets(
+	ctx context.Context, name string, projectName string,
+) (*lb.TrustedHostSecrets, error) {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+	res, err := c.clnt.GetTrustedHostSecret(ctx, &mgmt.GetTrustedHostSecretsRequest{
+		Name:        name,
+		ProjectName: projectName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &lb.TrustedHostSecrets{
+		HostSecret:   res.HostSecret,
+		TargetSecret: res.TargetSecret,
+	}, nil
+}
+
+func lbTrustedHostFromGRPC(th *mgmt.TrustedHost) *lb.TrustedHost {
+	return &lb.TrustedHost{
+		Name:        th.Name,
+		ProjectName: th.ProjectName,
+		HostNQN:     th.HostNqn,
+	}
 }
 
 func (c *Client) GetCluster(ctx context.Context) (*lb.Cluster, error) {
