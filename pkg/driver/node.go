@@ -305,6 +305,11 @@ func (d *Driver) NodeStageVolume(
 		}
 	}
 
+	err = d.ensureInBandAuth(ctx, log, clnt, ci, vid)
+	if err != nil {
+		return nil, err
+	}
+
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 

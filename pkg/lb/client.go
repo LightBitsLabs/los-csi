@@ -199,6 +199,26 @@ type ClusterInfo struct {
 	DiscoveryEndpoints []string
 	ApiEndpoints       []string
 	NvmeEndpoints      []string
+	InBandAuthEnabled  bool
+}
+
+// TrustedHost identifies a host that is allowed to establish NVMe in-band
+// authenticated connections to the LB cluster.
+type TrustedHost struct {
+	Name        string
+	ProjectName string
+	HostNQN     string
+}
+
+// TrustedHostSecrets holds the DH-HMAC-CHAP secret pair of a trusted host:
+// HostSecret authenticates host-to-target, TargetSecret target-to-host.
+type TrustedHostSecrets struct {
+	HostSecret   string
+	TargetSecret string
+}
+
+func (s TrustedHostSecrets) IsComplete() bool {
+	return s.HostSecret != "" && s.TargetSecret != ""
 }
 
 type Cluster struct {
@@ -364,4 +384,17 @@ type Client interface {
 	DeleteSnapshot(ctx context.Context, uuid guuid.UUID, projectName string, blocking bool) error
 	GetSnapshot(ctx context.Context, uuid guuid.UUID, projectName string) (*Snapshot, error)
 	GetSnapshotByName(ctx context.Context, name string, projectName string) (*Snapshot, error)
+
+	CreateTrustedHost(ctx context.Context, name string, projectName string,
+		hostNQN string,
+	) (*TrustedHost, error)
+	GetTrustedHost(ctx context.Context, name string, projectName string) (*TrustedHost, error)
+	// SetTrustedHostSecrets sets the DH-HMAC-CHAP secret pair of a trusted
+	// host. an empty HostSecret or TargetSecret makes the LB cluster
+	// auto-generate that secret; fetch the result with GetTrustedHostSecrets.
+	SetTrustedHostSecrets(ctx context.Context, name string, projectName string,
+		secrets TrustedHostSecrets,
+	) error
+	GetTrustedHostSecrets(ctx context.Context, name string, projectName string,
+	) (*TrustedHostSecrets, error)
 }

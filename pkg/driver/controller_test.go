@@ -145,6 +145,30 @@ func (m *ClientMock) GetSnapshotByName(ctx context.Context, name string, project
 	return args.Get(0).(*lb.Snapshot), args.Error(1)
 }
 
+func (m *ClientMock) CreateTrustedHost(ctx context.Context, name string, projectName string,
+	hostNQN string,
+) (*lb.TrustedHost, error) {
+	args := m.Called(ctx, name, projectName, hostNQN)
+	return args.Get(0).(*lb.TrustedHost), args.Error(1)
+}
+
+func (m *ClientMock) GetTrustedHost(ctx context.Context, name string, projectName string) (*lb.TrustedHost, error) {
+	args := m.Called(ctx, name, projectName)
+	return args.Get(0).(*lb.TrustedHost), args.Error(1)
+}
+
+func (m *ClientMock) SetTrustedHostSecrets(ctx context.Context, name string, projectName string,
+	secrets lb.TrustedHostSecrets,
+) error {
+	args := m.Called(ctx, name, projectName, secrets)
+	return args.Error(0)
+}
+
+func (m *ClientMock) GetTrustedHostSecrets(ctx context.Context, name string, projectName string) (*lb.TrustedHostSecrets, error) {
+	args := m.Called(ctx, name, projectName)
+	return args.Get(0).(*lb.TrustedHostSecrets), args.Error(1)
+}
+
 func getDriver(
 	t *testing.T, nodeID string, rwx bool,
 ) (*Driver, Config, error) {
