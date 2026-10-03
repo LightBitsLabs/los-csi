@@ -40,71 +40,70 @@ func dataPathAddrs(eps endpoint.Slice) ([]string, error) {
 	return strlist.CopyUniqueSorted(addrs), nil
 }
 
+// nodeDataPathAddrs derives the node source addresses towards the cluster
+// portals, data portals included: on nodes with several data-path interfaces
+// each portal may route out a different one, and every source the kernel
+// will use must be admitted.
+func nodeDataPathAddrs(ci *lb.ClusterInfo, vid lbResourceID) ([]string, error) {
+	eps, err := endpoint.ParseSliceIP(
+		append(append([]string{}, ci.DiscoveryEndpoints...), ci.NvmeEndpoints...))
+	if err != nil {
+		return nil, mkEExec("got unusable target endpoints from LB cluster at '%s': %s",
+			vid.mgmtEPs[0], err)
+	}
+	addrs, err := dataPathAddrs(eps)
+	if err != nil {
+		return nil, mkEExec("failed to derive node data-path addresses: %s", err)
+	}
+	return addrs, nil
+}
+
+// mergeNodeIPAcl returns the volume IP-ACL with `addrs` enrolled, or nil if
+// no update is needed. an ALLOW_ANY set externally is left untouched, an
+// ALLOW_NONE placeholder is displaced by the first real entry.
+func mergeNodeIPAcl(cur, addrs []string) ([]string, error) {
+	if strlist.Contains(cur, lb.ACLAllowAny) {
+		return nil, nil
+	}
+	have := strlist.Remove(strlist.CopyUniqueSorted(cur), lb.ACLAllowNone)
+	ipACL := strlist.CopyUniqueSorted(append(have, addrs...))
+	if len(ipACL) == len(have) {
+		return nil, nil
+	}
+	if len(ipACL) > maxIPAclEntries {
+		return nil, mkPrecond("volume IP-ACL can't accommodate node addresses "+
+			"%#q: %d entries, limit is %d. fully detach the volume to reset "+
+			"its IP-ACL", addrs, len(ipACL), maxIPAclEntries)
+	}
+	return ipACL, nil
+}
+
 // enrollNodeIPAcl adds this node's data-path source addresses to the volume
 // IP-ACL, so that the subsequent NVMe/TCP connections from this node are
 // admitted by the target. it is idempotent, and it leaves an ALLOW_ANY set
 // externally on the volume untouched.
 func (d *Driver) enrollNodeIPAcl(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, ci *lb.ClusterInfo, vid lbResourceID,
 ) error {
-	ci, err := clnt.GetClusterInfo(ctx)
+	addrs, err := nodeDataPathAddrs(ci, vid)
 	if err != nil {
-		return mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
-			vid.mgmtEPs[0])
-	}
-	eps, err := endpoint.ParseSliceIP(ci.DiscoveryEndpoints)
-	if err != nil {
-		return mkEExec("got unusable discovery endpoints from LB cluster at '%s': %s",
-			vid.mgmtEPs[0], err)
-	}
-	addrs, err := dataPathAddrs(eps)
-	if err != nil {
-		return mkEExec("failed to derive node data-path addresses: %s", err)
+		return err
 	}
 	log = log.WithField("ip-acl-addrs", fmt.Sprintf("%#q", addrs))
 
 	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
-		if strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
+		ipACL, err := mergeNodeIPAcl(vol.IPAcl, addrs)
+		if err != nil {
+			log.WithField("ip-acl-got", fmt.Sprintf("%#q", vol.IPAcl)).
+				Error("can't enroll node addresses in volume IP-ACL")
+			return nil, err
+		}
+		if ipACL == nil {
 			return nil, nil
-		}
-		ipACL := strlist.Remove(strlist.CopyUniqueSorted(vol.IPAcl), lb.ACLAllowNone)
-		missing := false
-		for _, addr := range addrs {
-			if !strlist.Contains(ipACL, addr) {
-				ipACL = append(ipACL, addr)
-				missing = true
-			}
-		}
-		if !missing {
-			return nil, nil
-		}
-		if len(ipACL) > maxIPAclEntries {
-			return nil, mkPrecond("volume IP-ACL can't accommodate node "+
-				"addresses %#q: %d entries, limit is %d",
-				addrs, len(ipACL), maxIPAclEntries)
 		}
 		return &lb.VolumeUpdate{IPAcl: ipACL}, nil
 	}
 
-	vol, err := clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
-	if err != nil {
-		return err
-	}
-	if strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
-		return nil
-	}
-	for _, addr := range addrs {
-		if !strlist.Contains(vol.IPAcl, addr) {
-			// either some race involving network partitions, or, an
-			// external intervention. a retry will either sort it out,
-			// or report the condition more accurately:
-			log.WithFields(logrus.Fields{
-				"ip-acl-exp": fmt.Sprintf("%#q", addrs),
-				"ip-acl-got": fmt.Sprintf("%#q", vol.IPAcl),
-			}).Error("UpdateVolume() succeeded, but resultant volume IP-ACL is wrong")
-			return mkEagain("failed to enroll node addresses in IP-ACL of volume '%s'",
-				vid.uuid)
-		}
-	}
-	return nil
+	_, err = clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
+	return err
 }
