@@ -368,6 +368,14 @@ func findExistingVolume(
 		log.Warnf("found matching existing volume with "+
 			"unexpected ACL %#q instead of %#q", vol.ACL, req.ACL)
 	}
+	// an ALLOW_ANY IP-ACL defeats the requested IP-ACL enforcement: the
+	// node-side enrollment deliberately leaves ALLOW_ANY untouched, so
+	// reusing such a volume would hand out an unenforced volume as an
+	// enforced one.
+	if len(req.IPAcl) > 0 && strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
+		return nil, mkEExist("%s: it admits connections from any IP, "+
+			"but IP-ACL enforcement was requested", prefix)
+	}
 
 	if srcSid != nil || srcVid != nil {
 		if vol.Capacity < uint64(reqCapacity.RequiredBytes) {
@@ -1068,8 +1076,9 @@ func (d *Driver) doUnpublishVolumeRWO(
 			update := &lb.VolumeUpdate{ACL: allowNoneACL}
 			// the last node just detached: reset the node-maintained
 			// IP-ACL too, clearing entries leaked by nodes that died
-			// before unstaging.
-			if vid.ipACL {
+			// before unstaging. an ALLOW_ANY set externally is left
+			// untouched, mirroring the node-side enrollment.
+			if vid.ipACL && !strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
 				update.IPAcl = allowNoneACL
 			}
 			return update, nil
@@ -1130,8 +1139,9 @@ func (d *Driver) doUnpublishVolumeRWX(
 			update := &lb.VolumeUpdate{ACL: allowNoneACL}
 			// the last node just detached: reset the node-maintained
 			// IP-ACL too, clearing entries leaked by nodes that died
-			// before unstaging.
-			if vid.ipACL {
+			// before unstaging. an ALLOW_ANY set externally is left
+			// untouched, mirroring the node-side enrollment.
+			if vid.ipACL && !strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
 				update.IPAcl = allowNoneACL
 			}
 			return update, nil

@@ -518,3 +518,73 @@ func TestControllerUnpublishVolume(t *testing.T) {
 		})
 	}
 }
+
+func TestControllerUnpublishVolumeIPAclReset(t *testing.T) {
+	nodeID1 := "rack01-server01"
+	ace1 := nodeIDToHostNQN(nodeID1)
+	ep := "10.19.151.24:443,10.19.151.6:443"
+	nguid := guuid.MustParse("6bb32fb5-99aa-4a4c-a4e7-30b7787bbd66")
+
+	testCases := []struct {
+		name     string
+		ipAcl    []string
+		expReset bool
+	}{
+		{
+			name:     "last detach resets the node-maintained IP-ACL",
+			ipAcl:    []string{"10.0.0.1", "10.0.0.2"},
+			expReset: true,
+		},
+		{
+			name:     "last detach leaves an external ALLOW_ANY untouched",
+			ipAcl:    []string{lb.ACLAllowAny},
+			expReset: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			driver, _, err := getDriver(t, nodeID1, false)
+			require.NoError(t, err)
+
+			vol := basicVolume("v1", nguid, []string{ace1})
+			vol.IPAcl = tc.ipAcl
+			detached := basicVolume("v1", nguid, []string{lb.ACLAllowNone})
+			detached.IPAcl = allowNoneACL
+
+			var captured *lb.VolumeUpdate
+			clientMock := basicClientMock(ep)
+			clientMock.On("UpdateVolume", context.Background(),
+				vol.UUID, vol.ProjectName,
+				mock.AnythingOfType("lb.VolumeUpdateHook")).
+				Run(func(args mock.Arguments) {
+					hook := args.Get(3).(lb.VolumeUpdateHook)
+					upd, err := hook(vol)
+					require.NoError(t, err)
+					captured = upd
+				}).
+				Return(detached, nil).Once()
+
+			driver.lbclients = lb.NewClientPoolWithOptions(
+				func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+					return clientMock, nil
+				},
+				poolOpts,
+			)
+
+			req := &csi.ControllerUnpublishVolumeRequest{
+				VolumeId: fmt.Sprintf("mgmt:%s|nguid:%s|proj:default|scheme:grpcs|ipacl:enabled",
+					ep, nguid.String()),
+				NodeId: nodeID1,
+			}
+			_, err = driver.ControllerUnpublishVolume(context.Background(), req)
+			require.NoError(t, err)
+			require.NotNil(t, captured, "unpublish must update the volume")
+			require.Equal(t, allowNoneACL, captured.ACL)
+			if tc.expReset {
+				require.Equal(t, allowNoneACL, captured.IPAcl)
+			} else {
+				require.Nil(t, captured.IPAcl)
+			}
+		})
+	}
+}
