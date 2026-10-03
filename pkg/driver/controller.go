@@ -139,7 +139,8 @@ func getReqCapacity(capRange *csi.CapacityRange) (uint64, error) {
 }
 
 func mkVolumeResponse(
-	mgmtEPs endpoint.Slice, vol *lb.Volume, hostEncryption string, mgmtScheme string, volSrc *csi.VolumeContentSource,
+	mgmtEPs endpoint.Slice, vol *lb.Volume, hostEncryption string, mgmtScheme string,
+	ipACL bool, volSrc *csi.VolumeContentSource,
 ) *csi.CreateVolumeResponse {
 	volID := lbResourceID{
 		mgmtEPs:    mgmtEPs,
@@ -147,6 +148,7 @@ func mkVolumeResponse(
 		projName:   vol.ProjectName,
 		scheme:     mgmtScheme,
 		hostCrypto: hostEncryption,
+		ipACL:      ipACL,
 	}
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
@@ -366,6 +368,14 @@ func findExistingVolume(
 		log.Warnf("found matching existing volume with "+
 			"unexpected ACL %#q instead of %#q", vol.ACL, req.ACL)
 	}
+	// an ALLOW_ANY IP-ACL defeats the requested IP-ACL enforcement: the
+	// node-side enrollment deliberately leaves ALLOW_ANY untouched, so
+	// reusing such a volume would hand out an unenforced volume as an
+	// enforced one.
+	if len(req.IPAcl) > 0 && strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
+		return nil, mkEExist("%s: it admits connections from any IP, "+
+			"but IP-ACL enforcement was requested", prefix)
+	}
 
 	if srcSid != nil || srcVid != nil {
 		if vol.Capacity < uint64(reqCapacity.RequiredBytes) {
@@ -514,8 +524,8 @@ func (d *Driver) doCreateVolume( //revive:disable-line:unused-receiver
 	}
 
 	vol, err := clnt.CreateVolume(ctx, req.Name, req.Capacity, req.ReplicaCount,
-		req.Compression, req.ACL, req.ProjectName, req.SnapshotUUID, req.QosPolicyName,
-		true)
+		req.Compression, req.ACL, req.IPAcl, req.ProjectName, req.SnapshotUUID,
+		req.QosPolicyName, true)
 	if err != nil {
 		return nil, mungeLBErr(log, err, "failed to create volume '%s'", req.Name)
 	}
@@ -634,6 +644,9 @@ func (d *Driver) CreateVolume(
 		ProjectName:   params.projectName,
 		QosPolicyName: params.qosPolicyName,
 	}
+	if params.ipACL {
+		wantVol.IPAcl = []string{lb.ACLAllowNone}
+	}
 
 	ctx = d.cloneCtxWithCreds(ctx, req.Secrets)
 	clnt, err := d.GetLBClient(ctx, params.mgmtEPs, params.mgmtScheme)
@@ -654,7 +667,8 @@ func (d *Driver) CreateVolume(
 			return nil, err
 		}
 	}
-	return mkVolumeResponse(params.mgmtEPs, vol, params.hostCrypto, params.mgmtScheme, volSrc), nil
+	return mkVolumeResponse(params.mgmtEPs, vol, params.hostCrypto, params.mgmtScheme,
+		params.ipACL, volSrc), nil
 }
 
 func (d *Driver) ControllerGetVolume( //revive:disable-line:unused-receiver
@@ -1059,7 +1073,15 @@ func (d *Driver) doUnpublishVolumeRWO(
 			return nil, nil
 		}
 		if numACEs == 0 || numACEs == 1 && vol.ACL[0] == ace {
-			return &lb.VolumeUpdate{ACL: allowNoneACL}, nil
+			update := &lb.VolumeUpdate{ACL: allowNoneACL}
+			// the last node just detached: reset the node-maintained
+			// IP-ACL too, clearing entries leaked by nodes that died
+			// before unstaging. an ALLOW_ANY set externally is left
+			// untouched, mirroring the node-side enrollment.
+			if vid.ipACL && !strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
+				update.IPAcl = allowNoneACL
+			}
+			return update, nil
 		}
 
 		if numACEs > 1 || numACEs == 1 && vol.ACL[0] == lb.ACLAllowAny {
@@ -1114,7 +1136,15 @@ func (d *Driver) doUnpublishVolumeRWX(
 			return nil, nil
 		}
 		if numACEs == 0 || numACEs == 1 && vol.ACL[0] == ace {
-			return &lb.VolumeUpdate{ACL: allowNoneACL}, nil
+			update := &lb.VolumeUpdate{ACL: allowNoneACL}
+			// the last node just detached: reset the node-maintained
+			// IP-ACL too, clearing entries leaked by nodes that died
+			// before unstaging. an ALLOW_ANY set externally is left
+			// untouched, mirroring the node-side enrollment.
+			if vid.ipACL && !strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
+				update.IPAcl = allowNoneACL
+			}
+			return update, nil
 		}
 
 		if strlist.Contains(vol.ACL, lb.ACLAllowAny) {

@@ -692,6 +692,7 @@ func (c *Client) lbVolumeFromGRPC(
 		Protection:         lbVolumeProtectionFromGRPC(vol.ProtectionState),
 		ReplicaCount:       vol.ReplicaCount,
 		ACL:                strlist.CopyUniqueSorted(vol.Acl.GetValues()),
+		IPAcl:              strlist.CopyUniqueSorted(vol.IPAcl.GetValues()),
 		Capacity:           vol.Size,
 		LogicalUsedStorage: vol.Statistics.LogicalUsedStorage,
 		Compression:        compress,
@@ -717,8 +718,8 @@ func cloneCtxWithETag(ctx context.Context, eTag string) context.Context {
 
 func (c *Client) CreateVolume(
 	ctx context.Context, name string, capacity uint64, replicaCount uint32,
-	compress bool, acl []string, projectName string, snapshotID guuid.UUID, qosPolicyName string,
-	blocking bool,
+	compress bool, acl []string, ipAcl []string, projectName string,
+	snapshotID guuid.UUID, qosPolicyName string, blocking bool,
 ) (*lb.Volume, error) {
 	ctx, cancel := cloneCtxWithCap(ctx)
 	defer cancel()
@@ -744,6 +745,10 @@ func (c *Client) CreateVolume(
 		ReplicaCount: replicaCount,
 		ProjectName:  projectName,
 		QosPolicyID:  qosPolicyID,
+	}
+	// nil IP-ACL leaves the choice of the default to the LB cluster.
+	if ipAcl != nil {
+		req.IPAcl = &mgmt.StringList{Values: strlist.CopyUniqueSorted(ipAcl)}
 	}
 	if snapshotID != guuid.Nil {
 		req.SourceSnapshotUUID = snapshotID.String()
@@ -1097,6 +1102,13 @@ func (c *Client) doUpdateVolume(
 		req.Acl = &mgmt.StringList{Values: acl}
 		log = log.WithField("acl-src", fmt.Sprintf("%#q", lbVol.ACL))
 		log = log.WithField("acl-tgt", fmt.Sprintf("%#q", acl))
+	}
+	if update.IPAcl != nil {
+		required = true
+		ipACL := strlist.CopyUniqueSorted(update.IPAcl)
+		req.IPAcl = &mgmt.StringList{Values: ipACL}
+		log = log.WithField("ip-acl-src", fmt.Sprintf("%#q", lbVol.IPAcl))
+		log = log.WithField("ip-acl-tgt", fmt.Sprintf("%#q", ipACL))
 	}
 	if update.Capacity != 0 {
 		required = true

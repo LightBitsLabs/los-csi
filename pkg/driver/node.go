@@ -26,6 +26,7 @@ import (
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
 	"github.com/lightbitslabs/los-csi/pkg/lb"
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
+	"github.com/lightbitslabs/los-csi/pkg/util/strlist"
 	"github.com/lightbitslabs/los-csi/pkg/util/wait"
 )
 
@@ -41,7 +42,7 @@ const (
 // all of this might change by the time we actually try to connect/mount, of
 // course, but usually only for the worse, not for the better.
 func (d *Driver) lbVolEligible(
-	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID,
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, ci *lb.ClusterInfo, vid lbResourceID,
 ) error {
 	vol, err := clnt.GetVolume(ctx, vid.uuid, vid.projName)
 	if err != nil {
@@ -69,6 +70,31 @@ func (d *Driver) lbVolEligible(
 		log.Warnf("volume is inaccessible from '%s', HostNQN: '%s', ACL: %#q",
 			d.nodeID, d.hostNQN, vol.ACL)
 		return mkPrecond("volume '%s' is inaccessible from node '%s'", vid, d.nodeID)
+	}
+
+	// a volume whose IP-ACL admits none of this node's addresses can't be
+	// connected to: the cluster firewalls its data ports per allowed IP.
+	// node-managed volumes get their addresses enrolled right after this
+	// check, so only externally managed IP-ACLs are screened here.
+	if !vid.ipACL && len(vol.IPAcl) > 0 && !strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
+		addrs, err := nodeDataPathAddrs(ci, vid)
+		if err != nil {
+			return err
+		}
+		admitted := false
+		for _, addr := range addrs {
+			if strlist.Contains(vol.IPAcl, addr) {
+				admitted = true
+				break
+			}
+		}
+		if !admitted {
+			log.Warnf("volume IP-ACL %#q admits none of node addresses %#q",
+				vol.IPAcl, addrs)
+			return mkPrecond("volume '%s' IP-ACL admits no address of node '%s': "+
+				"on an IP-ACL-enforcing cluster, provision volumes with the "+
+				"'ip-acl' StorageClass parameter", vid, d.nodeID)
+		}
 	}
 
 	st := d.be.LBVolEligible(ctx, vol)
@@ -257,9 +283,26 @@ func (d *Driver) NodeStageVolume(
 
 	// remote/global sanity check: - - - - - - - - - - - - - - - - - - - -
 
-	err = d.lbVolEligible(ctx, log, clnt, vid)
+	// staging requests from some COs arrive with no deadline, so cap the
+	// cluster-info fetch locally instead of waiting on the caller.
+	cictx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ci, err := clnt.GetClusterInfo(cictx)
+	cancel()
+	if err != nil {
+		return nil, mungeLBErr(log, err, "failed to get info from LB cluster at '%s'",
+			vid.mgmtEPs[0])
+	}
+
+	err = d.lbVolEligible(ctx, log, clnt, ci, vid)
 	if err != nil {
 		return nil, err
+	}
+
+	if vid.ipACL {
+		err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
