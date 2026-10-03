@@ -113,6 +113,7 @@ global:
     secretNamespace: default
     qosPolicyName: example-qos-policy-name
     host-encryption: disabled
+    ipAcl: disabled
 
 # subchart workloads:
 storageclass:
@@ -169,6 +170,7 @@ Values Description:
 | global.jwtSecret.jwt               | `JWT` to authenticate against LightOS API                          | default        | true     |
 | global.storageClass.qosPolicyName  | qos policy name, should exist in the Lightos prior volume creation | ""             | false    |
 | global.storageClass.hostEncryption | Whether host-side encryption is enabled/disabled                   | disabled       | false    |
+| global.storageClass.ipAcl          | Whether volumes are IP-ACL-restricted to their nodes' addresses    | disabled       | false    |
 
 ##### Mandatory Values To Modify
 
