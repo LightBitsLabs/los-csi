@@ -86,6 +86,7 @@ You will need to replace the highlighted placeholders (removing the angle bracke
 | `<secret-name>`         | The name of the Kubernetes Secret that holds the JWT to be used while making requests pertaining to this StorageClass to the LightOS management API service. See also `<secret-namespace>` below.<br>Typically the JWT used for all the different types of operations (5 in the examples below) will be the same JWT, but there is no requirement for that to be the case.|
 | `<secret-namespace>`    | The namespace in which the Secret referred to in `<secret-name>` above resides.|
 | `<qos-policy-name>`     | New volumes created will be attached with that qos policy. Default value is "" which means using the default qos profile|
+| `<enabled\|disabled>`<br>(ip-acl)   | Specifies whether the volumes created for this StorageClass are IP-ACL-restricted to the data-path addresses of the Kubernetes nodes they are attached to. The ip-acl line can be omitted altogether, in which case the LightOS storage cluster default IP-ACL setting is used. Required on LightOS clusters that enforce IP-ACLs. For statically provisioned volumes, append the `\|ipacl:enabled` suffix to the PersistentVolume `spec.csi.volumeHandle` instead.|
 
 Kubernetes passes the values from the parameters section of the spec verbatim to the Lightbits CSI plugin to inform it of the necessary provisioning actions. Here is an example of a complete StorageClass definition (also available in the file `examples/secret-and-storage-class.yaml` from the Supplementary Package):
 

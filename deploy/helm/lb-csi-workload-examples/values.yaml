@@ -14,7 +14,7 @@ global:
     host-encryption: disabled
     # Optional. When "enabled", the node plugin restricts each volume's IP-ACL
     # to the data-path addresses of the nodes it is staged on.
-    ipAcl: ""
+    ipAcl: disabled
     # The csi.storage.k8s.io/fstype parameter is optional. The values allowed are ext4 or xfs. The default value is ext4.
     fsType: "ext4"
   jwtSecret:
