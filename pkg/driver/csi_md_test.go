@@ -401,6 +401,54 @@ func TestParseCSICreateVolumeParams(t *testing.T) {
 				mgmtScheme:   "grpcs",
 			},
 		},
+		{
+			name: "ip-acl enabled",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "2",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "system",
+				volParIPACLKey:    "enabled",
+			},
+			err: nil,
+			result: lbCreateVolumeParams{
+				mgmtEPs:      endpoint.Slice{endpoint.MustParse("1.2.3.4:80")},
+				replicaCount: 2,
+				compression:  false,
+				projectName:  "system",
+				mgmtScheme:   "grpcs",
+				ipACL:        true,
+			},
+		},
+		{
+			name: "ip-acl disabled",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "2",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "system",
+				volParIPACLKey:    "disabled",
+			},
+			err: nil,
+			result: lbCreateVolumeParams{
+				mgmtEPs:      endpoint.Slice{endpoint.MustParse("1.2.3.4:80")},
+				replicaCount: 2,
+				compression:  false,
+				projectName:  "system",
+				mgmtScheme:   "grpcs",
+			},
+		},
+		{
+			name: "ip-acl bad value",
+			params: map[string]string{
+				volParMgmtEPKey:   "1.2.3.4:80",
+				volParRepCntKey:   "2",
+				volParCompressKey: "disabled",
+				volParProjNameKey: "system",
+				volParIPACLKey:    "true",
+			},
+			err: mkEinval(volParKey(volParIPACLKey), "true"),
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
