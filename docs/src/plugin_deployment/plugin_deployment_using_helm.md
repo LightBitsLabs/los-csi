@@ -42,6 +42,7 @@ helm/lb-csi
 | name                               | default                                 | description                                      |
 |------------------------------------|-----------------------------------------|--------------------------------------------------|
 | discoveryClientInContainer         | false                                   | Deploy lb-nvme-discovery-client as the container in lb-csi-node pods |
+| inBandAuth                         | false                                   | Enable NVMe in-band authentication: each node registers itself as a trusted host on the LightOS cluster and maintains its DH-HMAC-CHAP secret pair in `/etc/discovery-client/discovery-client.yaml` on the node (hostPath). Requires `discoveryClientInContainer: true` and a LightOS cluster with in-band auth enabled |
 | discoveryClientImage               | ""                                      | lb-nvme-discovery-client image name (string format: `<image-name>:<tag>`) |
 | maxIOQueues                        | "0"                                     | Overrides the default number of I/O queues created by the driver.<br>Zero value means no override (default driver value is number of cores).  |
 | image                              |  ""                                     | lb-csi-plugin image name (string format:  `<image-name>:<tag>`) |
