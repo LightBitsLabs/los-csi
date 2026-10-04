@@ -1,4 +1,7 @@
 {{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
+{{- if and .Values.inBandAuth (not .Values.discoveryClientInContainer) }}
+{{- fail "inBandAuth requires discoveryClientInContainer=true: a host discovery-client reads its config once at startup and never sees the secrets the plugin provisions" }}
+{{- end }}
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
