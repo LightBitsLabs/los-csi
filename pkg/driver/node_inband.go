@@ -38,13 +38,17 @@ func dcConfigPathFor(inBandAuth bool) string {
 // by a host discovery-client package rather than by this plugin.
 func renderDCAuthConfig(existing []byte, secrets lb.TrustedHostSecrets) []byte {
 	var out []string
-	for _, line := range strings.Split(string(existing), "\n") {
-		key, _, found := strings.Cut(line, ":")
-		key = strings.TrimSpace(key)
-		if line == "" || (found && (key == dcHostSecretKey || key == dcCtrlSecretKey)) {
-			continue
+	if txt := strings.TrimRight(string(existing), "\n"); txt != "" {
+		for _, line := range strings.Split(txt, "\n") {
+			// replace the secret keys at the top level only: an
+			// indented key belongs to some nested map the file's
+			// owner defined, and is none of our business.
+			key, _, found := strings.Cut(line, ":")
+			if found && (key == dcHostSecretKey || key == dcCtrlSecretKey) {
+				continue
+			}
+			out = append(out, line)
 		}
-		out = append(out, line)
 	}
 	out = append(out,
 		fmt.Sprintf("%s: %q", dcHostSecretKey, secrets.HostSecret),
@@ -63,7 +67,7 @@ func parseDCAuthConfig(raw []byte) lb.TrustedHostSecrets {
 			continue
 		}
 		val = strings.Trim(strings.TrimSpace(val), `"`)
-		switch strings.TrimSpace(key) {
+		switch key {
 		case dcHostSecretKey:
 			secrets.HostSecret = val
 		case dcCtrlSecretKey:
