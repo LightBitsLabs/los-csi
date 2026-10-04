@@ -136,6 +136,12 @@ type Driver struct {
 	// single huge lock is unfortunate, but safety first...
 	bdl sync.Mutex
 
+	// ibaMtx serialises the in-band auth secret flow: kubelet stages
+	// volumes concurrently, and two unserialised first stages on a fresh
+	// node can each auto-generate a pair, leaving the cluster and the DC
+	// config with different ones.
+	ibaMtx sync.Mutex
+
 	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
 	// used for authN/authZ when communicating with the LightOS API service.
 	//

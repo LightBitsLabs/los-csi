@@ -152,6 +152,9 @@ func (d *Driver) ensureInBandAuth(
 	}
 	log = log.WithField("trusted-host", d.nodeID)
 
+	d.ibaMtx.Lock()
+	defer d.ibaMtx.Unlock()
+
 	local, err := readDCAuthConfig(d.dcConfigPath)
 	if err != nil {
 		return mkEExec("failed to read DC config '%s': %s", d.dcConfigPath, err)

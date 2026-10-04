@@ -5,8 +5,10 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	guuid "github.com/google/uuid"
@@ -174,4 +176,98 @@ func TestEnsureInBandAuthAdoptsClusterPair(t *testing.T) {
 	got, err := readDCAuthConfig(path)
 	require.NoError(t, err)
 	require.Equal(t, fullPair, got, "cluster-held pair must be adopted locally")
+}
+
+// a stateful mock client standing in for the cluster: the trusted host and
+// its secrets behave like the real API, including server-side generation on
+// an empty Set, so concurrent callers exercise real interleavings.
+type ibaClusterSim struct {
+	ClientMock
+	mu      sync.Mutex
+	host    *lb.TrustedHost
+	pair    lb.TrustedHostSecrets
+	autogen int
+}
+
+func (c *ibaClusterSim) GetTrustedHost(
+	ctx context.Context, name, proj string,
+) (*lb.TrustedHost, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.host == nil {
+		return nil, status.Error(codes.NotFound, "no such trusted host")
+	}
+	return c.host, nil
+}
+
+func (c *ibaClusterSim) CreateTrustedHost(
+	ctx context.Context, name, proj, hostNQN string,
+) (*lb.TrustedHost, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.host != nil {
+		return nil, status.Error(codes.AlreadyExists, "host NQN already used")
+	}
+	c.host = &lb.TrustedHost{Name: name, ProjectName: proj, HostNQN: hostNQN}
+	return c.host, nil
+}
+
+func (c *ibaClusterSim) GetTrustedHostSecrets(
+	ctx context.Context, name, proj string,
+) (*lb.TrustedHostSecrets, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.host == nil {
+		return nil, status.Error(codes.NotFound, "no such trusted host")
+	}
+	pair := c.pair
+	return &pair, nil
+}
+
+func (c *ibaClusterSim) SetTrustedHostSecrets(
+	ctx context.Context, name, proj string, secrets lb.TrustedHostSecrets,
+) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.host == nil {
+		return status.Error(codes.NotFound, "no such trusted host")
+	}
+	if secrets.HostSecret == "" {
+		c.autogen++
+		secrets = lb.TrustedHostSecrets{
+			HostSecret:   fmt.Sprintf("DHHC-1:00:gen%d:", c.autogen),
+			TargetSecret: fmt.Sprintf("DHHC-1:00:tgt%d:", c.autogen),
+		}
+	}
+	c.pair = secrets
+	return nil
+}
+
+func TestEnsureInBandAuthConcurrentFirstStages(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "discovery-client.yaml")
+	d := mkInBandDriver(t, path)
+	sim := &ibaClusterSim{}
+
+	const stages = 8
+	var wg sync.WaitGroup
+	errs := make([]error, stages)
+	for i := 0; i < stages; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			errs[i] = d.ensureInBandAuth(
+				context.Background(), d.log, sim, authCluster, mkInBandVid(t))
+		}(i)
+	}
+	wg.Wait()
+
+	for i, err := range errs {
+		require.NoErrorf(t, err, "stage %d failed", i)
+	}
+	require.Equal(t, 1, sim.autogen,
+		"concurrent first stages must generate the node pair exactly once")
+	got, err := readDCAuthConfig(path)
+	require.NoError(t, err)
+	require.Equal(t, sim.pair, got,
+		"the DC config and the cluster must hold the same pair")
 }
