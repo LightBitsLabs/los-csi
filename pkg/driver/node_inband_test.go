@@ -271,3 +271,19 @@ func TestEnsureInBandAuthConcurrentFirstStages(t *testing.T) {
 	require.Equal(t, sim.pair, got,
 		"the DC config and the cluster must hold the same pair")
 }
+
+func TestDCAuthConfigKeepsBlankLinesAndNestedKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "discovery-client.yaml")
+	foreign := "maxIOQueues: 4\n\nlogging:\n  dhChapSecret: \"not-ours\"\n\n"
+	require.NoError(t, os.WriteFile(path, []byte(foreign+"dhChapSecret: \"stale\"\n"), 0o600))
+
+	require.NoError(t, writeDCAuthConfig(path, fullPair))
+
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), "maxIOQueues: 4\n\nlogging:")
+	require.Contains(t, string(raw), "  dhChapSecret: \"not-ours\"",
+		"an indented key under a nested map must be left alone")
+	require.NotContains(t, string(raw), "stale")
+	require.Equal(t, fullPair, parseDCAuthConfig(raw))
+}
