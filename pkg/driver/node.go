@@ -298,16 +298,21 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
-	if vid.ipACL {
-		err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+	// a stage retry of an already-mounted volume needs no enrollment or
+	// secrets work; this check is advisory only, the authoritative one
+	// still runs under the lock below.
+	if isMnt, err := d.mounter.IsMountPoint(req.StagingTargetPath); err != nil || !isMnt {
+		if vid.ipACL {
+			err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		err = d.ensureInBandAuth(ctx, log, clnt, ci, vid)
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	err = d.ensureInBandAuth(ctx, log, clnt, ci, vid)
-	if err != nil {
-		return nil, err
 	}
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
