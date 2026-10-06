@@ -338,7 +338,7 @@ metadata:
               ...
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:v1.23.0
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:v1.24.0
               ...
         - name: csi-provisioner
           image: registry.k8s.io/sig-storage/csi-provisioner:v2.2.2
@@ -356,7 +356,7 @@ metadata:
               ... 
       containers:
         - name: lb-csi-plugin
-          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:v1.23.0
+          image: docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:v1.24.0
               ...
         - name: driver-registrar
           image: registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.1.0
