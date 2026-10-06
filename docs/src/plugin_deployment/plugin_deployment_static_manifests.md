@@ -54,14 +54,34 @@ Provided manifests create the required `ServiceAccount` and RBAC `ClusterRole`/`
 
 Some of the features are not supported for some of the K8s versions. For example `Extend Volume` feature is supported for K8s v1.16 and above.
 
-We provide one manifest file per deployment variant; each works on every
-supported K8s version:
+We provide a manifest file for each supported K8s version, in two flavors
+(with and without the discovery-client container); for Kubernetes v1.33 and
+v1.35 a third flavor enables NVMe in-band authentication:
 
 ```bash
 k8s/
-├── lb-csi-plugin-k8s.yaml
-├── lb-csi-plugin-k8s-dc.yaml
-└── lb-csi-plugin-k8s-dc-iba.yaml
+├── lb-csi-plugin-k8s-v1.26.yaml
+├── lb-csi-plugin-k8s-v1.26-dc.yaml
+├── lb-csi-plugin-k8s-v1.27.yaml
+├── lb-csi-plugin-k8s-v1.27-dc.yaml
+├── lb-csi-plugin-k8s-v1.28.yaml
+├── lb-csi-plugin-k8s-v1.28-dc.yaml
+├── lb-csi-plugin-k8s-v1.29.yaml
+├── lb-csi-plugin-k8s-v1.29-dc.yaml
+├── lb-csi-plugin-k8s-v1.30.yaml
+├── lb-csi-plugin-k8s-v1.30-dc.yaml
+├── lb-csi-plugin-k8s-v1.31.yaml
+├── lb-csi-plugin-k8s-v1.31-dc.yaml
+├── lb-csi-plugin-k8s-v1.32.yaml
+├── lb-csi-plugin-k8s-v1.32-dc.yaml
+├── lb-csi-plugin-k8s-v1.33.yaml
+├── lb-csi-plugin-k8s-v1.33-dc.yaml
+├── lb-csi-plugin-k8s-v1.33-dc-iba.yaml
+├── lb-csi-plugin-k8s-v1.34.yaml
+├── lb-csi-plugin-k8s-v1.34-dc.yaml
+├── lb-csi-plugin-k8s-v1.35.yaml
+├── lb-csi-plugin-k8s-v1.35-dc.yaml
+└── lb-csi-plugin-k8s-v1.35-dc-iba.yaml
 ```
 
 >**Note:**
@@ -76,7 +96,7 @@ k8s/
 To deploy the plugin, run the following commands with examples as the current directory and with kubectl in your $PATH.
 
 ```bash
-kubectl create -f lb-csi-plugin-k8s-dc.yaml
+kubectl create -f lb-csi-plugin-k8s-v<ver>-dc.yaml
 ```
 
 Ideally, the output should contain no error messages. If you see any, try to determine if the problem is with the connectivity to the Kubernetes cluster, the kubelet configuration, or some other minor issue.
@@ -119,7 +139,7 @@ Failure to confirm that the Lightbits CSI plugin is not in use can result in som
 Assuming you have deployed the Lightbits CSI plugin by following the instructions in the section [Deploying Lightbits CSI Plugin](#deploying-lightbits-csi-plugin), you can remove the CSI plugin from your Kubernetes cluster and confirm the removal by executing the following commands with examples as the current directory.
 
 ```bash
-$ kubectl delete -f lb-csi-plugin-k8s-dc.yaml
+$ kubectl delete -f lb-csi-plugin-k8s-v<ver>-dc.yaml
 
 $ kubectl get --namespace=kube-system statefulset lb-csi-controller
 No resources found.

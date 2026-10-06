@@ -240,9 +240,28 @@ The `lb-csi-bundle` includes the following content:
 │       ├── lb-csi-workload-examples-v1.20.0.tgz
 │       └── snapshot-controller-0.12.0.tgz
 ├── k8s
-│   ├── lb-csi-plugin-k8s.yaml
-│   ├── lb-csi-plugin-k8s-dc.yaml
-│   ├── lb-csi-plugin-k8s-dc-iba.yaml
+│   ├── lb-csi-plugin-k8s-v1.26.yaml
+│   ├── lb-csi-plugin-k8s-v1.26-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.27.yaml
+│   ├── lb-csi-plugin-k8s-v1.27-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.28.yaml
+│   ├── lb-csi-plugin-k8s-v1.28-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.29.yaml
+│   ├── lb-csi-plugin-k8s-v1.29-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.30.yaml
+│   ├── lb-csi-plugin-k8s-v1.30-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.31.yaml
+│   ├── lb-csi-plugin-k8s-v1.31-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.32.yaml
+│   ├── lb-csi-plugin-k8s-v1.32-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.33.yaml
+│   ├── lb-csi-plugin-k8s-v1.33-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.33-dc-iba.yaml
+│   ├── lb-csi-plugin-k8s-v1.34.yaml
+│   ├── lb-csi-plugin-k8s-v1.34-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.35.yaml
+│   ├── lb-csi-plugin-k8s-v1.35-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.35-dc-iba.yaml
 │   └── snapshot-controller.yaml
 ```
 
@@ -287,7 +306,6 @@ It is possible to use a local private Docker registry if you deploy the Lightbit
 
 > Note
 >
-> Consult the Lightbits CSI plugin deployment spec file (e.g., lb-csi-plugin-k8s-dc.yaml) for the specific version numbers of the sidecar container images that are required for deployment.
 
 Deployment using sidecar container images of versions other than those specified, or images with the tag latest, is not supported.
 

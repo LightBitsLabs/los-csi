@@ -210,38 +210,46 @@ snapshot-controller-manifests: verify_image_registry deploy/k8s
 		--namespace=kube-system \
 		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) > deploy/k8s/snapshot-controller.yaml
 
-# the chart's kubeVersion only gates pre-1.20 API differences: every
-# supported K8s version renders identically, so one manifest per variant
-# (host DC / pod DC / pod DC with NVMe in-band auth) covers them all.
+# one manifest per supported K8s version per deployment flavor (host DC /
+# pod DC), plus the NVMe in-band auth flavor for the versions it ships on.
+# the rendered content is version-independent since 1.21; the per-version
+# names are kept so existing automation keeps working.
+K8S_MANIFEST_VERSIONS := 1.26 1.27 1.28 1.29 1.30 1.31 1.32 1.33 1.34 1.35
+K8S_IBA_MANIFEST_VERSIONS := 1.33 1.35
+
 lb-csi-manifests: verify_image_registry deploy/k8s
-	helm template deploy/helm/lb-csi/ \
-		--namespace=kube-system \
-		--set allowExpandVolume=true \
-		--set enableSnapshot=true \
-		--set discoveryClientInContainer=false \
-		--set kubeVersion=$(KUBE_VERSION) \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s.yaml
-	helm template deploy/helm/lb-csi/ \
-		--namespace=kube-system \
-		--set allowExpandVolume=true \
-		--set enableSnapshot=true \
-		--set kubeVersion=$(KUBE_VERSION) \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(FULL_REPO_NAME_WITH_TAG) \
-		--set discoveryClientImage=$(DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-dc.yaml
-	helm template deploy/helm/lb-csi/ \
-		--namespace=kube-system \
-		--set allowExpandVolume=true \
-		--set enableSnapshot=true \
-		--set inBandAuth=true \
-		--set kubeVersion=$(KUBE_VERSION) \
-		--set imageRegistry=$(DOCKER_REGISTRY) \
-		--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
-		--set image=$(FULL_REPO_NAME_WITH_TAG) \
-		--set discoveryClientImage=$(DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-dc-iba.yaml
+	for v in $(K8S_MANIFEST_VERSIONS); do \
+		helm template deploy/helm/lb-csi/ \
+			--namespace=kube-system \
+			--set allowExpandVolume=true \
+			--set enableSnapshot=true \
+			--set discoveryClientInContainer=false \
+			--set kubeVersion=v$$v \
+			--set imageRegistry=$(DOCKER_REGISTRY) \
+			--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+			--set image=$(FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-v$$v.yaml; \
+		helm template deploy/helm/lb-csi/ \
+			--namespace=kube-system \
+			--set allowExpandVolume=true \
+			--set enableSnapshot=true \
+			--set kubeVersion=v$$v \
+			--set imageRegistry=$(DOCKER_REGISTRY) \
+			--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+			--set image=$(FULL_REPO_NAME_WITH_TAG) \
+			--set discoveryClientImage=$(DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-v$$v-dc.yaml; \
+	done
+	for v in $(K8S_IBA_MANIFEST_VERSIONS); do \
+		helm template deploy/helm/lb-csi/ \
+			--namespace=kube-system \
+			--set allowExpandVolume=true \
+			--set enableSnapshot=true \
+			--set inBandAuth=true \
+			--set kubeVersion=v$$v \
+			--set imageRegistry=$(DOCKER_REGISTRY) \
+			--set sidecarImageRegistry=$(SIDECAR_DOCKER_REGISTRY) \
+			--set image=$(FULL_REPO_NAME_WITH_TAG) \
+			--set discoveryClientImage=$(DISCOVERY_CLIENT_FULL_REPO_NAME_WITH_TAG) > deploy/k8s/lb-csi-plugin-k8s-v$$v-dc-iba.yaml; \
+	done
 
 deploy/examples:
 	mkdir -p deploy/examples
