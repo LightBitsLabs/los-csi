@@ -8,9 +8,10 @@ Date: 2026-10-06
 
 https://github.com/lightbitslabs/los-csi/releases/tag/v1.24.0
 
-### Container Image
+### Container Images
 
-docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:v1.24.0
+- docker.lightbitslabs.com/lightos-csi/lb-csi-plugin:v1.24.0
+- docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:v1.24.0
 
 ### Helm Charts
 
@@ -39,7 +40,10 @@ https://github.com/LightBitsLabs/los-csi/tree/v1.24.0/docs/src/upgrade
   maintained in the discovery-client configuration, and every NVMe/TCP
   connection authenticates. Requires the in-container discovery-client;
   the chart refuses to render otherwise.
-- Static manifests keep their per-version names; the new in-band auth
-  flavor (`lb-csi-plugin-k8s-v<ver>-dc-iba.yaml`) ships for Kubernetes
-  v1.33 and v1.35.
+- The bundled discovery-client fixes a goroutine leak on discovery
+  connection teardown that grew memory use on hosts with unreachable or
+  flapping discovery endpoints.
+- Static manifests: a new in-band auth flavor,
+  `lb-csi-plugin-k8s-v<ver>-dc-iba.yaml`, ships for Kubernetes v1.33
+  and v1.35.
 
