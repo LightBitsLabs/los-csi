@@ -35,11 +35,13 @@ https://github.com/LightBitsLabs/los-csi/tree/v1.24.0/docs/src/upgrade
   volumes opt in with the `|ipacl:enabled` volumeHandle suffix, and the
   workload-examples charts expose the parameter end to end.
 - NVMe in-band authentication (DH-HMAC-CHAP): with the new `inBandAuth`
-  Helm value, each node self-registers as a trusted host on the
-  Lightbits cluster, its secret pair is generated server-side and
-  maintained in the discovery-client configuration, and every NVMe/TCP
-  connection authenticates. Requires the in-container discovery-client;
-  the chart refuses to render otherwise.
+  Helm value, and against a Lightbits cluster that has in-band
+  authentication enabled, each node self-registers as a trusted host,
+  its secret pair is generated server-side and maintained in the
+  discovery-client configuration, and every NVMe/TCP connection
+  authenticates. On clusters without in-band authentication the plugin
+  keeps the existing connect flow. Requires the in-container
+  discovery-client; the chart refuses to render otherwise.
 - The bundled discovery-client fixes a goroutine leak on discovery
   connection teardown that grew memory use on hosts with unreachable or
   flapping discovery endpoints.
