@@ -39,7 +39,7 @@ https://github.com/LightBitsLabs/los-csi/tree/v1.24.0/docs/src/upgrade
   maintained in the discovery-client configuration, and every NVMe/TCP
   connection authenticates. Requires the in-container discovery-client;
   the chart refuses to render otherwise.
-- Static manifests are now one per deployment variant
-  (`lb-csi-plugin-k8s[-dc|-dc-iba].yaml`) instead of one per Kubernetes
-  version, since all supported versions render identically.
+- Static manifests keep their per-version names; the new in-band auth
+  flavor (`lb-csi-plugin-k8s-v<ver>-dc-iba.yaml`) ships for Kubernetes
+  v1.33 and v1.35.
 
