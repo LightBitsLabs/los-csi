@@ -87,12 +87,13 @@ func mkEinvalf(field string, format string, args ...interface{}) error {
 }
 
 func mkEbadOp(kind, subj string, format string, args ...interface{}) error {
-	st, err := status.New(codes.FailedPrecondition, "bad operation").WithDetails(
+	desc := fmt.Sprintf(format, args...)
+	st, err := status.New(codes.FailedPrecondition, "bad operation: "+desc).WithDetails(
 		&errdetails.PreconditionFailure{
 			Violations: []*errdetails.PreconditionFailure_Violation{{
 				Type:        kind,
 				Subject:     subj,
-				Description: fmt.Sprintf(format, args...),
+				Description: desc,
 			}},
 		})
 	nilOrDie(err)
