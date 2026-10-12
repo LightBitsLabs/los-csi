@@ -248,7 +248,7 @@ func IsVolumeReadOnly(capability *csi.VolumeCapability) bool {
 // recover the FS (q.v. fsck) if an existing one is detected.
 func (d *Driver) NodeStageVolume(
 	ctx context.Context, req *csi.NodeStageVolumeRequest,
-) (*csi.NodeStageVolumeResponse, error) {
+) (_ *csi.NodeStageVolumeResponse, retErr error) {
 	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
 		return nil, err
@@ -384,12 +384,23 @@ func (d *Driver) NodeStageVolume(
 				volHostEncryptionPassphraseKey, volHostEncryptionPassphraseKeyMaxLen,
 				len(passphrase))
 		}
-		devPath, err = d.encryptAndOpenDevice(vid.uuid, passphrase)
+		devPath, err = d.encryptAndOpenDevice(vid.uuid, devPath, passphrase)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal,
 				"error encrypting/opening volume with ID %s: %v",
 				vid.uuid, err)
 		}
+		// a CO treats most stage failures as final and then skips
+		// NodeUnstageVolume, so a mapping left open here outlives the
+		// detach of its backing device.
+		defer func() {
+			if retErr == nil {
+				return
+			}
+			if err := d.closeEncryptedDevice(vid.uuid); err != nil {
+				log.Warnf("failed to close host-encrypted device after failed stage: %s", err)
+			}
+		}()
 	}
 
 	// turn block dev into what CO wanted: - - - - - - - - - - - - - - - -
@@ -526,7 +537,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
 	}
 	if vid.hostCrypto != "" {
-		source, err := d.getEncryptedDevicePath(vid.uuid)
+		source, err := d.getEncryptedDevicePath(vid.uuid, source)
 		if err != nil {
 			return nil, status.Errorf(
 				codes.Internal,
@@ -963,11 +974,11 @@ func (d *Driver) NodeExpandVolume(
 	}
 
 	if vid.hostCrypto != "" {
-		err = d.resizeEncryptedDevice(vid.uuid)
+		err = d.resizeEncryptedDevice(vid.uuid, devicePath)
 		if err != nil {
 			return nil, err
 		}
-		devicePath, err = d.getEncryptedDevicePath(vid.uuid)
+		devicePath, err = d.getEncryptedDevicePath(vid.uuid, devicePath)
 		if err != nil {
 			return nil, err
 		}
