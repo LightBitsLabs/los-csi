@@ -67,6 +67,9 @@ func inspectLuksMapping(sysRoot, name, devName string) (luksMappingState, error)
 	}
 	slaves, err := os.ReadDir(filepath.Join(sysRoot, "block", dm, "slaves"))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return luksMappingAbsent, nil
+		}
 		return luksMappingAbsent, err
 	}
 	if len(slaves) != 1 || slaves[0].Name() != devName {

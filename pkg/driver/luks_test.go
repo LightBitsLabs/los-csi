@@ -16,9 +16,10 @@ import (
 const testMapperName = "lb-csi-nvme-uuid.680208b3-4952-4a6c-be3a-348b35afd2f2"
 
 type fakeDM struct {
-	dev    string
-	name   string
-	slaves []string
+	dev         string
+	name        string
+	slaves      []string
+	noSlavesDir bool
 }
 
 func mkFakeSysfs(t *testing.T, blockDevs []string, dms []fakeDM) string {
@@ -30,8 +31,11 @@ func mkFakeSysfs(t *testing.T, blockDevs []string, dms []fakeDM) string {
 	for _, dm := range dms {
 		dmDir := filepath.Join(root, "block", dm.dev)
 		require.NoError(t, os.MkdirAll(filepath.Join(dmDir, "dm"), 0o755))
-		require.NoError(t, os.MkdirAll(filepath.Join(dmDir, "slaves"), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(dmDir, "dm", "name"), []byte(dm.name+"\n"), 0o644))
+		if dm.noSlavesDir {
+			continue
+		}
+		require.NoError(t, os.MkdirAll(filepath.Join(dmDir, "slaves"), 0o755))
 		for _, slave := range dm.slaves {
 			require.NoError(t, os.Symlink(filepath.Join(root, "block", slave),
 				filepath.Join(dmDir, "slaves", slave)))
@@ -94,6 +98,13 @@ func TestInspectLuksMapping(t *testing.T) {
 			dms:       []fakeDM{{dev: "dm-0", name: testMapperName}},
 			devName:   "nvme0n1",
 			state:     luksMappingStale,
+		},
+		{
+			name:      "mapping removed while being inspected",
+			blockDevs: []string{"nvme0n1"},
+			dms:       []fakeDM{{dev: "dm-0", name: testMapperName, noSlavesDir: true}},
+			devName:   "nvme0n1",
+			state:     luksMappingAbsent,
 		},
 		{
 			name:      "mapping found among others",
