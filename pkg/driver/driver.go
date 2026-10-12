@@ -103,6 +103,7 @@ type Driver struct {
 	jwtPath      string // LightOS API authN/authZ JWT.
 	luksCfgFile  string // path to luks configuration yaml file.
 	dcConfigPath string // discovery-client config maintained for in-band auth.
+	sysfsRoot    string
 	nodeID       string
 	hostNQN      string
 	defaultFS    string
@@ -242,6 +243,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
+		sysfsRoot:     "/sys",
 
 		rwx: cfg.RWX,
 	}
