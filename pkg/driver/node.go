@@ -537,7 +537,7 @@ func (d *Driver) nodePublishVolumeForBlock(
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
 	}
 	if vid.hostCrypto != "" {
-		source, err := d.getEncryptedDevicePath(vid.uuid, source)
+		source, err = d.getEncryptedDevicePath(vid.uuid, source)
 		if err != nil {
 			return nil, status.Errorf(
 				codes.Internal,
