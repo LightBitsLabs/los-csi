@@ -296,6 +296,12 @@ func (c *fakeClient) GetTrustedHost(
 	return nil, nil
 }
 
+func (c *fakeClient) DeleteTrustedHost(
+	ctx context.Context, name string, projectName string,
+) error {
+	return nil
+}
+
 func (c *fakeClient) SetTrustedHostSecrets(
 	ctx context.Context, name string, projectName string, secrets lb.TrustedHostSecrets,
 ) error {
