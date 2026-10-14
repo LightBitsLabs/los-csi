@@ -49,6 +49,10 @@ spec:
           - name: LB_CSI_RWX
             value: {{ .Values.rwx | quote }}
 {{- end }}
+{{- if .Values.inBandAuth }}
+          - name: LB_CSI_INBAND_AUTH
+            value: "true"
+{{- end }}
           imagePullPolicy: "Always"
           securityContext:
             allowPrivilegeEscalation: true

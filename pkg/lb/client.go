@@ -389,6 +389,7 @@ type Client interface {
 		hostNQN string,
 	) (*TrustedHost, error)
 	GetTrustedHost(ctx context.Context, name string, projectName string) (*TrustedHost, error)
+	DeleteTrustedHost(ctx context.Context, name string, projectName string) error
 	// SetTrustedHostSecrets sets the DH-HMAC-CHAP secret pair of a trusted
 	// host. an empty HostSecret or TargetSecret makes the LB cluster
 	// auto-generate that secret; fetch the result with GetTrustedHostSecrets.

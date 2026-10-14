@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/status"
 	mountutils "k8s.io/mount-utils"
 	"k8s.io/utils/exec"
+	"k8s.io/utils/keymutex"
 
 	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
 	_ "github.com/lightbitslabs/los-csi/pkg/driver/backend/dsc" // register backend
@@ -142,6 +143,14 @@ type Driver struct {
 	// config with different ones.
 	ibaMtx sync.Mutex
 
+	// nodeLocks serialises ControllerPublishVolume and
+	// ControllerUnpublishVolume per node, see reapTrustedHost().
+	nodeLocks keymutex.KeyMutex
+
+	// attachments is nil unless in-band auth is enabled and the plugin runs
+	// in a K8s cluster; it gates trusted host cleanup on detach.
+	attachments nodeAttachments
+
 	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
 	// used for authN/authZ when communicating with the LightOS API service.
 	//
@@ -243,7 +252,8 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		squelchPanics: cfg.SquelchPanics,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
 
-		rwx: cfg.RWX,
+		rwx:       cfg.RWX,
+		nodeLocks: keymutex.NewHashed(0),
 	}
 
 	if err := checkNodeID(cfg.NodeID); err != nil {
@@ -332,6 +342,13 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		return lbgrpc.Dial(ctx, d.log, targets, mgmtScheme)
 	}
 	d.lbclients = lb.NewClientPool(lbdialer)
+
+	if cfg.InBandAuth {
+		d.attachments, err = newK8sNodeAttachments()
+		if err != nil {
+			d.log.WithError(err).Warn("trusted host cleanup on detach disabled")
+		}
+	}
 
 	return d, nil
 }
