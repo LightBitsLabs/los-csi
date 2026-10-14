@@ -464,6 +464,18 @@ func (c *Client) GetTrustedHost(
 	return lbTrustedHostFromGRPC(th), nil
 }
 
+func (c *Client) DeleteTrustedHost(
+	ctx context.Context, name string, projectName string,
+) error {
+	ctx, cancel := cloneCtxWithCap(ctx)
+	defer cancel()
+	_, err := c.clnt.DeleteTrustedHost(ctx, &mgmt.DeleteTrustedHostRequest{
+		Name:        name,
+		ProjectName: projectName,
+	})
+	return err
+}
+
 func (c *Client) SetTrustedHostSecrets(
 	ctx context.Context, name string, projectName string, secrets lb.TrustedHostSecrets,
 ) error {
