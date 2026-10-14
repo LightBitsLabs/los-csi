@@ -157,6 +157,11 @@ func (m *ClientMock) GetTrustedHost(ctx context.Context, name string, projectNam
 	return args.Get(0).(*lb.TrustedHost), args.Error(1)
 }
 
+func (m *ClientMock) DeleteTrustedHost(ctx context.Context, name string, projectName string) error {
+	args := m.Called(ctx, name, projectName)
+	return args.Error(0)
+}
+
 func (m *ClientMock) SetTrustedHostSecrets(ctx context.Context, name string, projectName string,
 	secrets lb.TrustedHostSecrets,
 ) error {
