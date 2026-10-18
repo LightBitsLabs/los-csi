@@ -214,8 +214,8 @@ snapshot-controller-manifests: verify_image_registry deploy/k8s
 # pod DC), plus the NVMe in-band auth flavor for the versions it ships on.
 # the rendered content is version-independent since 1.21; the per-version
 # names are kept so existing automation keeps working.
-K8S_MANIFEST_VERSIONS := 1.26 1.27 1.28 1.29 1.30 1.31 1.32 1.33 1.34 1.35
-K8S_IBA_MANIFEST_VERSIONS := 1.33 1.35
+K8S_MANIFEST_VERSIONS := 1.33 1.34 1.35 1.36 1.37
+K8S_IBA_MANIFEST_VERSIONS := 1.33 1.35 1.37
 
 lb-csi-manifests: verify_image_registry deploy/k8s
 	for v in $(K8S_MANIFEST_VERSIONS); do \
