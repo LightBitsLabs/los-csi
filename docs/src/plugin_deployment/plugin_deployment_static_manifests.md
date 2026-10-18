@@ -55,25 +55,11 @@ Provided manifests create the required `ServiceAccount` and RBAC `ClusterRole`/`
 Some of the features are not supported for some of the K8s versions. For example `Extend Volume` feature is supported for K8s v1.16 and above.
 
 We provide a manifest file for each supported K8s version, in two flavors
-(with and without the discovery-client container); for Kubernetes v1.33 and
-v1.35 a third flavor enables NVMe in-band authentication:
+(with and without the discovery-client container); for Kubernetes v1.33,
+v1.35 and v1.37 a third flavor enables NVMe in-band authentication:
 
 ```bash
 k8s/
-├── lb-csi-plugin-k8s-v1.26.yaml
-├── lb-csi-plugin-k8s-v1.26-dc.yaml
-├── lb-csi-plugin-k8s-v1.27.yaml
-├── lb-csi-plugin-k8s-v1.27-dc.yaml
-├── lb-csi-plugin-k8s-v1.28.yaml
-├── lb-csi-plugin-k8s-v1.28-dc.yaml
-├── lb-csi-plugin-k8s-v1.29.yaml
-├── lb-csi-plugin-k8s-v1.29-dc.yaml
-├── lb-csi-plugin-k8s-v1.30.yaml
-├── lb-csi-plugin-k8s-v1.30-dc.yaml
-├── lb-csi-plugin-k8s-v1.31.yaml
-├── lb-csi-plugin-k8s-v1.31-dc.yaml
-├── lb-csi-plugin-k8s-v1.32.yaml
-├── lb-csi-plugin-k8s-v1.32-dc.yaml
 ├── lb-csi-plugin-k8s-v1.33.yaml
 ├── lb-csi-plugin-k8s-v1.33-dc.yaml
 ├── lb-csi-plugin-k8s-v1.33-dc-iba.yaml
@@ -81,7 +67,12 @@ k8s/
 ├── lb-csi-plugin-k8s-v1.34-dc.yaml
 ├── lb-csi-plugin-k8s-v1.35.yaml
 ├── lb-csi-plugin-k8s-v1.35-dc.yaml
-└── lb-csi-plugin-k8s-v1.35-dc-iba.yaml
+├── lb-csi-plugin-k8s-v1.35-dc-iba.yaml
+├── lb-csi-plugin-k8s-v1.36.yaml
+├── lb-csi-plugin-k8s-v1.36-dc.yaml
+├── lb-csi-plugin-k8s-v1.37.yaml
+├── lb-csi-plugin-k8s-v1.37-dc.yaml
+└── lb-csi-plugin-k8s-v1.37-dc-iba.yaml
 ```
 
 >**Note:**
