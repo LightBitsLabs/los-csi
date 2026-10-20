@@ -215,7 +215,7 @@ snapshot-controller-manifests: verify_image_registry deploy/k8s
 # the rendered content is version-independent since 1.21; the per-version
 # names are kept so existing automation keeps working.
 K8S_MANIFEST_VERSIONS := 1.33 1.34 1.35 1.36 1.37
-K8S_IBA_MANIFEST_VERSIONS := 1.33 1.35 1.37
+K8S_IBA_MANIFEST_VERSIONS := 1.33 1.35 1.36 1.37
 
 lb-csi-manifests: verify_image_registry deploy/k8s
 	for v in $(K8S_MANIFEST_VERSIONS); do \

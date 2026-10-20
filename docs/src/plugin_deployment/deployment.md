@@ -250,13 +250,14 @@ The `lb-csi-bundle` includes the following content:
 │   ├── lb-csi-plugin-k8s-v1.35-dc-iba.yaml
 │   ├── lb-csi-plugin-k8s-v1.36.yaml
 │   ├── lb-csi-plugin-k8s-v1.36-dc.yaml
+│   ├── lb-csi-plugin-k8s-v1.36-dc-iba.yaml
 │   ├── lb-csi-plugin-k8s-v1.37.yaml
 │   ├── lb-csi-plugin-k8s-v1.37-dc.yaml
 │   ├── lb-csi-plugin-k8s-v1.37-dc-iba.yaml
 │   └── snapshot-controller.yaml
 ```
 
-- **k8s:** Contains static manifests to deploy `lb-csi-plugin`, one per supported Kubernetes version per deployment variant (host discovery-client, discovery-client in a container, and discovery-client in a container with NVMe in-band authentication, which ships for Kubernetes v1.33, v1.35 and v1.37).
+- **k8s:** Contains static manifests to deploy `lb-csi-plugin`, one per supported Kubernetes version per deployment variant (host discovery-client, discovery-client in a container, and discovery-client in a container with NVMe in-band authentication, which ships for Kubernetes v1.33, v1.35, v1.36 and v1.37).
 - **examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using static manifests.
 - **helm/charts:** Contain two Helm Charts:
   - **lb-csi-plugin-<CHART_VERSION>.tgz:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
