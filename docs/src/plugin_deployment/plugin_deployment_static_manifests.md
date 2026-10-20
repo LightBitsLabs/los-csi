@@ -56,7 +56,7 @@ Some of the features are not supported for some of the K8s versions. For example
 
 We provide a manifest file for each supported K8s version, in two flavors
 (with and without the discovery-client container); for Kubernetes v1.33,
-v1.35 and v1.37 a third flavor enables NVMe in-band authentication:
+v1.35, v1.36 and v1.37 a third flavor enables NVMe in-band authentication:
 
 ```bash
 k8s/
@@ -70,6 +70,7 @@ k8s/
 ├── lb-csi-plugin-k8s-v1.35-dc-iba.yaml
 ├── lb-csi-plugin-k8s-v1.36.yaml
 ├── lb-csi-plugin-k8s-v1.36-dc.yaml
+├── lb-csi-plugin-k8s-v1.36-dc-iba.yaml
 ├── lb-csi-plugin-k8s-v1.37.yaml
 ├── lb-csi-plugin-k8s-v1.37-dc.yaml
 └── lb-csi-plugin-k8s-v1.37-dc-iba.yaml
