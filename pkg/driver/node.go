@@ -974,11 +974,7 @@ func (d *Driver) NodeExpandVolume(
 	}
 
 	if vid.hostCrypto != "" {
-		err = d.resizeEncryptedDevice(vid.uuid, devicePath)
-		if err != nil {
-			return nil, err
-		}
-		devicePath, err = d.getEncryptedDevicePath(vid.uuid, devicePath)
+		devicePath, err = d.resizeEncryptedDevice(vid.uuid, devicePath)
 		if err != nil {
 			return nil, err
 		}
