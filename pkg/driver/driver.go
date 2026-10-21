@@ -104,6 +104,7 @@ type Driver struct {
 	luksCfgFile  string // path to luks configuration yaml file.
 	dcConfigPath string // discovery-client config maintained for in-band auth.
 	sysfsRoot    string
+	mapperDir    string
 	nodeID       string
 	hostNQN      string
 	defaultFS    string
@@ -244,6 +245,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		squelchPanics: cfg.SquelchPanics,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
 		sysfsRoot:     "/sys",
+		mapperDir:     diskMapperPath,
 
 		rwx: cfg.RWX,
 	}
