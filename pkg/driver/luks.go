@@ -132,18 +132,18 @@ func luksMapperFileName(vid guuid.UUID) string {
 	return "lb-csi-" + nvmeUUIDPrefix + vid.String()
 }
 
-func (d *Driver) resizeEncryptedDevice(volUUID guuid.UUID, devicePath string) error {
+func (d *Driver) resizeEncryptedDevice(volUUID guuid.UUID, devicePath string) (string, error) {
 	encryptedDevicePath, err := d.getEncryptedDevicePath(volUUID, devicePath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = d.luksResize(encryptedDevicePath)
 	if err != nil {
-		return mkInternal("error luks resizing %s: %s", encryptedDevicePath, err)
+		return "", mkInternal("error luks resizing %s: %s", encryptedDevicePath, err)
 	}
 
-	return nil
+	return encryptedDevicePath, nil
 }
 
 func (d *Driver) closeEncryptedDevice(volUUID guuid.UUID) error {
