@@ -16,19 +16,25 @@ import (
 const testMapperName = "lb-csi-nvme-uuid.680208b3-4952-4a6c-be3a-348b35afd2f2"
 
 type fakeDM struct {
-	dev         string
-	name        string
-	slaves      []string
-	noSlavesDir bool
+	dev          string
+	name         string
+	slaves       []string
+	noSlavesDir  bool
+	noMapperNode bool
 }
 
-func mkFakeSysfs(t *testing.T, blockDevs []string, dms []fakeDM) string {
+func mkFakeHost(t *testing.T, blockDevs []string, dms []fakeDM) (string, string) {
 	t.Helper()
-	root := t.TempDir()
+	root := filepath.Join(t.TempDir(), "sys")
+	mapperDir := filepath.Join(filepath.Dir(root), "dev", "mapper")
+	require.NoError(t, os.MkdirAll(mapperDir, 0o755))
 	for _, dev := range blockDevs {
 		require.NoError(t, os.MkdirAll(filepath.Join(root, "block", dev), 0o755))
 	}
 	for _, dm := range dms {
+		if !dm.noMapperNode {
+			require.NoError(t, os.WriteFile(filepath.Join(mapperDir, dm.name), nil, 0o600))
+		}
 		dmDir := filepath.Join(root, "block", dm.dev)
 		require.NoError(t, os.MkdirAll(filepath.Join(dmDir, "dm"), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(dmDir, "dm", "name"), []byte(dm.name+"\n"), 0o644))
@@ -41,7 +47,7 @@ func mkFakeSysfs(t *testing.T, blockDevs []string, dms []fakeDM) string {
 				filepath.Join(dmDir, "slaves", slave)))
 		}
 	}
-	return root
+	return root, mapperDir
 }
 
 func TestInspectLuksMapping(t *testing.T) {
@@ -100,6 +106,13 @@ func TestInspectLuksMapping(t *testing.T) {
 			state:     luksMappingStale,
 		},
 		{
+			name:      "mapping without a device node",
+			blockDevs: []string{"nvme0n1"},
+			dms:       []fakeDM{{dev: "dm-0", name: testMapperName, slaves: []string{"nvme0n1"}, noMapperNode: true}},
+			devName:   "nvme0n1",
+			state:     luksMappingStale,
+		},
+		{
 			name:      "mapping removed while being inspected",
 			blockDevs: []string{"nvme0n1"},
 			dms:       []fakeDM{{dev: "dm-0", name: testMapperName, noSlavesDir: true}},
@@ -119,8 +132,8 @@ func TestInspectLuksMapping(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			root := mkFakeSysfs(t, tc.blockDevs, tc.dms)
-			state, err := inspectLuksMapping(root, testMapperName, tc.devName)
+			sysRoot, mapperDir := mkFakeHost(t, tc.blockDevs, tc.dms)
+			state, err := inspectLuksMapping(sysRoot, mapperDir, testMapperName, tc.devName)
 			require.NoError(t, err)
 			require.Equal(t, tc.state, state)
 		})
@@ -128,9 +141,11 @@ func TestInspectLuksMapping(t *testing.T) {
 }
 
 func TestCloseEncryptedDeviceWithoutMapping(t *testing.T) {
+	sysRoot, mapperDir := mkFakeHost(t, []string{"nvme0n1"}, nil)
 	d := &Driver{
 		log:       logrus.NewEntry(logrus.New()),
-		sysfsRoot: mkFakeSysfs(t, []string{"nvme0n1"}, nil),
+		sysfsRoot: sysRoot,
+		mapperDir: mapperDir,
 	}
 	vid := guuid.MustParse("680208b3-4952-4a6c-be3a-348b35afd2f2")
 	require.NoError(t, d.closeEncryptedDevice(vid))
@@ -162,19 +177,20 @@ func TestGetEncryptedDevicePath(t *testing.T) {
 			blockDevs: []string{"nvme0n2"},
 			dms:       []fakeDM{{dev: "dm-0", name: testMapperName, slaves: []string{"nvme0n1"}}},
 			devPath:   "/dev/nvme0n2",
-			errStr:    "is not backed by /dev/nvme0n2",
+			errStr:    "on /dev/nvme0n2 is stale",
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			d := &Driver{sysfsRoot: mkFakeSysfs(t, tc.blockDevs, tc.dms)}
+			sysRoot, mapperDir := mkFakeHost(t, tc.blockDevs, tc.dms)
+			d := &Driver{sysfsRoot: sysRoot, mapperDir: mapperDir}
 			path, err := d.getEncryptedDevicePath(vid, tc.devPath)
 			if tc.errStr != "" {
 				require.ErrorContains(t, err, tc.errStr)
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, diskMapperPath+testMapperName, path)
+			require.Equal(t, filepath.Join(mapperDir, testMapperName), path)
 		})
 	}
 }

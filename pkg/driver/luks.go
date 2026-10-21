@@ -57,10 +57,11 @@ func findDMDevice(sysRoot, name string) (string, error) {
 }
 
 // inspectLuksMapping reports whether the device-mapper device called name is
-// backed by the live block device devName. A mapping whose backing device was
-// removed keeps the old device listed as its slave, while the device itself is
-// gone from <sysRoot>/block and a re-attached volume appears under a new name.
-func inspectLuksMapping(sysRoot, name, devName string) (luksMappingState, error) {
+// backed by the live block device devName and reachable through its node in
+// mapperDir. A mapping whose backing device was removed keeps the old device
+// listed as its slave, while the device itself is gone from <sysRoot>/block
+// and a re-attached volume appears under a new name.
+func inspectLuksMapping(sysRoot, mapperDir, name, devName string) (luksMappingState, error) {
 	dm, err := findDMDevice(sysRoot, name)
 	if err != nil || dm == "" {
 		return luksMappingAbsent, err
@@ -75,11 +76,13 @@ func inspectLuksMapping(sysRoot, name, devName string) (luksMappingState, error)
 	if len(slaves) != 1 || slaves[0].Name() != devName {
 		return luksMappingStale, nil
 	}
-	if _, err := os.Stat(filepath.Join(sysRoot, "block", devName)); err != nil {
-		if os.IsNotExist(err) {
-			return luksMappingStale, nil
+	for _, path := range []string{filepath.Join(sysRoot, "block", devName), filepath.Join(mapperDir, name)} {
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				return luksMappingStale, nil
+			}
+			return luksMappingAbsent, err
 		}
-		return luksMappingAbsent, err
 	}
 	return luksMappingHealthy, nil
 }
@@ -89,8 +92,8 @@ func inspectLuksMapping(sysRoot, name, devName string) (luksMappingState, error)
 func (d *Driver) encryptAndOpenDevice(volUUID guuid.UUID, devicePath string, passphrase string) (string, error) {
 	d.log.Debugf("encryptAndOpenDevice volume uuid: %q", volUUID)
 	mapperName := luksMapperFileName(volUUID)
-	mapperPath := filepath.Join(diskMapperPath, mapperName)
-	state, err := inspectLuksMapping(d.sysfsRoot, mapperName, filepath.Base(devicePath))
+	mapperPath := filepath.Join(d.mapperDir, mapperName)
+	state, err := inspectLuksMapping(d.sysfsRoot, d.mapperDir, mapperName, filepath.Base(devicePath))
 	if err != nil {
 		return "", mkEExec("error inspecting mapping %s: %s", mapperName, err)
 	}
@@ -99,7 +102,7 @@ func (d *Driver) encryptAndOpenDevice(volUUID guuid.UUID, devicePath string, pas
 		d.log.Debugf("encryptAndOpenDevice volume: %q is already open", volUUID)
 		return mapperPath, nil
 	case luksMappingStale:
-		d.log.Warnf("closing stale mapping %s: it is not backed by %s", mapperName, devicePath)
+		d.log.Warnf("closing stale mapping %s of volume %s on %s", mapperName, volUUID, devicePath)
 		if err := d.luksClose(mapperName); err != nil {
 			return "", mkEExec("stale mapping %s of volume %s can't be closed: %s",
 				mapperName, volUUID, err)
@@ -163,7 +166,7 @@ func (d *Driver) closeEncryptedDevice(volUUID guuid.UUID) error {
 
 func (d *Driver) getEncryptedDevicePath(volUUID guuid.UUID, devicePath string) (string, error) {
 	mapperName := luksMapperFileName(volUUID)
-	state, err := inspectLuksMapping(d.sysfsRoot, mapperName, filepath.Base(devicePath))
+	state, err := inspectLuksMapping(d.sysfsRoot, d.mapperDir, mapperName, filepath.Base(devicePath))
 	if err != nil {
 		return "", mkEExec("error inspecting mapping %s: %s", mapperName, err)
 	}
@@ -171,10 +174,10 @@ func (d *Driver) getEncryptedDevicePath(volUUID guuid.UUID, devicePath string) (
 	case luksMappingAbsent:
 		return "", mkInternal("host-encrypted volume %s has no open mapping %s", volUUID, mapperName)
 	case luksMappingStale:
-		return "", mkInternal("mapping %s of host-encrypted volume %s is not backed by %s",
+		return "", mkInternal("mapping %s of host-encrypted volume %s on %s is stale",
 			mapperName, volUUID, devicePath)
 	}
-	return filepath.Join(diskMapperPath, mapperName), nil
+	return filepath.Join(d.mapperDir, mapperName), nil
 }
 
 type luksConfig struct {
