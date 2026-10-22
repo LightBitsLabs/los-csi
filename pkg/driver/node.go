@@ -537,12 +537,13 @@ func (d *Driver) nodePublishVolumeForBlock(
 		return &csi.NodePublishVolumeResponse{}, mkEExec("can't examine device path: %s", err)
 	}
 	if vid.hostCrypto != "" {
-		source, err = d.getEncryptedDevicePath(vid.uuid, source)
+		devPath := source
+		source, err = d.getEncryptedDevicePath(vid.uuid, devPath)
 		if err != nil {
 			return nil, status.Errorf(
 				codes.Internal,
-				"error getting mapped device for host encrypted device %s: %s",
-				source, err)
+				"error getting mapped device for host-encrypted volume %s on %s: %s",
+				vid.uuid, devPath, err)
 		}
 	}
 
