@@ -80,18 +80,36 @@ func mergeNodeIPAcl(cur, addrs []string) ([]string, error) {
 
 // enrollNodeIPAcl adds this node's data-path source addresses to the volume
 // IP-ACL, so that the subsequent NVMe/TCP connections from this node are
-// admitted by the target. it is idempotent, and it leaves an ALLOW_ANY set
-// externally on the volume untouched.
+// admitted by the target, and returns them. it is idempotent, and it leaves
+// an ALLOW_ANY set externally on the volume untouched.
 func (d *Driver) enrollNodeIPAcl(
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, ci *lb.ClusterInfo, vid lbResourceID,
-) error {
+) ([]string, error) {
 	addrs, err := nodeDataPathAddrs(ci, vid)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	if _, err = updateNodeIPAcl(ctx, log, clnt, vid, addrs, false); err != nil {
+		return nil, err
+	}
+	return addrs, nil
+}
+
+// updateNodeIPAcl merges `addrs` into the volume IP-ACL. with
+// `keepAllowNone`, an IP-ACL that holds ALLOW_NONE is left as it is and
+// `reset` is true: the controller writes ALLOW_NONE on the last detach, and
+// enrolling past it would admit this node to a volume it no longer uses.
+func updateNodeIPAcl(
+	ctx context.Context, log *logrus.Entry, clnt lb.Client, vid lbResourceID, addrs []string,
+	keepAllowNone bool,
+) (reset bool, err error) {
 	log = log.WithField("ip-acl-addrs", fmt.Sprintf("%#q", addrs))
 
 	hook := func(vol *lb.Volume) (*lb.VolumeUpdate, error) {
+		reset = keepAllowNone && strlist.Contains(vol.IPAcl, lb.ACLAllowNone)
+		if reset {
+			return nil, nil
+		}
 		ipACL, err := mergeNodeIPAcl(vol.IPAcl, addrs)
 		if err != nil {
 			log.WithField("ip-acl-got", fmt.Sprintf("%#q", vol.IPAcl)).
@@ -105,5 +123,5 @@ func (d *Driver) enrollNodeIPAcl(
 	}
 
 	_, err = clnt.UpdateVolume(ctx, vid.uuid, vid.projName, hook)
-	return err
+	return reset, err
 }

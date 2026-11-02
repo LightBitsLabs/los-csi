@@ -298,12 +298,23 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	// a retry also takes this path after a kubelet restart, which is when
+	// it refills the IP-ACL re-check list.
+	var ipACLAddrs []string
+	if vid.ipACL {
+		defer func() {
+			if retErr == nil {
+				d.ipACLVols.track(vid, req.Secrets[jwtSecretKey], ipACLAddrs)
+			}
+		}()
+	}
+
 	// a stage retry of an already-mounted volume needs no enrollment or
 	// secrets work; this check is advisory only, the authoritative one
 	// still runs under the lock below.
 	if isMnt, err := d.mounter.IsMountPoint(req.StagingTargetPath); err != nil || !isMnt {
 		if vid.ipACL {
-			err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+			ipACLAddrs, err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
 			if err != nil {
 				return nil, err
 			}
@@ -482,6 +493,7 @@ func (d *Driver) NodeUnstageVolume(
 		return nil, mkEinvalMissing("staging_target_path")
 	}
 	tgtPath := req.StagingTargetPath
+	d.ipACLVols.untrack(vid.uuid)
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
