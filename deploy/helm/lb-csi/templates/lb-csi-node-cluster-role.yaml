@@ -1,0 +1,27 @@
+# The Node plugin reads the volumes attached to its node at startup, with the
+# JWT of their node-stage Secret, to keep their IP-ACL up to date.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: lb-csi-node-runner
+rules:
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes", "secrets"]
+    verbs: ["get"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: lb-csi-node-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.nodeServiceAccountName }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: lb-csi-node-runner
+  apiGroup: rbac.authorization.k8s.io
