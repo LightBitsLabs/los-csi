@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -21,6 +23,8 @@ import (
 // external-attacher records the CSI node ID on a VolumeAttachment before it
 // calls ControllerPublishVolume, and keeps it after the Node object is gone.
 const vaNodeIDAnnotation = "csi.alpha.kubernetes.io/node-id"
+
+const k8sRequestTimeout = 10 * time.Second
 
 // nodeAttachments lists the CSI volume IDs the CO still holds attached to a
 // node through this driver, excluding attachments already being detached:
@@ -34,11 +38,19 @@ type k8sNodeAttachments struct {
 	cs kubernetes.Interface
 }
 
-func newK8sNodeAttachments() (nodeAttachments, error) {
+// attachedVol is a volume the CO holds attached to a node.
+type attachedVol struct {
+	id          string // CSI volume ID.
+	attached    bool   // the attacher completed ControllerPublishVolume.
+	stageSecret *corev1.SecretReference
+}
+
+func newK8sNodeAttachments() (*k8sNodeAttachments, error) {
 	kcfg, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
 	}
+	kcfg.Timeout = k8sRequestTimeout
 	cs, err := kubernetes.NewForConfig(kcfg)
 	if err != nil {
 		return nil, err
@@ -49,11 +61,25 @@ func newK8sNodeAttachments() (nodeAttachments, error) {
 func (a *k8sNodeAttachments) AttachedVolumeIDs(
 	ctx context.Context, nodeID string,
 ) ([]string, error) {
+	vols, err := a.attachedVolumes(ctx, nodeID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(vols))
+	for _, v := range vols {
+		ids = append(ids, v.id)
+	}
+	return ids, nil
+}
+
+func (a *k8sNodeAttachments) attachedVolumes(
+	ctx context.Context, nodeID string,
+) ([]attachedVol, error) {
 	vas, err := a.cs.StorageV1().VolumeAttachments().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list VolumeAttachments: %w", err)
 	}
-	var ids []string
+	var vols []attachedVol
 	for i := range vas.Items {
 		va := &vas.Items[i]
 		if va.Spec.Attacher != driverName || va.DeletionTimestamp != nil {
@@ -66,25 +92,50 @@ func (a *k8sNodeAttachments) AttachedVolumeIDs(
 		if vaNodeID != nodeID {
 			continue
 		}
-		src := va.Spec.Source
-		if src.InlineVolumeSpec != nil && src.InlineVolumeSpec.CSI != nil {
-			ids = append(ids, src.InlineVolumeSpec.CSI.VolumeHandle)
-			continue
-		}
-		if src.PersistentVolumeName == nil {
-			return nil, fmt.Errorf("VolumeAttachment %s has no volume source", va.Name)
-		}
-		pv, err := a.cs.CoreV1().PersistentVolumes().Get(
-			ctx, *src.PersistentVolumeName, metav1.GetOptions{})
+		csiSrc, err := a.csiSource(ctx, va)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get PV %s: %w", *src.PersistentVolumeName, err)
+			return nil, err
 		}
-		if pv.Spec.CSI == nil {
-			return nil, fmt.Errorf("PV %s is not a CSI volume", pv.Name)
-		}
-		ids = append(ids, pv.Spec.CSI.VolumeHandle)
+		vols = append(vols, attachedVol{
+			id:          csiSrc.VolumeHandle,
+			attached:    va.Status.Attached,
+			stageSecret: csiSrc.NodeStageSecretRef,
+		})
 	}
-	return ids, nil
+	return vols, nil
+}
+
+func (a *k8sNodeAttachments) csiSource(
+	ctx context.Context, va *storagev1.VolumeAttachment,
+) (*corev1.CSIPersistentVolumeSource, error) {
+	src := va.Spec.Source
+	if src.InlineVolumeSpec != nil && src.InlineVolumeSpec.CSI != nil {
+		return src.InlineVolumeSpec.CSI, nil
+	}
+	if src.PersistentVolumeName == nil {
+		return nil, fmt.Errorf("VolumeAttachment %s has no volume source", va.Name)
+	}
+	pv, err := a.cs.CoreV1().PersistentVolumes().Get(
+		ctx, *src.PersistentVolumeName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PV %s: %w", *src.PersistentVolumeName, err)
+	}
+	if pv.Spec.CSI == nil {
+		return nil, fmt.Errorf("PV %s is not a CSI volume", pv.Name)
+	}
+	return pv.Spec.CSI, nil
+}
+
+// stageJWT returns the JWT of node-stage Secret `ref`, or "" if `ref` is nil.
+func (a *k8sNodeAttachments) stageJWT(ctx context.Context, ref *corev1.SecretReference) (string, error) {
+	if ref == nil {
+		return "", nil
+	}
+	sec, err := a.cs.CoreV1().Secrets(ref.Namespace).Get(ctx, ref.Name, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to get node-stage Secret %s/%s: %w", ref.Namespace, ref.Name, err)
+	}
+	return string(sec.Data[jwtSecretKey]), nil
 }
 
 // vaNodeID resolves the CSI node ID of an attachment the way external-attacher

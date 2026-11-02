@@ -408,6 +408,7 @@ func (d *Driver) Run() error {
 			"global JWT file monitoring disabled", d.jwtPath)
 	}
 
+	go d.trackIPAclVolsFromK8s(ctx)
 	go d.recheckIPAclLoop(ctx)
 
 	d.log.WithField("addr", d.sockPath).Info("server started")
