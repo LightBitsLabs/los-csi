@@ -6,9 +6,11 @@ package driver
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -54,8 +56,14 @@ func (a *k8sNodeAttachments) AttachedVolumeIDs(
 	var ids []string
 	for i := range vas.Items {
 		va := &vas.Items[i]
-		if va.Spec.Attacher != driverName || va.DeletionTimestamp != nil ||
-			va.Annotations[vaNodeIDAnnotation] != nodeID {
+		if va.Spec.Attacher != driverName || va.DeletionTimestamp != nil {
+			continue
+		}
+		vaNodeID, err := a.vaNodeID(ctx, va.Name, va.Annotations, va.Spec.NodeName)
+		if err != nil {
+			return nil, err
+		}
+		if vaNodeID != nodeID {
 			continue
 		}
 		src := va.Spec.Source
@@ -79,23 +87,89 @@ func (a *k8sNodeAttachments) AttachedVolumeIDs(
 	return ids, nil
 }
 
+// vaNodeID resolves the CSI node ID of an attachment the way external-attacher
+// does: its annotation, else the node's CSINode. an attachment it cannot place
+// is an error, so the caller keeps the trusted host instead of taking the
+// node for idle.
+func (a *k8sNodeAttachments) vaNodeID(
+	ctx context.Context, vaName string, annotations map[string]string, nodeName string,
+) (string, error) {
+	if id, ok := annotations[vaNodeIDAnnotation]; ok {
+		return id, nil
+	}
+	csiNode, err := a.cs.StorageV1().CSINodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve node of VolumeAttachment %s: %w", vaName, err)
+	}
+	for _, drv := range csiNode.Spec.Drivers {
+		if drv.Name == driverName {
+			return drv.NodeID, nil
+		}
+	}
+	return "", fmt.Errorf("failed to resolve node of VolumeAttachment %s: "+
+		"CSINode %s has no %s entry", vaName, nodeName, driverName)
+}
+
+// nodeLocks hands out one lock per node ID. entries are never freed: there
+// is one per node that ever had a volume published to it.
+type nodeLocks struct {
+	mu    sync.Mutex
+	locks map[string]*sync.RWMutex
+}
+
+func (l *nodeLocks) get(nodeID string) *sync.RWMutex {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.locks == nil {
+		l.locks = make(map[string]*sync.RWMutex)
+	}
+	lock, ok := l.locks[nodeID]
+	if !ok {
+		lock = &sync.RWMutex{}
+		l.locks[nodeID] = lock
+	}
+	return lock
+}
+
+// nodeAttachments returns nil unless in-band auth is enabled and the plugin
+// runs in a K8s cluster. it is built on first use, so only the plugin
+// instance that serves ControllerUnpublishVolume builds it.
+func (d *Driver) nodeAttachments() nodeAttachments {
+	d.attachmentsOnce.Do(func() {
+		if !d.inBandAuth {
+			return
+		}
+		att, err := newK8sNodeAttachments()
+		if err != nil {
+			d.log.WithError(err).Warn("trusted host cleanup on detach disabled")
+			return
+		}
+		d.attachments = att
+	})
+	return d.attachments
+}
+
 // reapTrustedHost removes the in-band auth trusted host of `nodeID` from the
 // LB cluster serving `vid` once no other volume of that cluster and project
 // is attached to the node, revoking the node secret pair when the node stops
 // using the cluster. a node's trusted host serves a single project, so
 // volumes of other projects never hold it.
 //
-// the caller must hold the node lock across the volume ACL update and this
-// call: ControllerPublishVolume takes the same lock after the attacher has
-// annotated its VolumeAttachment, so a concurrent attach is either listed
-// here or finds the trusted host gone and NodeStageVolume re-creates it.
+// it holds the node lock for writing from the attachment list to the delete.
+// ControllerPublishVolume holds it for reading, and the attacher annotates
+// its VolumeAttachment before it publishes, so a concurrent attach is either
+// listed here or finds the trusted host gone and NodeStageVolume re-creates
+// it.
 //
-// failures are logged, not returned: a detach must not block on cleanup.
+// a transient error is returned, so the CO retries the detach and with it the
+// cleanup. any other failure keeps the trusted host and is only logged, so a
+// detach never blocks on cleanup for good.
 func (d *Driver) reapTrustedHost(
 	ctx context.Context, clnt lb.Client, log *logrus.Entry, vid lbResourceID, nodeID string,
-) {
-	if d.attachments == nil {
-		return
+) error {
+	att := d.nodeAttachments()
+	if att == nil {
+		return nil
 	}
 	log = log.WithField("trusted-host", nodeID)
 
@@ -103,24 +177,31 @@ func (d *Driver) reapTrustedHost(
 	ci, err := clnt.GetClusterInfo(cictx)
 	cancel()
 	if err != nil {
-		log.WithError(err).Warn("trusted host cleanup skipped: failed to get cluster info")
-		return
+		return reapFailed(log, err, "failed to get cluster info")
 	}
 	if !ci.InBandAuthEnabled {
-		return
+		return nil
 	}
 
-	ids, err := d.attachments.AttachedVolumeIDs(ctx, nodeID)
+	lock := d.nodeLocks.get(nodeID)
+	lock.Lock()
+	defer lock.Unlock()
+
+	ids, err := att.AttachedVolumeIDs(ctx, nodeID)
 	if err != nil {
+		if isTransientK8sErr(err) {
+			log.WithError(err).Warn("trusted host cleanup deferred: failed to list node attachments")
+			return mkEagain("temporarily failed to list the attachments of node '%s'", nodeID)
+		}
 		log.WithError(err).Warn("trusted host cleanup skipped: failed to list node attachments")
-		return
+		return nil
 	}
 	for _, id := range ids {
 		vlog := log.WithField("attached-vol", id)
 		other, err := parseCSIResourceID(id)
 		if err != nil {
 			vlog.WithError(err).Warn("trusted host cleanup skipped: unparsable volume ID")
-			return
+			return nil
 		}
 		if other.projName != vid.projName || other.uuid == vid.uuid {
 			continue
@@ -130,18 +211,31 @@ func (d *Driver) reapTrustedHost(
 		_, err = clnt.GetVolume(ctx, other.uuid, other.projName)
 		if err == nil {
 			vlog.Debug("trusted host still in use")
-			return
+			return nil
 		}
 		if !isStatusNotFound(err) {
-			vlog.WithError(err).Warn("trusted host cleanup skipped: failed to look up attached volume")
-			return
+			return reapFailed(vlog, err, "failed to look up attached volume")
 		}
 	}
 
 	err = clnt.DeleteTrustedHost(ctx, nodeID, vid.projName)
 	if err != nil && !isStatusNotFound(err) {
-		log.WithError(err).Warn("trusted host cleanup failed")
-		return
+		return reapFailed(log, err, "failed to delete trusted host")
 	}
-	log.Info("trusted host removed: no volumes of this cluster left attached to the node")
+	log.Info("trusted host removed: no volumes of this cluster and project left attached")
+	return nil
+}
+
+func reapFailed(log *logrus.Entry, err error, what string) error {
+	if shouldRetryOn(err) {
+		return mungeLBErr(log, err, "trusted host cleanup: %s", what)
+	}
+	log.WithError(err).Warnf("trusted host cleanup skipped: %s", what)
+	return nil
+}
+
+func isTransientK8sErr(err error) bool {
+	return apierrors.IsServerTimeout(err) || apierrors.IsTimeout(err) ||
+		apierrors.IsTooManyRequests(err) || apierrors.IsServiceUnavailable(err) ||
+		apierrors.IsInternalError(err)
 }
