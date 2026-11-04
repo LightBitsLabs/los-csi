@@ -18,10 +18,10 @@ import (
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
-	"k8s.io/utils/keymutex"
 
 	"github.com/lightbitslabs/los-csi/pkg/lb"
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
@@ -45,7 +45,6 @@ func reapVolID(eps, proj string) string {
 func mkReapDriver(att nodeAttachments) *Driver {
 	return &Driver{
 		log:         logrus.NewEntry(logrus.New()),
-		nodeLocks:   keymutex.NewHashed(0),
 		attachments: att,
 	}
 }
@@ -68,6 +67,8 @@ func TestReapTrustedHost(t *testing.T) {
 	const thisCluster = "10.0.0.1:443,10.0.0.2:443"
 	thNotFound := status.Error(codes.NotFound, "no such trusted host")
 	volNotFound := status.Error(codes.NotFound, "no such volume")
+	unavailable := status.Error(codes.Unavailable, "down")
+	denied := status.Error(codes.PermissionDenied, "denied")
 
 	self := mkReapVid(t, thisCluster, "proj")
 	sameCluster := mkReapVid(t, "10.0.0.3:443", "proj")
@@ -78,9 +79,11 @@ func TestReapTrustedHost(t *testing.T) {
 		name      string
 		att       nodeAttachments
 		ci        *lb.ClusterInfo
+		ciErr     error
 		lookups   map[guuid.UUID]error
 		deleteErr error
 		expDelete bool
+		expErr    bool
 	}{{
 		name:      "last volume of the cluster detached",
 		att:       &fakeAttachments{},
@@ -91,6 +94,19 @@ func TestReapTrustedHost(t *testing.T) {
 		att:       &fakeAttachments{},
 		ci:        authCluster,
 		deleteErr: thNotFound,
+		expDelete: true,
+	}, {
+		name:      "delete fails transiently",
+		att:       &fakeAttachments{},
+		ci:        authCluster,
+		deleteErr: unavailable,
+		expDelete: true,
+		expErr:    true,
+	}, {
+		name:      "delete fails for good",
+		att:       &fakeAttachments{},
+		ci:        authCluster,
+		deleteErr: denied,
 		expDelete: true,
 	}, {
 		name:    "same cluster and project still attached through other endpoints",
@@ -114,18 +130,34 @@ func TestReapTrustedHost(t *testing.T) {
 		ci:        authCluster,
 		expDelete: true,
 	}, {
-		name:    "attached volume lookup fails",
+		name:    "attached volume lookup fails transiently",
 		att:     &fakeAttachments{ids: volIDs(sameCluster)},
 		ci:      authCluster,
-		lookups: map[guuid.UUID]error{sameCluster.uuid: status.Error(codes.Unavailable, "down")},
+		lookups: map[guuid.UUID]error{sameCluster.uuid: unavailable},
+		expErr:  true,
+	}, {
+		name:    "attached volume lookup fails for good",
+		att:     &fakeAttachments{ids: volIDs(sameCluster)},
+		ci:      authCluster,
+		lookups: map[guuid.UUID]error{sameCluster.uuid: denied},
 	}, {
 		name: "unparsable attached volume handle",
 		att:  &fakeAttachments{ids: []string{"garbage"}},
 		ci:   authCluster,
 	}, {
-		name: "attachments unknown",
-		att:  &fakeAttachments{err: errors.New("apiserver unavailable")},
+		name:   "attachments unknown for now",
+		att:    &fakeAttachments{err: apierrors.NewServiceUnavailable("apiserver down")},
+		ci:     authCluster,
+		expErr: true,
+	}, {
+		name: "attachments unknown for good",
+		att:  &fakeAttachments{err: errors.New("unresolvable attachment")},
 		ci:   authCluster,
+	}, {
+		name:   "cluster info fails transiently",
+		att:    &fakeAttachments{},
+		ciErr:  unavailable,
+		expErr: true,
 	}, {
 		name: "cluster without in-band auth",
 		att:  &fakeAttachments{},
@@ -136,7 +168,7 @@ func TestReapTrustedHost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			d := mkReapDriver(tc.att)
 			clnt := &ClientMock{}
-			clnt.On("GetClusterInfo", mock.Anything).Return(tc.ci, nil).Once()
+			clnt.On("GetClusterInfo", mock.Anything).Return(tc.ci, tc.ciErr).Once()
 			for uuid, err := range tc.lookups {
 				vol := &lb.Volume{UUID: uuid}
 				if err != nil {
@@ -148,7 +180,12 @@ func TestReapTrustedHost(t *testing.T) {
 				clnt.On("DeleteTrustedHost", mock.Anything, reapNode, "proj").
 					Return(tc.deleteErr).Once()
 			}
-			d.reapTrustedHost(context.Background(), clnt, d.log, self, reapNode)
+			err := d.reapTrustedHost(context.Background(), clnt, d.log, self, reapNode)
+			if tc.expErr {
+				require.Error(t, err, "a transient failure must make the CO retry the detach")
+			} else {
+				require.NoError(t, err)
+			}
 			clnt.AssertExpectations(t)
 		})
 	}
@@ -160,7 +197,7 @@ func TestReapPodWithTwoVolumes(t *testing.T) {
 	const ep = "10.0.0.1:443"
 	v1, v2 := mkReapVid(t, ep, "proj"), mkReapVid(t, ep, "proj")
 
-	reap := func(detaching lbResourceID, vas ...*storagev1.VolumeAttachment) *ClientMock {
+	reap := func(t *testing.T, detaching lbResourceID, vas ...*storagev1.VolumeAttachment) *ClientMock {
 		objs := []runtime.Object{mkPV("pv-1", v1.String()), mkPV("pv-2", v2.String())}
 		for _, va := range vas {
 			objs = append(objs, va)
@@ -170,24 +207,24 @@ func TestReapPodWithTwoVolumes(t *testing.T) {
 		clnt.On("GetClusterInfo", mock.Anything).Return(authCluster, nil)
 		clnt.On("GetVolume", mock.Anything, mock.Anything, "proj").Return(&lb.Volume{}, nil)
 		clnt.On("DeleteTrustedHost", mock.Anything, reapNode, "proj").Return(nil)
-		d.reapTrustedHost(context.Background(), clnt, d.log, detaching, reapNode)
+		require.NoError(t, d.reapTrustedHost(context.Background(), clnt, d.log, detaching, reapNode))
 		return clnt
 	}
 
 	t.Run("first volume detaches", func(t *testing.T) {
-		clnt := reap(v1,
+		clnt := reap(t, v1,
 			mkVA("va-1", driverName, reapNode, "pv-1", true),
 			mkVA("va-2", driverName, reapNode, "pv-2", false))
 		clnt.AssertCalled(t, "GetVolume", mock.Anything, v2.uuid, "proj")
 		clnt.AssertNotCalled(t, "DeleteTrustedHost", mock.Anything, mock.Anything, mock.Anything)
 	})
 	t.Run("second volume detaches", func(t *testing.T) {
-		clnt := reap(v2, mkVA("va-2", driverName, reapNode, "pv-2", true))
+		clnt := reap(t, v2, mkVA("va-2", driverName, reapNode, "pv-2", true))
 		clnt.AssertCalled(t, "DeleteTrustedHost", mock.Anything, reapNode, "proj")
 	})
 	t.Run("both volumes detach together", func(t *testing.T) {
 		for _, vid := range []lbResourceID{v1, v2} {
-			clnt := reap(vid,
+			clnt := reap(t, vid,
 				mkVA("va-1", driverName, reapNode, "pv-1", true),
 				mkVA("va-2", driverName, reapNode, "pv-2", true))
 			clnt.AssertCalled(t, "DeleteTrustedHost", mock.Anything, reapNode, "proj")
@@ -198,35 +235,63 @@ func TestReapPodWithTwoVolumes(t *testing.T) {
 func TestReapTrustedHostDisabled(t *testing.T) {
 	d := mkReapDriver(nil)
 	clnt := &ClientMock{}
-	d.reapTrustedHost(context.Background(), clnt, d.log, mkReapVid(t, "10.0.0.1:443", "proj"), reapNode)
+	err := d.reapTrustedHost(context.Background(), clnt, d.log, mkReapVid(t, "10.0.0.1:443", "proj"), reapNode)
+	require.NoError(t, err)
 	clnt.AssertExpectations(t)
+}
+
+func TestNodeAttachmentsOutsideCluster(t *testing.T) {
+	t.Setenv("KUBERNETES_SERVICE_HOST", "")
+	d := &Driver{log: logrus.NewEntry(logrus.New()), inBandAuth: true}
+	require.Nil(t, d.nodeAttachments(), "cleanup must stay off without a K8s API to read")
+}
+
+func TestNodeLocks(t *testing.T) {
+	var l nodeLocks
+	require.Same(t, l.get("a"), l.get("a"))
+	require.NotSame(t, l.get("a"), l.get("b"))
 }
 
 func TestControllerUnpublishVolumeReapsTrustedHost(t *testing.T) {
 	const ep = "10.0.0.1:443"
 	vid := mkReapVid(t, ep, "proj")
 
-	clnt := basicClientMock(ep)
-	vol := basicVolume("v1", vid.uuid, []string{lb.ACLAllowNone})
-	vol.ProjectName = vid.projName
-	clnt.On("UpdateVolume", mock.Anything, vid.uuid, vid.projName,
-		mock.AnythingOfType("lb.VolumeUpdateHook")).Return(vol, nil).Once()
-	clnt.On("GetClusterInfo", mock.Anything).Return(authCluster, nil).Once()
-	clnt.On("DeleteTrustedHost", mock.Anything, reapNode, vid.projName).Return(nil).Once()
+	for _, tc := range []struct {
+		name      string
+		deleteErr error
+		expErr    bool
+	}{
+		{name: "trusted host removed"},
+		{name: "removal retried", deleteErr: status.Error(codes.Unavailable, "down"), expErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clnt := basicClientMock(ep)
+			vol := basicVolume("v1", vid.uuid, []string{lb.ACLAllowNone})
+			vol.ProjectName = vid.projName
+			clnt.On("UpdateVolume", mock.Anything, vid.uuid, vid.projName,
+				mock.AnythingOfType("lb.VolumeUpdateHook")).Return(vol, nil).Once()
+			clnt.On("GetClusterInfo", mock.Anything).Return(authCluster, nil).Once()
+			clnt.On("DeleteTrustedHost", mock.Anything, reapNode, vid.projName).Return(tc.deleteErr).Once()
 
-	d := mkReapDriver(&fakeAttachments{})
-	d.lbclients = lb.NewClientPoolWithOptions(
-		func(context.Context, endpoint.Slice, string) (lb.Client, error) {
-			return clnt, nil
-		},
-		poolOpts,
-	)
-	_, err := d.ControllerUnpublishVolume(context.Background(), &csi.ControllerUnpublishVolumeRequest{
-		VolumeId: vid.String(),
-		NodeId:   reapNode,
-	})
-	require.NoError(t, err)
-	clnt.AssertCalled(t, "DeleteTrustedHost", mock.Anything, reapNode, vid.projName)
+			d := mkReapDriver(&fakeAttachments{})
+			d.lbclients = lb.NewClientPoolWithOptions(
+				func(context.Context, endpoint.Slice, string) (lb.Client, error) {
+					return clnt, nil
+				},
+				poolOpts,
+			)
+			_, err := d.ControllerUnpublishVolume(context.Background(), &csi.ControllerUnpublishVolumeRequest{
+				VolumeId: vid.String(),
+				NodeId:   reapNode,
+			})
+			if tc.expErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+			clnt.AssertCalled(t, "DeleteTrustedHost", mock.Anything, reapNode, vid.projName)
+		})
+	}
 }
 
 func mkVA(name, attacher, nodeID, pv string, deleting bool) *storagev1.VolumeAttachment {
@@ -247,6 +312,22 @@ func mkVA(name, attacher, nodeID, pv string, deleting bool) *storagev1.VolumeAtt
 		va.Finalizers = []string{"external-attacher/" + attacher}
 	}
 	return va
+}
+
+func mkUnannotatedVA(name, nodeName, pv string) *storagev1.VolumeAttachment {
+	va := mkVA(name, driverName, "", pv, false)
+	va.Annotations = nil
+	va.Spec.NodeName = nodeName
+	return va
+}
+
+func mkCSINode(nodeName, nodeID string) *storagev1.CSINode {
+	return &storagev1.CSINode{
+		ObjectMeta: metav1.ObjectMeta{Name: nodeName},
+		Spec: storagev1.CSINodeSpec{
+			Drivers: []storagev1.CSINodeDriver{{Name: driverName, NodeID: nodeID}},
+		},
+	}
 }
 
 func mkPV(name, handle string) *corev1.PersistentVolume {
@@ -274,22 +355,46 @@ func TestK8sNodeAttachments(t *testing.T) {
 		mkVA("va-detaching", driverName, reapNode, "pv-detaching", true),
 		mkVA("va-other-node", driverName, "worker-4.node", "pv-other-node", false),
 		mkVA("va-other-driver", "other.csi.example.com", reapNode, "pv-other-driver", false),
+		mkUnannotatedVA("va-no-annotation", "worker-3", "pv-no-annotation"),
+		mkUnannotatedVA("va-no-annotation-other", "worker-4", "pv-no-annotation-other"),
 		inline,
+		mkCSINode("worker-3", reapNode),
+		mkCSINode("worker-4", "worker-4.node"),
 		mkPV("pv-live", "h-live"),
 		mkPV("pv-detaching", "h-detaching"),
 		mkPV("pv-other-node", "h-other-node"),
 		mkPV("pv-other-driver", "h-other-driver"),
+		mkPV("pv-no-annotation", "h-no-annotation"),
+		mkPV("pv-no-annotation-other", "h-no-annotation-other"),
 	)
 	a := &k8sNodeAttachments{cs: cs}
 
 	ids, err := a.AttachedVolumeIDs(context.Background(), reapNode)
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"h-live", "h-inline"}, ids)
+	require.ElementsMatch(t, []string{"h-live", "h-inline", "h-no-annotation"}, ids)
 }
 
-func TestK8sNodeAttachmentsMissingPV(t *testing.T) {
-	cs := fake.NewSimpleClientset(mkVA("va-live", driverName, reapNode, "pv-gone", false))
-	a := &k8sNodeAttachments{cs: cs}
-	_, err := a.AttachedVolumeIDs(context.Background(), reapNode)
-	require.Error(t, err, "an unresolvable attachment must not read as detached")
+func TestK8sNodeAttachmentsUnresolvable(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		objs []runtime.Object
+	}{{
+		name: "missing PV",
+		objs: []runtime.Object{mkVA("va-live", driverName, reapNode, "pv-gone", false)},
+	}, {
+		name: "no annotation and no CSINode",
+		objs: []runtime.Object{mkUnannotatedVA("va-x", "worker-9", "pv-x"), mkPV("pv-x", "h-x")},
+	}, {
+		name: "no annotation and no driver on the CSINode",
+		objs: []runtime.Object{
+			mkUnannotatedVA("va-x", "worker-9", "pv-x"), mkPV("pv-x", "h-x"),
+			&storagev1.CSINode{ObjectMeta: metav1.ObjectMeta{Name: "worker-9"}},
+		},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			a := &k8sNodeAttachments{cs: fake.NewSimpleClientset(tc.objs...)}
+			_, err := a.AttachedVolumeIDs(context.Background(), reapNode)
+			require.Error(t, err, "an unresolvable attachment must not read as detached")
+		})
+	}
 }
