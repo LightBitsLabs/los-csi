@@ -143,11 +143,18 @@ func (d *Driver) getOrCreateTrustedHost(
 // the node holds ONE secret pair, shared by every cluster it attaches to:
 // the DC applies its config to all connections, so a second cluster gets the
 // pair adopted from the config file rather than a fresh auto-generated one.
-// on a cluster without in-band auth this is a no-op, keeping legacy behavior.
+// on a cluster without in-band auth this is a no-op only when the plugin
+// runs without in-band auth too: the DC of an in-band auth node cannot
+// connect to such a cluster, so the stage is refused.
 func (d *Driver) ensureInBandAuth(
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, ci *lb.ClusterInfo, vid lbResourceID,
 ) error {
 	if !ci.InBandAuthEnabled {
+		if d.dcConfigPath != "" {
+			return mkPrecond("LB cluster %s has NVMe in-band auth disabled, but the "+
+				"plugin runs with in-band auth, see --inband-auth: enable in-band auth "+
+				"on the cluster or deploy the plugin without inBandAuth", ci.UUID)
+		}
 		return nil
 	}
 	if d.dcConfigPath == "" {

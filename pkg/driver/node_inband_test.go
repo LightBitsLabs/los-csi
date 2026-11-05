@@ -93,6 +93,16 @@ func TestEnsureInBandAuthDisabledCluster(t *testing.T) {
 	clnt.AssertExpectations(t)
 }
 
+func TestEnsureInBandAuthDisabledClusterInBandPlugin(t *testing.T) {
+	d := mkInBandDriver(t, filepath.Join(t.TempDir(), "discovery-client.yaml"))
+	clnt := &ClientMock{}
+	ci := &lb.ClusterInfo{UUID: guuid.New(), InBandAuthEnabled: false}
+	err := d.ensureInBandAuth(context.Background(), d.log, clnt, ci, mkInBandVid(t))
+	require.Equal(t, codes.FailedPrecondition, status.Code(err),
+		"in-band auth plugin on a disabled cluster must refuse the stage")
+	clnt.AssertExpectations(t)
+}
+
 func TestEnsureInBandAuthNoConfigPath(t *testing.T) {
 	d := mkInBandDriver(t, "")
 	err := d.ensureInBandAuth(context.Background(), d.log, &ClientMock{}, authCluster, mkInBandVid(t))
