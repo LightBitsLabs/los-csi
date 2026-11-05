@@ -48,6 +48,7 @@ helm/lb-csi
 | image                              |  ""                                     | lb-csi-plugin image name (string format:  `<image-name>:<tag>`) |
 | imageRegistry                      | docker.lightbitslabs.com/lightos-csi    | Registry to pull LightBits CSI images  |
 | sidecarImageRegistry               | registry.k8s.io                              | Registry to pull CSI sidecar images                 |
+| sidecarImageTags                   | provisioner: v5.3.0<br>attacher: v4.13.0<br>resizer: v2.3.0<br>snapshotter: v8.7.0<br>nodeDriverRegistrar: v2.18.0 | Image tags of the CSI sidecars, pulled from `sidecarImageRegistry`. Override one with `--set sidecarImageTags.attacher=<tag>` |
 | imagePullPolicy                    | Always                                  |                                                  |
 | imagePullSecrets                   | [] (don't use secret)                   | Specify docker-registry secret names as an array. [example](#using-a-custom-docker-registry)  |
 | controllerServiceAccountName       | lb-csi-ctrl-sa                          | Name of controller service account                                                  |

@@ -32,6 +32,27 @@
       "description": "Registry to pull CSI sidecar images",
       "type": "string"
     },
+    "sidecarImageTags": {
+      "description": "Image tags of the CSI sidecars, pulled from sidecarImageRegistry",
+      "type": "object",
+      "properties": {
+        "provisioner": {
+          "type": "string"
+        },
+        "attacher": {
+          "type": "string"
+        },
+        "resizer": {
+          "type": "string"
+        },
+        "snapshotter": {
+          "type": "string"
+        },
+        "nodeDriverRegistrar": {
+          "type": "string"
+        }
+      }
+    },
     "imagePullPolicy": {
       "description": "",
       "type": "string"

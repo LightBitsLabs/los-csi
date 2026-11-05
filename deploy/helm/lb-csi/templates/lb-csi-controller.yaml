@@ -66,7 +66,7 @@ spec:
             mountPath: "/etc/lb-csi"
 {{- end }}
         - name: csi-provisioner
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-provisioner:v5.3.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-provisioner:{{ .Values.sidecarImageTags.provisioner }}
           args:
           - "--csi-address=$(ADDRESS)"
           - "--v=4"
@@ -77,7 +77,7 @@ spec:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-attacher
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-attacher:v4.13.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-attacher:{{ .Values.sidecarImageTags.attacher }}
           args:
           - "--v=4"
           - "--csi-address=$(ADDRESS)"
@@ -88,7 +88,7 @@ spec:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-resizer
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-resizer:v2.3.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-resizer:{{ .Values.sidecarImageTags.resizer }}
           args:
           - "--v=5"
           - "--csi-address=$(ADDRESS)"
@@ -101,7 +101,7 @@ spec:
             mountPath: /var/lib/csi/sockets/pluginproxy/
 {{- if .Values.enableSnapshot }}
         - name: csi-snapshotter
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:v8.7.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:{{ .Values.sidecarImageTags.snapshotter }}
           args:
           - "--v=5"
           - "--csi-address=$(ADDRESS)"

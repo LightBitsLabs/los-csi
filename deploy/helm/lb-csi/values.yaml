@@ -4,6 +4,12 @@ enableSnapshot: true
 image: "lb-csi-plugin:v1.24.0"
 imageRegistry: docker.lightbitslabs.com/lightos-csi
 sidecarImageRegistry: registry.k8s.io
+sidecarImageTags:
+  provisioner: v5.3.0
+  attacher: v4.13.0
+  resizer: v2.3.0
+  snapshotter: v8.7.0
+  nodeDriverRegistrar: v2.18.0
 imagePullPolicy: IfNotPresent
 imagePullSecrets: []
 discoveryClientInContainer: true
