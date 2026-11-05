@@ -1,4 +1,3 @@
-{{$kubeVersion := (or .Values.kubeVersion .Capabilities.KubeVersion.Version) | trimPrefix "v" }}
 kind: StatefulSet
 apiVersion: apps/v1
 metadata:
@@ -100,13 +99,9 @@ spec:
           volumeMounts:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
-{{- if and ($kubeVersion | semverCompare ">=1.17.0") ( .Values.enableSnapshot ) }}
+{{- if .Values.enableSnapshot }}
         - name: csi-snapshotter
-{{- if ($kubeVersion | semverCompare ">=1.17.0 < 1.20.0") }}
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:v3.0.3
-{{- else }}
           image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-snapshotter:v8.7.0
-{{- end }}
           args:
           - "--v=5"
           - "--csi-address=$(ADDRESS)"
