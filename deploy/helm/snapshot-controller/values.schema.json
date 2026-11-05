@@ -5,6 +5,15 @@
    "properties": {
        "sidecarImageRegistry": {
            "type": "string"
+       },
+       "imageTag": {
+           "type": "string"
+       },
+       "imagePullSecrets": {
+           "type": "array",
+           "items": {
+               "type": "string"
+           }
        }
    }
 }

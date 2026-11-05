@@ -1,1 +1,3 @@
 sidecarImageRegistry: registry.k8s.io
+imageTag: v8.7.0
+imagePullSecrets: []
