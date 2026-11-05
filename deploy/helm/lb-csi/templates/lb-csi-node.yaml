@@ -60,6 +60,8 @@ spec:
                   fieldPath: spec.nodeName
             - name: LB_CSI_NODE_ID
               value: $(KUBE_NODE_NAME).node
+            - name: LB_CSI_K8S_NODE_NAME
+              value: $(KUBE_NODE_NAME)
             - name: LB_CSI_LOG_LEVEL
               value: debug
             - name: LB_CSI_LOG_ROLE

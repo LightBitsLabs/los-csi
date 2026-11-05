@@ -62,6 +62,10 @@ Supported environment variables:
         by specifying using deployment config. If specified file does not exist -
         sane defaults will be used. Runtime configuration changes are not
         supported, to reload the config - restart the plugin.
+  LB_CSI_K8S_NODE_NAME      - name of the K8s node this Node plugin instance
+        serves. if set, the plugin reads the volumes attached to this node from
+        the K8s API at startup, to keep their IP-ACL up to date. requires 'list'
+        on VolumeAttachments and 'get' on PersistentVolumes and Secrets.
 
 Command line flags:
 `
@@ -121,6 +125,8 @@ var (
 		"Backend config path, see $LB_CSI_BE_CONFIG_PATH.")
 	luksCfgPath = flag.StringP("luks-cfg-path", "L", "",
 		"LUKS config path, see $LB_CSI_LUKS_CONFIG_PATH.")
+	k8sNodeName = flag.String("k8s-node-name", "",
+		"K8s node served by this Node plugin, see $LB_CSI_K8S_NODE_NAME.")
 	inbandAuth = flag.Bool("inband-auth", false,
 		"Maintain the discovery-client NVMe in-band auth secrets, "+
 			"see $LB_CSI_INBAND_AUTH.")
@@ -244,6 +250,7 @@ func main() {
 		JWTPath:       pickStr(*jwtPath, "LB_CSI_JWT_PATH", defaults.JWTPath),
 		InBandAuth:    *inbandAuth,
 		NodeID:        pickStr(*nodeID, "LB_CSI_NODE_ID", defaults.NodeID),
+		K8sNodeName:   pickStr(*k8sNodeName, "LB_CSI_K8S_NODE_NAME", defaults.K8sNodeName),
 		Endpoint:      pickStr(*endpoint, "CSI_ENDPOINT", defaults.Endpoint),
 		DefaultFS:     pickStr(*defaultFS, "LB_CSI_DEFAULT_FS", defaults.DefaultFS),
 		LogLevel:      pickStr(*logLevel, "LB_CSI_LOG_LEVEL", defaults.LogLevel),

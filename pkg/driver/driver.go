@@ -80,8 +80,9 @@ type Config struct {
 	LUKSCfgPath    string
 	InBandAuth     bool // maintain the discovery-client in-band auth secrets.
 
-	NodeID   string
-	Endpoint string // must be a Unix Domain Socket URI
+	NodeID      string
+	K8sNodeName string // if set, IP-ACL volumes attached to it are re-checked after a restart.
+	Endpoint    string // must be a Unix Domain Socket URI
 
 	DefaultFS string // one of: ext4, xfs
 
@@ -106,6 +107,7 @@ type Driver struct {
 	sysfsRoot    string
 	mapperDir    string
 	nodeID       string
+	k8sNodeName  string
 	hostNQN      string
 	defaultFS    string
 
@@ -143,6 +145,8 @@ type Driver struct {
 	// node can each auto-generate a pair, leaving the cluster and the DC
 	// config with different ones.
 	ibaMtx sync.Mutex
+
+	ipACLVols ipACLVolList
 
 	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
 	// used for authN/authZ when communicating with the LightOS API service.
@@ -241,6 +245,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		jwtPath:       cfg.JWTPath,
 		dcConfigPath:  dcConfigPathFor(cfg.InBandAuth),
 		nodeID:        cfg.NodeID,
+		k8sNodeName:   cfg.K8sNodeName,
 		transport:     cfg.Transport,
 		squelchPanics: cfg.SquelchPanics,
 		luksCfgFile:   filepath.Join(cfg.LUKSCfgPath, DefaultLUKSCfgFileName),
@@ -393,6 +398,11 @@ func (d *Driver) Run() error {
 			"global JWT file monitoring disabled", d.jwtPath)
 	}
 
+	if d.k8sNodeName != "" {
+		go d.trackIPAclVolsFromK8s(ctx)
+	}
+	go d.recheckIPAclLoop(ctx)
+
 	d.log.WithField("addr", d.sockPath).Info("server started")
 	return d.srv.Serve(listener)
 }
@@ -499,7 +509,7 @@ func (d *Driver) PutLBClient(clnt lb.Client) {
 
 func (d *Driver) cloneCtxWithCreds(ctx context.Context, secrets map[string]string) context.Context {
 	jwt := ""
-	if jwtVal, ok := secrets["jwt"]; ok {
+	if jwtVal, ok := secrets[jwtSecretKey]; ok {
 		jwt = jwtVal
 	} else if d.jwt != "" {
 		jwt = d.jwt
