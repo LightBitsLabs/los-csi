@@ -21,7 +21,7 @@ helm install -n lb-csi-ns --create-namespace lb-csi helm/lb-csi/
 helm list --namespace=kube-system
 
 NAME  	NAMESPACE  	REVISION  UPDATED        	STATUS  	CHART              	 APP VERSION
-lb-csi	kube-system	1         2026-10-06... 	deployed	lb-csi-plugin-0.22.0	 v1.24.0
+lb-csi	kube-system	1         2026-11-05... 	deployed	lb-csi-plugin-0.22.1	 v1.24.1
 ```
 
 ### Uninstall Lightbits CSI Plugin
