@@ -144,6 +144,18 @@ type Driver struct {
 	// config with different ones.
 	ibaMtx sync.Mutex
 
+	// inBandAuth enables trusted host cleanup on detach, besides the node
+	// side secret flow.
+	inBandAuth bool
+
+	// nodeLocks orders ControllerPublishVolume against trusted host cleanup
+	// per node, see reapTrustedHost().
+	nodeLocks nodeLocks
+
+	// attachments gates trusted host cleanup on detach, see nodeAttachments().
+	attachments     nodeAttachments
+	attachmentsOnce sync.Once
+
 	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
 	// used for authN/authZ when communicating with the LightOS API service.
 	//
@@ -247,7 +259,8 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		sysfsRoot:     "/sys",
 		mapperDir:     diskMapperPath,
 
-		rwx: cfg.RWX,
+		rwx:        cfg.RWX,
+		inBandAuth: cfg.InBandAuth,
 	}
 
 	if err := checkNodeID(cfg.NodeID); err != nil {

@@ -819,6 +819,12 @@ func (d *Driver) ControllerPublishVolume(
 	}
 	defer d.PutLBClient(clnt)
 
+	if d.inBandAuth {
+		lock := d.nodeLocks.get(req.NodeId)
+		lock.RLock()
+		defer lock.RUnlock()
+	}
+
 	if d.rwx {
 		return d.doPublishVolumeRWX(ctx, clnt, log, vid, req.NodeId)
 	} else {
@@ -1047,11 +1053,19 @@ func (d *Driver) ControllerUnpublishVolume(
 	}
 	defer d.PutLBClient(clnt)
 
+	var resp *csi.ControllerUnpublishVolumeResponse
 	if d.rwx {
-		return d.doUnpublishVolumeRWX(ctx, clnt, log, vid, req.NodeId)
+		resp, err = d.doUnpublishVolumeRWX(ctx, clnt, log, vid, req.NodeId)
 	} else {
-		return d.doUnpublishVolumeRWO(ctx, clnt, log, vid, req.NodeId)
+		resp, err = d.doUnpublishVolumeRWO(ctx, clnt, log, vid, req.NodeId)
 	}
+	if err != nil {
+		return nil, err
+	}
+	if err := d.reapTrustedHost(ctx, clnt, log, vid, req.NodeId); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 func (d *Driver) doUnpublishVolumeRWO(
