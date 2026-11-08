@@ -93,6 +93,10 @@
       "description": "Enable ReadWriteMany for Block volume mode",
       "type": "boolean",
       "default": "false"
+    },
+    "inBandAuth": {
+      "description": "Enable NVMe in-band authentication (requires `discoveryClientInContainer: true`)",
+      "type": "boolean"
     }
   },
   "required": [
