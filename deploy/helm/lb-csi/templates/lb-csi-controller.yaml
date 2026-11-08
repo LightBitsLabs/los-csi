@@ -78,7 +78,7 @@ spec:
           - name: socket-dir
             mountPath: /var/lib/csi/sockets/pluginproxy/
         - name: csi-attacher
-          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-attacher:v4.8.0
+          image: {{ .Values.sidecarImageRegistry }}/sig-storage/csi-attacher:v4.9.0
           args:
           - "--v=4"
           - "--csi-address=$(ADDRESS)"
