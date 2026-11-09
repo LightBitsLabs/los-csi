@@ -159,7 +159,9 @@ func (d *Driver) ensureInBandAuth(
 		if d.inBandAuth() {
 			return mkPrecond("LB cluster %s has NVMe in-band auth disabled, but the "+
 				"plugin runs with in-band auth, see --inband-auth: enable in-band auth "+
-				"on the cluster or deploy the plugin without inBandAuth", ci.UUID)
+				"on the cluster ('lbcli enable feature-flag in-band-authentication', "+
+				"then 'lbcli enable in-band-auth'), or deploy the plugin without "+
+				"inBandAuth", ci.UUID)
 		}
 		return nil
 	}
