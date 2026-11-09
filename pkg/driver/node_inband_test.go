@@ -72,6 +72,7 @@ func mkInBandDriver(t *testing.T, dcConfigPath string) *Driver {
 		nodeID:       "test-node",
 		hostNQN:      nodeIDToHostNQN("test-node"),
 		dcConfigPath: dcConfigPath,
+		inBandAuth:   dcConfigPath != "",
 		log:          logrus.NewEntry(logrus.New()),
 	}
 }
