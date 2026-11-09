@@ -59,3 +59,18 @@ helm/lb-csi
 | kubeVersion                        | ""                                      | Target K8s version for offline manifests rendering (overrides .Capabilities.Version)|
 | jwtSecret                          | []                                      | LightOS API JWT to mount as volume for controller and node pods.                    |
 
+### In-Band Authentication
+
+The `inBandAuth` value must agree with the in-band authentication mode of the LightOS cluster. If they do not agree, the node plugin refuses to stage the volume with a `FailedPrecondition` error, and the pod does not start. The pod events show the error:
+
+- `inBandAuth: true` on a cluster with in-band authentication disabled: enable in-band authentication on the cluster, or redeploy the plugin with `inBandAuth: false`.
+- `inBandAuth: false` on a cluster with in-band authentication enabled: redeploy the plugin with `inBandAuth: true`.
+
+You can enable in-band authentication on a running LightOS cluster. A cluster redeploy is not necessary:
+
+```bash
+lbcli enable feature-flag in-band-authentication
+lbcli enable in-band-auth
+```
+
+If you redeploy the plugin with `inBandAuth: false`, you do not have to clean up the nodes. The DH-HMAC-CHAP secrets stay in `/etc/discovery-client/discovery-client.yaml`, but a cluster with in-band authentication disabled does not request authentication, so the nodes connect without it.
