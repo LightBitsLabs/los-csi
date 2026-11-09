@@ -33,6 +33,12 @@ func dcConfigPathFor(inBandAuth bool) string {
 	return ""
 }
 
+// inBandAuth reports whether the plugin runs with --inband-auth, which is
+// the only way `d.dcConfigPath` gets set.
+func (d *Driver) inBandAuth() bool {
+	return d.dcConfigPath != ""
+}
+
 // renderDCAuthConfig merges the secret pair into an existing DC config,
 // preserving any other configuration the file carries: the file may be owned
 // by a host discovery-client package rather than by this plugin.
@@ -150,14 +156,14 @@ func (d *Driver) ensureInBandAuth(
 	ctx context.Context, log *logrus.Entry, clnt lb.Client, ci *lb.ClusterInfo, vid lbResourceID,
 ) error {
 	if !ci.InBandAuthEnabled {
-		if d.dcConfigPath != "" {
+		if d.inBandAuth() {
 			return mkPrecond("LB cluster %s has NVMe in-band auth disabled, but the "+
 				"plugin runs with in-band auth, see --inband-auth: enable in-band auth "+
 				"on the cluster or deploy the plugin without inBandAuth", ci.UUID)
 		}
 		return nil
 	}
-	if d.dcConfigPath == "" {
+	if !d.inBandAuth() {
 		return mkPrecond("LB cluster %s requires NVMe in-band auth, but the "+
 			"plugin runs without in-band auth support, see --inband-auth", ci.UUID)
 	}
