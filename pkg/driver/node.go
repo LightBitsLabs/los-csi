@@ -74,8 +74,8 @@ func (d *Driver) lbVolEligible(
 
 	// a volume whose IP-ACL admits none of this node's addresses can't be
 	// connected to: the cluster firewalls its data ports per allowed IP.
-	// node-managed volumes get their addresses enrolled right after this
-	// check, so only externally managed IP-ACLs are screened here.
+	// node-managed volumes get their addresses enrolled later in the
+	// stage, so only externally managed IP-ACLs are screened here.
 	if !vid.ipACL && len(vol.IPAcl) > 0 && !strlist.Contains(vol.IPAcl, lb.ACLAllowAny) {
 		addrs, err := nodeDataPathAddrs(ci, vid)
 		if err != nil {
@@ -298,23 +298,6 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
-	// a stage retry of an already-mounted volume needs no enrollment or
-	// secrets work; this check is advisory only, the authoritative one
-	// still runs under the lock below.
-	if isMnt, err := d.mounter.IsMountPoint(req.StagingTargetPath); err != nil || !isMnt {
-		err = d.ensureInBandAuth(ctx, log, clnt, ci, vid)
-		if err != nil {
-			return nil, err
-		}
-
-		if vid.ipACL {
-			err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
-
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 
@@ -351,6 +334,21 @@ func (d *Driver) NodeStageVolume(
 		// just calling us again for a retry of a request that may have
 		// timed out, or some such...
 		return &csi.NodeStageVolumeResponse{}, nil
+	}
+
+	// in-band auth and IP-ACL enrollment: - - - - - - - - - - - - - - - -
+
+	// in-band auth goes first: a stage it refuses must leave nothing in the
+	// volume IP-ACL.
+	err = d.ensureInBandAuth(ctx, log, clnt, ci, vid)
+	if err != nil {
+		return nil, err
+	}
+	if vid.ipACL {
+		err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// get remote NVMe-oF targets info from the LB cluster:  - - - - - - -

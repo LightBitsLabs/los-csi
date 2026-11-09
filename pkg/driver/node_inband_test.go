@@ -11,13 +11,16 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/container-storage-interface/spec/lib/go/csi"
 	guuid "github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	mountutils "k8s.io/mount-utils"
 
+	"github.com/lightbitslabs/los-csi/pkg/driver/backend"
 	"github.com/lightbitslabs/los-csi/pkg/lb"
 	"github.com/lightbitslabs/los-csi/pkg/util/endpoint"
 )
@@ -296,4 +299,75 @@ func TestDCAuthConfigKeepsBlankLinesAndNestedKeys(t *testing.T) {
 		"an indented key under a nested map must be left alone")
 	require.NotContains(t, string(raw), "stale")
 	require.Equal(t, fullPair, parseDCAuthConfig(raw))
+}
+
+// eligibleBackend admits every volume; any other backend call panics.
+type eligibleBackend struct {
+	backend.Backend
+}
+
+func (eligibleBackend) LBVolEligible(context.Context, *lb.Volume) *status.Status {
+	return nil
+}
+
+func TestNodeStageInBandAuthMismatchLeavesIPAclAlone(t *testing.T) {
+	testCases := []struct {
+		name       string
+		pluginIBA  bool
+		clusterIBA bool
+	}{
+		{name: "plugin with in-band auth, cluster without", pluginIBA: true},
+		{name: "plugin without in-band auth, cluster with", clusterIBA: true},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dcConfigPath := ""
+			if tc.pluginIBA {
+				dcConfigPath = filepath.Join(t.TempDir(), "discovery-client.yaml")
+			}
+			d := mkInBandDriver(t, dcConfigPath)
+			d.be = eligibleBackend{}
+			d.mounter = &mountutils.SafeFormatAndMount{Interface: mountutils.NewFakeMounter(nil)}
+
+			nguid := guuid.New()
+			clnt := &ClientMock{}
+			clnt.On("ID").Return("123")
+			clnt.On("Close").Return()
+			clnt.On("Targets").Return("10.0.0.1:443")
+			clnt.On("RemoteOk", mock.Anything).Return(nil)
+			clnt.On("GetClusterInfo", mock.Anything).Return(&lb.ClusterInfo{
+				UUID:               guuid.New(),
+				InBandAuthEnabled:  tc.clusterIBA,
+				DiscoveryEndpoints: []string{"10.0.0.2:8009"},
+				NvmeEndpoints:      []string{"10.0.0.2:4420"},
+			}, nil)
+			clnt.On("GetVolume", mock.Anything, nguid, "proj").Return(&lb.Volume{
+				UUID:       nguid,
+				State:      lb.VolumeAvailable,
+				Protection: lb.VolumeProtected,
+				ACL:        []string{d.hostNQN},
+			}, nil)
+			d.lbclients = lb.NewClientPoolWithOptions(
+				func(ctx context.Context, targets endpoint.Slice, mgmtScheme string) (lb.Client, error) {
+					return clnt, nil
+				},
+				poolOpts,
+			)
+
+			_, err := d.NodeStageVolume(context.Background(), &csi.NodeStageVolumeRequest{
+				VolumeId:          fmt.Sprintf("mgmt:10.0.0.1:443|nguid:%s|proj:proj|scheme:grpcs|ipacl:enabled", nguid),
+				StagingTargetPath: t.TempDir(),
+				VolumeCapability: &csi.VolumeCapability{
+					AccessMode: &csi.VolumeCapability_AccessMode{
+						Mode: csi.VolumeCapability_AccessMode_SINGLE_NODE_WRITER,
+					},
+					AccessType: &csi.VolumeCapability_Mount{
+						Mount: &csi.VolumeCapability_MountVolume{FsType: "ext4"},
+					},
+				},
+			})
+			require.Equal(t, codes.FailedPrecondition, status.Code(err), "got: %v", err)
+			clnt.AssertNotCalled(t, "UpdateVolume", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		})
+	}
 }
