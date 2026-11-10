@@ -3,8 +3,9 @@ deploy/helm/charts
 .cache
 deploy/k8s/lb-csi-plugin-*.yaml
 deploy/k8s/snapshot-controller-*.yaml
+deploy/k8s/snapshot-controller.yaml
 deploy/examples
-build/
+/build/
 .vscode
 test/e2e/results/*/*/*
 docs/book
