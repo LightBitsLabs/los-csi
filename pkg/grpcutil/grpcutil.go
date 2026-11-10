@@ -93,6 +93,6 @@ func ErrFromCtxErr(err error) error {
 	case context.DeadlineExceeded:
 		return status.Error(codes.DeadlineExceeded, "context deadline exceeded")
 	default:
-		return status.Errorf(codes.Unknown, err.Error())
+		return status.Error(codes.Unknown, err.Error())
 	}
 }
