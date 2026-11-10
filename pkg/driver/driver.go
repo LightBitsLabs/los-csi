@@ -467,7 +467,7 @@ func (d *Driver) GetLBClient(
 		if !ok {
 			// that's highly unusual of lb.ClientPool and probably
 			// indicates a bug somewhere in the plugin...
-			return nil, mkInternal(msg)
+			return nil, mkInternal("%s", msg)
 		}
 		switch st.Code() {
 		case codes.Canceled,
@@ -477,7 +477,7 @@ func (d *Driver) GetLBClient(
 			// if we failed to connect to a LB for an external, presumably
 			// net-related reason, just try to cause the CO to retry the
 			// whole thing at a later time:
-			return nil, mkEagain(msg)
+			return nil, mkEagain("%s", msg)
 		}
 	}
 
