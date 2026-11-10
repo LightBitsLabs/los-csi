@@ -16,7 +16,7 @@ override BIN_NAME := lb-csi-plugin
 
 override HELM_VERSION := v3.18.0
 
-# pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:
+## pass in $SIDECAR_DOCKER_REGISTRY to use a local Docker image cache:  
 SIDECAR_DOCKER_REGISTRY := $(or $(SIDECAR_DOCKER_REGISTRY),registry.k8s.io)
 
 PKG_PREFIX := github.com/lightbitslabs/los-csi
