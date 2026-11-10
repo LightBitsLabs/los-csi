@@ -745,11 +745,9 @@ func fuzzOne(
 			return
 		}
 	default:
-		tmpCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
 		clnt, err := env.pool.GetClient(ctx, targets, "grpc")
 		if err != nil {
-			if tmpCtx.Err() == nil {
+			if ctx.Err() == nil {
 				env.t.Errorf("BUG: GetClient(%s) failed: %s", targets, err)
 				failed <- struct{}{}
 			}
@@ -760,7 +758,7 @@ func fuzzOne(
 		for i := int64(0); i < ops; i++ {
 			err := clnt.RemoteOk(ctx)
 			if err != nil {
-				if tmpCtx.Err() == nil {
+				if ctx.Err() == nil {
 					env.t.Errorf("BUG: GetClient(%s) failed: %s", targets, err)
 					failed <- struct{}{}
 				}
