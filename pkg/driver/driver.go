@@ -156,6 +156,8 @@ type Driver struct {
 	attachments     nodeAttachments
 	attachmentsOnce sync.Once
 
+	ipACLVols ipACLVolList
+
 	// jwt is the JWT loaded from the file specified by `jwtPath`. it is
 	// used for authN/authZ when communicating with the LightOS API service.
 	//
@@ -406,6 +408,8 @@ func (d *Driver) Run() error {
 			"global JWT file monitoring disabled", d.jwtPath)
 	}
 
+	go d.recheckIPAclLoop(ctx)
+
 	d.log.WithField("addr", d.sockPath).Info("server started")
 	return d.srv.Serve(listener)
 }
@@ -512,7 +516,7 @@ func (d *Driver) PutLBClient(clnt lb.Client) {
 
 func (d *Driver) cloneCtxWithCreds(ctx context.Context, secrets map[string]string) context.Context {
 	jwt := ""
-	if jwtVal, ok := secrets["jwt"]; ok {
+	if jwtVal, ok := secrets[jwtSecretKey]; ok {
 		jwt = jwtVal
 	} else if d.jwt != "" {
 		jwt = d.jwt

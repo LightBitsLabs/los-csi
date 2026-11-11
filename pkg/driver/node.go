@@ -298,6 +298,17 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	// a retry also takes this path after a kubelet restart, which is when
+	// it refills the IP-ACL re-check list.
+	var ipACLAddrs []string
+	if vid.ipACL {
+		defer func() {
+			if retErr == nil {
+				d.ipACLVols.track(vid, req.Secrets[jwtSecretKey], ipACLAddrs)
+			}
+		}()
+	}
+
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 
@@ -345,7 +356,7 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 	if vid.ipACL {
-		err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+		ipACLAddrs, err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
 		if err != nil {
 			return nil, err
 		}
@@ -471,7 +482,7 @@ func (d *Driver) NodeStageVolume(
 
 func (d *Driver) NodeUnstageVolume(
 	ctx context.Context, req *csi.NodeUnstageVolumeRequest,
-) (*csi.NodeUnstageVolumeResponse, error) {
+) (_ *csi.NodeUnstageVolumeResponse, retErr error) {
 	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
 		return nil, err
@@ -480,6 +491,11 @@ func (d *Driver) NodeUnstageVolume(
 		return nil, mkEinvalMissing("staging_target_path")
 	}
 	tgtPath := req.StagingTargetPath
+	defer func() {
+		if retErr == nil {
+			d.ipACLVols.untrack(vid.uuid)
+		}
+	}()
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
