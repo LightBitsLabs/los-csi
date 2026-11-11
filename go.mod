@@ -1,6 +1,8 @@
 module github.com/lightbitslabs/los-csi
 
-go 1.26.10
+go 1.23.0
+
+toolchain go1.24.1
 
 require (
 	github.com/container-storage-interface/spec v1.12.0
