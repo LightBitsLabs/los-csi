@@ -1,4 +1,4 @@
-FROM golang:1.26.10-alpine3.23 AS builder
+FROM golang:1.24.3-alpine3.21 AS builder
 
 ARG GID=1000
 ARG UID=1000

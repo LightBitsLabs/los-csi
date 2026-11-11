@@ -310,7 +310,7 @@ func TestControllerPublishVolume(t *testing.T) {
 					vol.UUID, vol.ProjectName,
 					mock.AnythingOfType("lb.VolumeUpdateHook")).
 					Return(vol,
-						status.Errorf(codes.Unavailable, "failed to publish volume to node '%s'", nodeID1)).
+						status.Errorf(codes.Unavailable, fmt.Sprintf("failed to publish volume to node '%s'", nodeID1))).
 					Once()
 
 				vol1 := basicVolume("v1", nguid, []string{ace1})
@@ -382,7 +382,7 @@ func TestControllerPublishVolume(t *testing.T) {
 					vol.UUID, vol.ProjectName,
 					mock.AnythingOfType("lb.VolumeUpdateHook")).
 					Return(vol,
-						status.Errorf(codes.Unavailable, "failed to publish volume to node '%s'", nodeID1)).Once()
+						status.Errorf(codes.Unavailable, fmt.Sprintf("failed to publish volume to node '%s'", nodeID1))).Once()
 				return clientMock
 			},
 			err: nil,
