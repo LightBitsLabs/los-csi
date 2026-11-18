@@ -69,22 +69,22 @@ func TestIPAclVolListTrack(t *testing.T) {
 	var l ipACLVolList
 	vid := mkRecheckVid(t, "10.0.0.1:443")
 
-	l.track(vid, "jwt1", []string{"10.0.0.5"})
-	l.track(vid, "jwt2", nil)
+	require.NoError(t, l.track(vid, "jwt1", []string{"10.0.0.5"}))
+	require.NoError(t, l.track(vid, "jwt2", nil))
 	vols := l.list()
 	require.Len(t, vols, 1)
 	require.Equal(t, "jwt2", vols[0].jwt)
 	require.Equal(t, []string{"10.0.0.5"}, vols[0].addrs, "a retry must keep the enrolled addresses")
 
 	stale := vols[0]
-	l.track(vid, "jwt3", []string{"10.0.0.6"})
+	require.NoError(t, l.track(vid, "jwt3", []string{"10.0.0.6"}))
 	l.setAddrs(stale, []string{"10.0.0.7"})
-	l.drop(stale)
+	require.NoError(t, l.drop(stale))
 	vols = l.list()
 	require.Len(t, vols, 1, "a stale re-check result must not drop a newer entry")
 	require.Equal(t, []string{"10.0.0.6"}, vols[0].addrs)
 
-	l.untrack(vid.uuid)
+	require.NoError(t, l.untrack(vid.uuid))
 	require.Empty(t, l.list())
 }
 
@@ -135,7 +135,7 @@ func TestRecheckIPAcl(t *testing.T) {
 				onUpdateVolume(clnt, vid, tc.cur, tc.updateErr, &got)
 			}
 			d := mkRecheckDriver(clnt)
-			d.ipACLVols.track(vid, "jwt", tc.enrolled)
+			require.NoError(t, d.ipACLVols.track(vid, "jwt", tc.enrolled))
 
 			d.recheckIPAcl(context.Background())
 
@@ -165,8 +165,8 @@ func TestRecheckIPAclOneClusterInfoPerCluster(t *testing.T) {
 	vid2 := mkRecheckVid(t, "127.0.0.1:443")
 	onUpdateVolume(clnt, vid1, []string{"10.0.0.9"}, nil, &got1)
 	onUpdateVolume(clnt, vid2, []string{"10.0.0.8"}, nil, &got2)
-	d.ipACLVols.track(vid1, "jwt", []string{"10.0.0.9"})
-	d.ipACLVols.track(vid2, "jwt", []string{"10.0.0.8"})
+	require.NoError(t, d.ipACLVols.track(vid1, "jwt", []string{"10.0.0.9"}))
+	require.NoError(t, d.ipACLVols.track(vid2, "jwt", []string{"10.0.0.8"}))
 
 	d.recheckIPAcl(context.Background())
 

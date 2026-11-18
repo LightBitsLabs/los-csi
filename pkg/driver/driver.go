@@ -264,6 +264,7 @@ func New(cfg Config) (*Driver, error) { //nolint:gocritic
 		rwx:        cfg.RWX,
 		inBandAuth: cfg.InBandAuth,
 	}
+	d.ipACLVols.dir = ipACLStateDir
 
 	if err := checkNodeID(cfg.NodeID); err != nil {
 		return nil, fmt.Errorf("bad node ID '%s': %s", cfg.NodeID, err)
@@ -408,6 +409,11 @@ func (d *Driver) Run() error {
 			"global JWT file monitoring disabled", d.jwtPath)
 	}
 
+	n, err := d.ipACLVols.load()
+	if err != nil {
+		d.log.WithError(err).Warn("failed to load some saved IP-ACL re-check entries")
+	}
+	d.log.WithField("volumes", n).Info("IP-ACL re-check list loaded")
 	go d.recheckIPAclLoop(ctx)
 
 	d.log.WithField("addr", d.sockPath).Info("server started")

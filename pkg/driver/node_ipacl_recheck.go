@@ -39,11 +39,13 @@ type ipACLVol struct {
 type ipACLVolList struct {
 	mtx  sync.Mutex
 	vols map[guuid.UUID]*ipACLVol
+	dir  string // saves each volume here; empty: saves nothing.
 }
 
 // track adds or refreshes a volume. nil `addrs` keeps the addresses already
-// known, so a stage retry does not cause a needless IP-ACL update.
-func (l *ipACLVolList) track(vid lbResourceID, jwt string, addrs []string) {
+// known, so a stage retry does not cause a needless IP-ACL update. a failed
+// save still tracks the volume until the plugin restarts.
+func (l *ipACLVolList) track(vid lbResourceID, jwt string, addrs []string) error {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	if l.vols == nil {
@@ -53,12 +55,14 @@ func (l *ipACLVolList) track(vid lbResourceID, jwt string, addrs []string) {
 		addrs = cur.addrs
 	}
 	l.vols[vid.uuid] = &ipACLVol{vid: vid, jwt: jwt, addrs: addrs}
+	return l.save(vid, jwt)
 }
 
-func (l *ipACLVolList) untrack(uuid guuid.UUID) {
+func (l *ipACLVolList) untrack(uuid guuid.UUID) error {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 	delete(l.vols, uuid)
+	return l.remove(uuid)
 }
 
 func (l *ipACLVolList) list() []*ipACLVol {
@@ -81,12 +85,14 @@ func (l *ipACLVolList) setAddrs(v *ipACLVol, addrs []string) {
 	}
 }
 
-func (l *ipACLVolList) drop(v *ipACLVol) {
+func (l *ipACLVolList) drop(v *ipACLVol) error {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
-	if l.vols[v.vid.uuid] == v {
-		delete(l.vols, v.vid.uuid)
+	if l.vols[v.vid.uuid] != v {
+		return nil
 	}
+	delete(l.vols, v.vid.uuid)
+	return l.remove(v.vid.uuid)
 }
 
 func jwtCreds(jwt string) map[string]string {
@@ -202,16 +208,22 @@ func (d *Driver) recheckVolIPAcl(
 	reset, err := updateNodeIPAcl(vctx, log, clnt, v.vid, addrs, true)
 	switch {
 	case status.Code(err) == codes.NotFound:
-		d.ipACLVols.drop(v)
+		d.dropIPAclVol(log, v)
 		log.Info("volume gone, IP-ACL re-check stopped")
 	case err != nil:
 		log.WithError(err).Warn("failed to update volume IP-ACL")
 	case reset:
-		d.ipACLVols.drop(v)
+		d.dropIPAclVol(log, v)
 		log.Info("volume IP-ACL reset, IP-ACL re-check stopped")
 	default:
 		d.ipACLVols.setAddrs(v, addrs)
 		log.WithField("ip-acl-addrs", fmt.Sprintf("%#q", addrs)).
 			Info("node data-path addresses enrolled in volume IP-ACL")
+	}
+}
+
+func (d *Driver) dropIPAclVol(log *logrus.Entry, v *ipACLVol) {
+	if err := d.ipACLVols.drop(v); err != nil {
+		log.WithError(err).Warn("failed to remove saved IP-ACL re-check entry")
 	}
 }

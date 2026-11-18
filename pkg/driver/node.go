@@ -303,8 +303,12 @@ func (d *Driver) NodeStageVolume(
 	var ipACLAddrs []string
 	if vid.ipACL {
 		defer func() {
-			if retErr == nil {
-				d.ipACLVols.track(vid, req.Secrets[jwtSecretKey], ipACLAddrs)
+			if retErr != nil {
+				return
+			}
+			if err := d.ipACLVols.track(vid, req.Secrets[jwtSecretKey], ipACLAddrs); err != nil {
+				log.WithError(err).Warn("failed to save IP-ACL re-check entry, " +
+					"a plugin restart stops the re-check of this volume")
 			}
 		}()
 	}
@@ -491,9 +495,15 @@ func (d *Driver) NodeUnstageVolume(
 		return nil, mkEinvalMissing("staging_target_path")
 	}
 	tgtPath := req.StagingTargetPath
+	// a saved entry outliving the unstage would enroll this node in the
+	// volume IP-ACL again after a plugin restart, so the unstage fails until
+	// it is gone.
 	defer func() {
-		if retErr == nil {
-			d.ipACLVols.untrack(vid.uuid)
+		if retErr != nil {
+			return
+		}
+		if err := d.ipACLVols.untrack(vid.uuid); err != nil {
+			retErr = mkEExec("failed to remove saved IP-ACL re-check entry: %s", err)
 		}
 	}()
 
