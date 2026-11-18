@@ -298,6 +298,9 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 
+	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
+	defer d.bdl.Unlock()
+
 	// a retry also takes this path after a kubelet restart, which is when
 	// it refills the IP-ACL re-check list.
 	var ipACLAddrs []string
@@ -312,9 +315,6 @@ func (d *Driver) NodeStageVolume(
 			}
 		}()
 	}
-
-	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
-	defer d.bdl.Unlock()
 
 	// node local sanity checks: - - - - - - - - - - - - - - - - - - - - -
 
@@ -495,6 +495,10 @@ func (d *Driver) NodeUnstageVolume(
 		return nil, mkEinvalMissing("staging_target_path")
 	}
 	tgtPath := req.StagingTargetPath
+
+	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
+	defer d.bdl.Unlock()
+
 	// a saved entry outliving the unstage would enroll this node in the
 	// volume IP-ACL again after a plugin restart, so the unstage fails until
 	// it is gone.
@@ -506,9 +510,6 @@ func (d *Driver) NodeUnstageVolume(
 			retErr = mkEExec("failed to remove saved IP-ACL re-check entry: %s", err)
 		}
 	}()
-
-	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
-	defer d.bdl.Unlock()
 
 	// TODO: check that staging target path indeed corresponds to the NVMe
 	// device, using client.GetNGUIDByDevPath(). same check is needed in
