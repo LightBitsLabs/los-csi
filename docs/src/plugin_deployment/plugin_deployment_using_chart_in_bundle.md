@@ -1,9 +1,41 @@
 ## Installing From Bundled Helm Charts
 
+The bundle holds the charts as packaged archives in `helm/charts/`:
+
+```bash
+helm/charts/
+├── lb-csi-plugin-<chart-version>.tgz
+├── lb-csi-workload-examples-<chart-version>.tgz
+└── snapshot-controller-<chart-version>.tgz
+```
+
+Extract the [Lightbits CSI Bundle Package](./deployment.md#download-lightbits-csi-bundle-package) and run the commands on this page from the directory you extracted it into:
+
+```bash
+mkdir lb-csi-bundle && tar -C lb-csi-bundle -xzf lb-csi-bundle-<version>.tar.gz
+cd lb-csi-bundle
+```
+
+> **NOTE:**
+>
+> Give Helm the path of the `.tgz` file. Helm reads a chart name such as `helm/lb-csi` as `<repository>/<chart>` and fails with `Error: INSTALLATION FAILED: repo helm not found`.
+
+### Install Snapshot-Controller
+
+Volume snapshots need the snapshot-controller and its CRDs. Install them once, before you install `lb-csi-plugin`:
+
+```bash
+helm install --namespace=kube-system snapshot-controller helm/charts/snapshot-controller-*.tgz
+```
+
+> **NOTE:**
+>
+> If these resources are already deployed for use by other CSI drivers, make sure the versions are correct and skip this step.
+
 ### Install Lightbits CSI Plugin
 
 ```bash
-helm install --namespace=kube-system lb-csi helm/lb-csi
+helm install --namespace=kube-system lb-csi helm/charts/lb-csi-plugin-*.tgz
 ```
 
 #### Install In Different Namespace
@@ -12,7 +44,7 @@ You can install the `lb-csi-plugin` in a different namespace (ex: `lb-csi-ns`)
 by creating a namespace yourself or using the shortcut to let Helm create a namespace for you:
 
 ```bash
-helm install -n lb-csi-ns --create-namespace lb-csi helm/lb-csi/
+helm install -n lb-csi-ns --create-namespace lb-csi helm/charts/lb-csi-plugin-*.tgz
 ```
 
 ### List Installed Releases
@@ -72,9 +104,9 @@ Now we can run "helm install" with the override value for `imagePullSecrets`. Th
 > imagePullSecrets is an array so it should be expressed as such with curly brackets.
 
 ```bash
-helm install \
+helm install --namespace=kube-system \
   --set imageRegistry=docker.pkg.github.com/lightbitslabs \
-  --set image=lb-csi-plugin:v1.20.0
+  --set image=lb-csi-plugin:v1.20.0 \
   --set imagePullSecrets={github-docker-registry} \
-  lb-csi ./helm/lb-csi
+  lb-csi helm/charts/lb-csi-plugin-*.tgz
 ```
