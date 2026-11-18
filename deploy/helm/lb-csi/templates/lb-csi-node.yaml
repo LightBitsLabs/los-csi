@@ -105,6 +105,8 @@ spec:
             - name: dc-config-dir
               mountPath: /etc/discovery-client
 {{- end }}
+            - name: state-dir
+              mountPath: /run/lb-csi
 {{- range .Values.jwtSecret }}
             - name: {{ .name }}
               mountPath: "/etc/lb-csi"
@@ -194,6 +196,10 @@ spec:
       - name: plugin-dir
         hostPath:
           path: {{ .Values.kubeletRootDir }}/plugins/csi.lightbitslabs.com
+          type: DirectoryOrCreate
+      - name: state-dir
+        hostPath:
+          path: /run/lb-csi
           type: DirectoryOrCreate
       - name: pods-mount-dir
         hostPath:
