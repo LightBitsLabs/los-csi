@@ -301,6 +301,21 @@ func (d *Driver) NodeStageVolume(
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
 
+	// a retry also takes this path after a kubelet restart, which is when
+	// it refills the IP-ACL re-check list.
+	var ipACLAddrs []string
+	if vid.ipACL {
+		defer func() {
+			if retErr != nil {
+				return
+			}
+			if err := d.ipACLVols.track(vid, req.Secrets[jwtSecretKey], ipACLAddrs); err != nil {
+				log.WithError(err).Warn("failed to save IP-ACL re-check entry, " +
+					"a plugin restart stops the re-check of this volume")
+			}
+		}()
+	}
+
 	// node local sanity checks: - - - - - - - - - - - - - - - - - - - - -
 
 	// ALLEGEDLY, StagingTargetPath is supposed to exist by this point,
@@ -345,7 +360,7 @@ func (d *Driver) NodeStageVolume(
 		return nil, err
 	}
 	if vid.ipACL {
-		err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
+		ipACLAddrs, err = d.enrollNodeIPAcl(ctx, log, clnt, ci, vid)
 		if err != nil {
 			return nil, err
 		}
@@ -471,7 +486,7 @@ func (d *Driver) NodeStageVolume(
 
 func (d *Driver) NodeUnstageVolume(
 	ctx context.Context, req *csi.NodeUnstageVolumeRequest,
-) (*csi.NodeUnstageVolumeResponse, error) {
+) (_ *csi.NodeUnstageVolumeResponse, retErr error) {
 	vid, err := parseCSIResourceIDEinval(volIDField, req.VolumeId)
 	if err != nil {
 		return nil, err
@@ -483,6 +498,18 @@ func (d *Driver) NodeUnstageVolume(
 
 	d.bdl.Lock() // TODO: break up into per-volume+per-target locks!
 	defer d.bdl.Unlock()
+
+	// a saved entry outliving the unstage would enroll this node in the
+	// volume IP-ACL again after a plugin restart, so the unstage fails until
+	// it is gone.
+	defer func() {
+		if retErr != nil {
+			return
+		}
+		if err := d.ipACLVols.untrack(vid.uuid); err != nil {
+			retErr = mkEExec("failed to remove saved IP-ACL re-check entry: %s", err)
+		}
+	}()
 
 	// TODO: check that staging target path indeed corresponds to the NVMe
 	// device, using client.GetNGUIDByDevPath(). same check is needed in
