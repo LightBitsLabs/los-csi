@@ -13,8 +13,8 @@ helm repo update
 
 ```bash
 helm repo list
-NAME                    URL                                                         
-lightbits-helm-repo       https://dl.lightbitslabs.com/public/lightos-csi/helm/charts/
+NAME                    URL
+lightbits-helm-repo     https://dl.lightbitslabs.com/public/lightos-csi/helm/charts/
 ```
 
 ### Listing All packages from Lightbits Helm Repository
@@ -22,10 +22,16 @@ lightbits-helm-repo       https://dl.lightbitslabs.com/public/lightos-csi/helm/c
 ```bash
 helm search repo lightbits-helm-repo
 NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
-lightbits-helm-repo/lb-csi-plugin                 0.22.0          v1.24.0          Helm Chart for Lightbits CSI Plugin.
-lightbits-helm-repo/lb-csi-workload-examples      0.22.0          v1.24.0          Helm Chart for Lightbits CSI Workload Examples.
-lightbits-helm-repo/snapshot-controller           0.14.0          8.7.0           Deploy snapshot-controller for K8s version >= v1.20
+lightbits-helm-repo/lb-csi-plugin               0.22.0          v1.24.0         Helm Chart for Lightbits CSI Plugin.
+lightbits-helm-repo/lb-csi-workload-examples    0.22.0          v1.24.0         Helm Chart for Lightbits CSI Workload Examples.
+lightbits-helm-repo/snapshot-controller         0.14.0          8.7.0           Deploy snapshot-controller for K8s version >= v...
+lightbits-helm-repo/snapshot-controller-3       0.6.0           3.0.3           Deploy snapshot-controller for k8s version < v1.20
+lightbits-helm-repo/snapshot-controller-4       0.6.0           4.2.1           Deploy snapshot-controller for k8s version >= v...
 ```
+
+> **NOTE:**
+>
+> `snapshot-controller-3` and `snapshot-controller-4` are old charts that stay in the repository for earlier plugin releases. Do not install them. Install `snapshot-controller`.
 
 
 ### Deploying Snapshot-Controller On Kubernetes Cluster
@@ -42,8 +48,10 @@ For convenience we provide a Helm Chart that deploys the snapshot-controller, it
 
 ```bash
 helm search repo lightbits-helm-repo/snapshot-controller
-NAME                                      CHART VERSION   APP VERSION   DESCRIPTION
-lightbits-helm-repo/snapshot-controller   0.14.0          8.7.0         Deploy snapshot-controller for K8s version >= v1.20
+NAME                                            CHART VERSION   APP VERSION     DESCRIPTION
+lightbits-helm-repo/snapshot-controller         0.14.0          8.7.0           Deploy snapshot-controller for K8s version >= v...
+lightbits-helm-repo/snapshot-controller-3       0.6.0           3.0.3           Deploy snapshot-controller for k8s version < v1.20
+lightbits-helm-repo/snapshot-controller-4       0.6.0           4.2.1           Deploy snapshot-controller for k8s version >= v...
 
 helm install -n kube-system snapshot-controller lightbits-helm-repo/snapshot-controller
 ```
@@ -72,16 +80,16 @@ TEST SUITE: None
 
 ### Inspecting the Chart
 
-You can watch the Helm Chart values using the following command:
+You can view the Helm Chart values using the following command:
 
 ```bash
-helm show values lightbits-helm-repo/lb-csi-plugin 
+helm show values lightbits-helm-repo/lb-csi-plugin
 ```
 
 ### Deleting Release `lb-csi`
 
 ```bash
-helm delete lb-csi 
+helm uninstall -n kube-system lb-csi
 release "lb-csi" uninstalled
 ```
 

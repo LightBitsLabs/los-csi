@@ -19,6 +19,7 @@
   - [Applying RollingUpgrade (Automated Deployment)](#applying-rollingupgrade-automated-deployment)
     - [Checking DaemonSet Update Strategy](#checking-daemonset-update-strategy)
     - [Checking StatefulSet Update Strategy](#checking-statefulset-update-strategy)
+    - [Apply The New Release](#apply-the-new-release)
     - [Rollout History](#rollout-history)
     - [Rollout Status](#rollout-status)
     - [Verify StatefulSet And DaemonSet Version As Expected](#verify-statefulset-and-daemonset-version-as-expected-1)
@@ -42,8 +43,8 @@
 
 K8s supports two ways for upgrading resources:
 
-- `OnDelete` - once a `POD` is deleted the new scheduled `POD` will be running with upgraded spec. Using this strategy we can choose which `POD` will be upgraded and we have mode control over the flow.
-- `RollingUpgrade` - Once applied K8s will do the upgrade of the DaemonSet one by one on its own, without the ability to intervene if something goes wrong.
+- `OnDelete` (manual upgrade) - once a `POD` is deleted the new scheduled `POD` will be running with upgraded spec. Using this strategy we can choose which `POD` will be upgraded and we have more control over the flow. See [Applying Manual Upgrade](#applying-manual-upgrade).
+- `RollingUpdate` (automated upgrade) - Once applied K8s will do the upgrade of the DaemonSet one by one on its own, without the ability to intervene if something goes wrong. See [Applying RollingUpgrade (Automated Deployment)](#applying-rollingupgrade-automated-deployment).
 
 We will prefer the manual approach to make sure there is no service loss while upgrading.
 
@@ -109,6 +110,10 @@ Updating only the container image, use `kubectl set image`
   ```bash
   kubectl set image ds/lb-csi-node -n kube-system lb-nvme-discovery-client=docker.lightbitslabs.com/lightos-csi/lb-nvme-discovery-client:1.4.2
   ```
+
+> **Note:**
+>
+> `kubectl set image` changes only the image. If the release notes of the new release list other `DaemonSet` changes (volumes, environment variables or RBAC objects), apply the `DaemonSet` and the RBAC objects of the new release instead, as in [Apply The New Release](#apply-the-new-release). With `OnDelete`, the running `POD`s keep the old spec until you delete them in Stage #3.
 
 #### Stage #3: Select One Node Apply Upgrade And Verify
 
@@ -478,6 +483,26 @@ kubectl get ds/lb-csi-node -o go-template='{{.spec.updateStrategy.type}}{{"\n"}}
 ```bash
 kubectl get sts/lb-csi-controller -o go-template='{{.spec.updateStrategy.type}}{{"\n"}}' -n kube-system
 ```
+
+Both commands should print `RollingUpdate`.
+
+#### Apply The New Release
+
+With `RollingUpdate`, a change to the `POD` template starts the upgrade. Apply the full deployment of the new release, not only the new images, so that the new volumes, settings and RBAC objects of the release are applied too.
+
+For a Helm deployment, upgrade the release with the new chart, from the bundle (`helm/charts/lb-csi-plugin-*.tgz`) or from the Helm repository (`lightbits-helm-repo/lb-csi-plugin`), and the values file used at install:
+
+```bash
+helm upgrade --namespace=kube-system lb-csi <new lb-csi-plugin chart> -f <values file>
+```
+
+For a static manifests deployment, apply the manifest of the new release:
+
+```bash
+kubectl apply -f lb-csi-plugin-k8s-v<ver>-dc.yaml
+```
+
+K8s then replaces the `lb-csi-node` `POD`s one node at a time, and the `lb-csi-controller` `POD`.
 
 #### Rollout History
 

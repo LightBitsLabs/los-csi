@@ -236,9 +236,9 @@ The `lb-csi-bundle` includes the following content:
 │   └── statefulset-workload.yaml
 ├── helm
 │   └── charts
-│       ├── lb-csi-plugin-v1.20.0.tgz
-│       ├── lb-csi-workload-examples-v1.20.0.tgz
-│       └── snapshot-controller-0.12.0.tgz
+│       ├── lb-csi-plugin-0.22.0.tgz
+│       ├── lb-csi-workload-examples-0.22.0.tgz
+│       └── snapshot-controller-0.14.0.tgz
 ├── k8s
 │   ├── lb-csi-plugin-k8s-v1.33.yaml
 │   ├── lb-csi-plugin-k8s-v1.33-dc.yaml
@@ -259,7 +259,7 @@ The `lb-csi-bundle` includes the following content:
 
 - **k8s:** Contains static manifests to deploy `lb-csi-plugin`, one per supported Kubernetes version per deployment variant (host discovery-client, discovery-client in a container, and discovery-client in a container with NVMe in-band authentication, which ships for Kubernetes v1.33, v1.35, v1.36 and v1.37).
 - **examples:** Provides various workload examples that use `lb-csi` as persistent storage backend using static manifests.
-- **helm/charts:** Contain two Helm Charts:
+- **helm/charts:** Contain three Helm Charts:
   - **lb-csi-plugin-<CHART_VERSION>.tgz:** Provides a customizable way to deploy `lb-csi-plugin` using Helm on various Kubernetes versions using Helm Chart.
   - **lb-csi-workload-examples-<CHART_VERSION>.tgz:** Provides various workload examples that use `lb-csi` as persistent storage backend using Helm Chart.
   - **snapshot-controller-<CHART_VERSION>.tgz:** Chart to deploy VolumeSnapshot CRDs and Snapshot-Controller deployment for k8s versions >= v1.20. A package that automates the process documented [here](https://kubernetes-csi.github.io/docs/snapshot-controller.html)
