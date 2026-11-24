@@ -972,6 +972,13 @@ func (d *Driver) NodeExpandVolume(
 		return nil, err
 	}
 
+	// the host learns the new namespace size asynchronously, and resizing
+	// the FS before that succeeds without growing it.
+	err = d.waitForDevSize(devicePath, req.GetCapacityRange().GetRequiredBytes())
+	if err != nil {
+		return nil, err
+	}
+
 	if vid.hostCrypto != "" {
 		devicePath, err = d.resizeEncryptedDevice(vid.uuid, devicePath)
 		if err != nil {
