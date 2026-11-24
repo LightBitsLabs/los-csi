@@ -27,12 +27,14 @@ ENV CSI_ENDPOINT=unix:///csi/csi.sock   \
 RUN apk add --no-cache \
     cryptsetup \
     e2fsprogs e2fsprogs-extra \
-    xfsprogs \
-    xfsprogs-extra \
     lsblk \
     blkid \
     kmod \
     $EXTRA_PACKAGES
+
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/v3.14/main  \
+    xfsprogs=5.12.0-r0 \
+    xfsprogs-extra=5.12.0-r0
 
 COPY licenses /licenses
 COPY lb-csi-plugin /
